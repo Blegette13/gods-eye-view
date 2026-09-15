@@ -76,6 +76,15 @@ function sourceErrorLabel(error, source) {
   return 'Screening unavailable';
 }
 
+function sourceQualityRows(parcel) {
+  const currency = String(parcel.source?.recordCurrency || 'unknown').toLowerCase();
+  const currencyRow = row('Record currency', currency.replaceAll('-', ' ').toUpperCase());
+  currencyRow.dataset.bdpSourceCurrency = currency;
+  const rows = [currencyRow];
+  if (parcel.source?.sourceNotice) rows.push(row('Source note', parcel.source.sourceNotice));
+  return rows;
+}
+
 function energyRows(metrics) {
   if (!metrics) return [row('RRC screening', 'No metrics returned')];
   return [
@@ -280,6 +289,7 @@ export function createBdpPropertyCard({ screeningLoader = runBdpParcelScreening 
       row('Legal', parcel.property?.legalDescription),
       row('Mailing', parcel.owner?.mailingAddress),
       row('Source', parcel.source?.provider || parcel.source?.cad),
+      ...sourceQualityRows(parcel),
     );
 
     const containers = {
@@ -311,7 +321,7 @@ export function createBdpPropertyCard({ screeningLoader = runBdpParcelScreening 
 
     const disclaimer = document.createElement('p');
     disclaimer.className = 'bdp-property-disclaimer';
-    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. FEMA, RRC, NWI, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, engineering and permitting due diligence remains required.';
+    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. FEMA, RRC, NWI, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, engineering and permitting due diligence remains required.';
     body.append(disclaimer);
 
     collapse.addEventListener('click', () => {
