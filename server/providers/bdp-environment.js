@@ -12,6 +12,11 @@ import {
   buildFemaParcelQueryUrl,
   normalizeFemaFeatureCollection,
 } from '../../src/bdp/environment/floodContract.js';
+import {
+  buildEpaCleanupMetricsSql,
+  buildEpaCleanupParcelQueryUrl,
+  normalizeEpaCleanupFeatureCollection,
+} from '../../src/bdp/environment/cleanupContract.js';
 
 const execFileAsync = promisify(execFile);
 const MAX_BODY_BYTES = 1_000_000;
@@ -113,18 +118,36 @@ async function fetchFemaParcelFeatures(parcelInput) {
   });
 }
 
+async function fetchEpaCleanupParcelFeatures(parcelInput) {
+  normalizeWetlandsParcelRequest(parcelInput);
+  return fetchBoundedGeoJson(buildEpaCleanupParcelQueryUrl(parcelInput), {
+    sourceLabel: 'US EPA Cleanups in My Community',
+    errorCode: 'EPA_CLEANUPS_UPSTREAM_FAILED',
+    normalize: normalizeEpaCleanupFeatureCollection,
+  });
+}
+
+function upstreamSource(error) {
+  if (error?.code === 'FEMA_UPSTREAM_FAILED') return 'FEMA NFHL';
+  if (error?.code === 'EPA_CLEANUPS_UPSTREAM_FAILED') return 'US EPA Cleanups in My Community';
+  return 'USFWS NWI';
+}
+
 function publicError(error) {
   if (error?.code === 'BDP_POSTGIS_NOT_CONFIGURED' || error?.code === 'ENOENT') {
     return {
       status: 503,
       payload: {
         error: 'bdp_postgis_unavailable',
-        message: 'Parcel acreage screening requires the BDP PostGIS service.',
+        message: 'Parcel environmental screening requires the BDP PostGIS service.',
       },
     };
   }
-  if (error?.code === 'NWI_UPSTREAM_FAILED' || error?.code === 'FEMA_UPSTREAM_FAILED' || ['TimeoutError', 'AbortError'].includes(error?.name)) {
-    const source = error?.code === 'FEMA_UPSTREAM_FAILED' ? 'FEMA NFHL' : 'USFWS NWI';
+  if (
+    ['NWI_UPSTREAM_FAILED', 'FEMA_UPSTREAM_FAILED', 'EPA_CLEANUPS_UPSTREAM_FAILED'].includes(error?.code)
+    || ['TimeoutError', 'AbortError'].includes(error?.name)
+  ) {
+    const source = upstreamSource(error);
     return {
       status: 502,
       payload: {
@@ -145,6 +168,7 @@ function publicError(error) {
     || message.includes('WGS84')
     || message.includes('too complex')
     || message.includes('span')
+    || message.includes('capped')
   ) {
     return { status: 400, payload: { error: 'invalid_request', message } };
   }
@@ -189,6 +213,22 @@ async function handleBdpEnvironment(request, response, next) {
       const metrics = await queryPostgisJson(buildFemaOverlapSql(input, sourceFeatures));
       return sendJson(response, 200, {
         source: 'FEMA National Flood Hazard Layer',
+        screeningOnly: true,
+        sourceFeatureCount: sourceFeatures.features.length,
+        metrics,
+      });
+    }
+
+    if (url.pathname === `${BDP_ENVIRONMENT_API_BASE}/cleanups`) {
+      if (request.method !== 'POST') {
+        response.setHeader('Allow', 'POST');
+        return sendJson(response, 405, { error: 'method_not_allowed' });
+      }
+      const input = await readJsonBody(request);
+      const sourceFeatures = await fetchEpaCleanupParcelFeatures(input);
+      const metrics = await queryPostgisJson(buildEpaCleanupMetricsSql(input, sourceFeatures));
+      return sendJson(response, 200, {
+        source: 'U.S. EPA Cleanups in My Community',
         screeningOnly: true,
         sourceFeatureCount: sourceFeatures.features.length,
         metrics,
