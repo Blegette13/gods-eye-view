@@ -20,6 +20,14 @@ import nwiWetlandsLayer from '../bdp/overlays/nwiWetlandsLayer.js';
 import ssurgoSoilLayer from '../bdp/overlays/ssurgoSoilLayer.js';
 import { extendLayerStateRegistry } from '../bdp/config/layerRegistry.js';
 
+const BDP_SCREEN_LAYER_IDS = Object.freeze([
+  'bdp-bexar-parcels',
+  'bdp-fema-flood',
+  'bdp-rrc-energy',
+  'bdp-nwi-wetlands',
+  'bdp-ssurgo-soils',
+]);
+
 /** Register the standalone layer catalog before allowing state restoration. */
 export function createStandaloneData({
   scene: { viewer },
@@ -55,9 +63,6 @@ export function createStandaloneData({
     dataManager.register(layer);
   }
 
-  // BDP Land Intelligence production layers. Keep BDP-specific registration
-  // adjacent to, but separate from, the upstream layer catalog so future
-  // upstream merges remain straightforward.
   dataManager.register(bexarParcelLayer);
   dataManager.register(femaFloodLayer);
   dataManager.register(rrcEnergyLayer);
@@ -143,6 +148,54 @@ export function createStandaloneData({
     parcelSearchController?.abort();
     parcelSearchController = null;
     window.removeEventListener('bdp:land-search', handleBdpLandSearch);
+  });
+
+  let presetController = null;
+  const handleBdpLayerPreset = async (event) => {
+    const mode = event?.detail?.mode;
+    if (!['screen', 'clear'].includes(mode)) return;
+
+    presetController?.abort();
+    presetController = new AbortController();
+    const { signal } = presetController;
+    const shouldEnable = mode === 'screen';
+    const failures = [];
+    let changedCount = 0;
+
+    for (const layerId of BDP_SCREEN_LAYER_IDS) {
+      if (signal.aborted) return;
+      try {
+        const settled = await dataManager.setEnabled(layerId, shouldEnable, {
+          origin: 'user',
+          signal,
+        });
+        if (settled !== false) changedCount += 1;
+        else failures.push(layerId);
+      } catch (error) {
+        if (signal.aborted || error?.name === 'AbortError') return;
+        failures.push(layerId);
+        console.warn(`[BDP:LayerPreset] ${mode} failed for ${layerId}:`, error);
+      }
+    }
+
+    window.dispatchEvent(new CustomEvent('bdp:layer-preset-result', {
+      detail: {
+        ok: failures.length === 0,
+        mode,
+        enabledCount: mode === 'screen' ? changedCount : 0,
+        clearedCount: mode === 'clear' ? changedCount : 0,
+        failures,
+        message: failures.length
+          ? `BDP ${mode} completed with ${failures.length} layer issue${failures.length === 1 ? '' : 's'}`
+          : '',
+      },
+    }));
+  };
+  window.addEventListener('bdp:layer-preset', handleBdpLayerPreset);
+  defer(() => {
+    presetController?.abort();
+    presetController = null;
+    window.removeEventListener('bdp:layer-preset', handleBdpLayerPreset);
   });
 
   if (allowQaRegistration) {
