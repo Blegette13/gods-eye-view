@@ -1,6 +1,7 @@
 import { fetchBdpParcelEnergy } from '../rrc/client.js';
 import { fetchBdpParcelWetlands } from '../environment/client.js';
 import { fetchBdpParcelSoils } from '../soil/client.js';
+import { fetchBdpParcelTerrain } from '../terrain/client.js';
 
 function formatMoney(value) {
   const number = Number(value);
@@ -34,6 +35,18 @@ function formatAcres(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return '—';
   return `${formatNumber(number, 2)} ac`;
+}
+
+function formatFeet(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '—';
+  return `${formatNumber(number, 0)} ft`;
+}
+
+function formatDegrees(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '—';
+  return `${formatNumber(number, 1)}°`;
 }
 
 function row(label, value) {
@@ -116,10 +129,24 @@ function soilRows(summary) {
   ];
 }
 
+function terrainRows(metrics) {
+  if (!metrics) return [row('Terrain', 'No data returned')];
+  return [
+    row('Terrain class', String(metrics.terrainClass || 'unknown').replaceAll('-', ' ')),
+    row('Mean elevation', formatFeet(metrics.elevation?.meanFeet)),
+    row('Elevation low', formatFeet(metrics.elevation?.minFeet)),
+    row('Elevation high', formatFeet(metrics.elevation?.maxFeet)),
+    row('Relief', formatFeet(metrics.elevation?.reliefFeet)),
+    row('Mean slope', formatDegrees(metrics.slope?.meanDegrees)),
+    row('Max slope', formatDegrees(metrics.slope?.maxDegrees)),
+  ];
+}
+
 export function createBdpPropertyCard({
   energyLoader = fetchBdpParcelEnergy,
   wetlandsLoader = fetchBdpParcelWetlands,
   soilsLoader = fetchBdpParcelSoils,
+  terrainLoader = fetchBdpParcelTerrain,
 } = {}) {
   const root = document.createElement('aside');
   root.id = 'bdp-property-card';
@@ -229,8 +256,12 @@ export function createBdpPropertyCard({
     soils.append(row('Soil screening', 'Loading…'));
     root.append(sectionHeading('SOIL / SSURGO'), soils);
 
+    const terrain = document.createElement('div');
+    terrain.append(row('Terrain', 'Loading…'));
+    root.append(sectionHeading('TERRAIN / 3DEP'), terrain);
+
     const disclaimer = document.createElement('p');
-    disclaimer.textContent = 'RRC, NWI and SSURGO outputs are preliminary screening data. Survey, title, easement, wetland delineation, jurisdictional, geotechnical and permitting verification remain separate due diligence.';
+    disclaimer.textContent = 'RRC, NWI, SSURGO and 3DEP outputs are preliminary screening data. Survey, title, easement, wetland delineation, jurisdictional, geotechnical, engineering and permitting verification remain separate due diligence.';
     Object.assign(disclaimer.style, {
       margin: '9px 0 0',
       color: '#8f8f8f',
@@ -279,6 +310,18 @@ export function createBdpPropertyCard({
         if (token !== renderToken) return;
         const label = error?.status === 502 ? 'USDA soils temporarily unavailable' : 'Screening unavailable';
         soils.replaceChildren(row('Soil screening', label));
+      });
+
+    Promise.resolve()
+      .then(() => terrainLoader(parcel))
+      .then((metrics) => {
+        if (token !== renderToken) return;
+        terrain.replaceChildren(...terrainRows(metrics));
+      })
+      .catch((error) => {
+        if (token !== renderToken) return;
+        const label = error?.status === 502 ? 'USGS terrain temporarily unavailable' : 'Screening unavailable';
+        terrain.replaceChildren(row('Terrain', label));
       });
   }
 
