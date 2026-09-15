@@ -1,0 +1,109 @@
+/* BDP Land Intelligence UI adapter
+ *
+ * Keep the original God's Eye View shell and visual language. These rules only
+ * adapt BDP-specific surfaces to the same glass/cyan/mono design tokens already
+ * defined by style.css.
+ */
+
+#title-bar[data-bdp-mode='true'] .bdp-title-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  padding: 4px 8px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  color: var(--accent);
+  background: rgba(0, 212, 255, 0.06);
+  box-shadow: 0 0 14px rgba(0, 212, 255, 0.08);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+}
+
+#title-bar[data-bdp-mode='true'] .bdp-title-mode::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 9px var(--accent-glow);
+}
+
+#bdp-property-card {
+  top: 104px !important;
+  right: 36px !important;
+  width: min(380px, calc(100vw - 72px)) !important;
+  max-height: calc(100vh - 168px) !important;
+  padding: 18px 20px !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--panel-radius) !important;
+  color: var(--text-primary) !important;
+  background: var(--glass-bg) !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 0 28px rgba(0, 212, 255, 0.06) !important;
+  backdrop-filter: blur(24px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(1.4) !important;
+  font-family: var(--font-mono) !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 212, 255, 0.28) transparent;
+}
+
+#bdp-property-card::-webkit-scrollbar {
+  width: 7px;
+}
+
+#bdp-property-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#bdp-property-card::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(0, 212, 255, 0.22);
+}
+
+#bdp-property-card > div:first-child {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+#bdp-property-card button {
+  color: var(--text-secondary) !important;
+  transition: color var(--transition-fast), text-shadow var(--transition-fast) !important;
+}
+
+#bdp-property-card button:hover {
+  color: var(--accent) !important;
+  text-shadow: 0 0 12px var(--accent-glow);
+}
+
+#bdp-property-card strong {
+  color: var(--text-primary) !important;
+  font-family: var(--font-mono) !important;
+  letter-spacing: 0.02em;
+}
+
+#bdp-property-card p {
+  color: var(--text-dim) !important;
+  font-family: var(--font-mono) !important;
+}
+
+@media (max-width: 760px) {
+  #bdp-property-card {
+    top: auto !important;
+    right: 12px !important;
+    bottom: 104px !important;
+    left: 12px !important;
+    width: auto !important;
+    max-height: min(55vh, 560px) !important;
+  }
+
+  #title-bar[data-bdp-mode='true'] .bdp-title-mode {
+    display: none;
+  }
+}
