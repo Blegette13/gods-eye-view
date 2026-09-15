@@ -1,4 +1,5 @@
 import './godsEyeUi.css';
+import { parseBdpLandSearch } from './landSearch.js';
 
 const BDP_LAYER_IDS = new Set([
   'bdp-bexar-parcels',
@@ -37,11 +38,61 @@ function replaceTitleText() {
   }
 }
 
+function signalLandSearchState(search, state, message = '') {
+  search.dataset.bdpSearchState = state;
+  search.title = message;
+  if (state !== 'searching') search.classList.remove('searching');
+
+  const status = document.getElementById('location-mini-poi');
+  if (status && message) status.textContent = message;
+
+  if (state === 'success' || state === 'error') {
+    window.setTimeout(() => {
+      if (search.dataset.bdpSearchState === state) delete search.dataset.bdpSearchState;
+    }, 2600);
+  }
+}
+
+function attachLandSearch(search) {
+  if (!search || search.dataset.bdpLandSearchBound === 'true') return;
+  search.dataset.bdpLandSearchBound = 'true';
+
+  search.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    const command = parseBdpLandSearch(search.value);
+    if (!command) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    search.classList.add('searching');
+    signalLandSearchState(search, 'searching', `Looking up ${command.value} in Bexar parcels…`);
+    window.dispatchEvent(new CustomEvent('bdp:land-search', { detail: command }));
+  }, true);
+
+  window.addEventListener('bdp:land-search-result', (event) => {
+    const result = event.detail || {};
+    if (result.ok) {
+      signalLandSearchState(
+        search,
+        'success',
+        `Parcel ${result.parcelId || result.query || ''} · ${result.owner || 'owner unavailable'}`,
+      );
+      return;
+    }
+    signalLandSearchState(
+      search,
+      'error',
+      result.message || 'Parcel lookup unavailable',
+    );
+  });
+}
+
 function adaptLocationTray() {
   const search = document.getElementById('location-search');
   if (!search) return;
-  search.placeholder = 'Search address, place or coordinates...';
-  search.setAttribute('aria-label', 'Search map by address, place, or coordinates');
+  search.placeholder = 'Search address/place/coords · parcel: ID';
+  search.setAttribute('aria-label', 'Search map by address, place, coordinates, or parcel command');
+  attachLandSearch(search);
 }
 
 function createBdpLayerSectionLabel() {
