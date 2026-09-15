@@ -1,5 +1,6 @@
 import { fetchBdpParcelEnergy } from '../rrc/client.js';
 import { fetchBdpParcelWetlands } from '../environment/client.js';
+import { fetchBdpParcelSoils } from '../soil/client.js';
 
 function formatMoney(value) {
   const number = Number(value);
@@ -99,9 +100,26 @@ function wetlandRows(metrics) {
   ];
 }
 
+function soilRows(summary) {
+  if (!summary) return [row('Soil screening', 'No data returned')];
+  const dominant = summary.dominant;
+  const dominantLabel = dominant
+    ? [dominant.symbol, dominant.name].filter(Boolean).join(' · ')
+    : '—';
+  return [
+    row('Dominant soil', dominantLabel),
+    row('Dominant share', dominant ? formatPercent(dominant.mappedSharePercent) : '—'),
+    row('Mapped soils', formatAcres(summary.mappedAcres)),
+    row('Map units', String(summary.mapunitCount ?? 0)),
+    row('Farmland class', dominant?.farmlandClass || '—'),
+    row('Survey area', dominant?.areaSymbol || '—'),
+  ];
+}
+
 export function createBdpPropertyCard({
   energyLoader = fetchBdpParcelEnergy,
   wetlandsLoader = fetchBdpParcelWetlands,
+  soilsLoader = fetchBdpParcelSoils,
 } = {}) {
   const root = document.createElement('aside');
   root.id = 'bdp-property-card';
@@ -207,8 +225,12 @@ export function createBdpPropertyCard({
     wetlands.append(row('NWI screening', 'Loading…'));
     root.append(sectionHeading('WETLANDS'), wetlands);
 
+    const soils = document.createElement('div');
+    soils.append(row('Soil screening', 'Loading…'));
+    root.append(sectionHeading('SOIL / SSURGO'), soils);
+
     const disclaimer = document.createElement('p');
-    disclaimer.textContent = 'RRC and NWI outputs are preliminary screening data. Survey, title, easement, wetland delineation, jurisdictional and permitting verification remain separate due diligence.';
+    disclaimer.textContent = 'RRC, NWI and SSURGO outputs are preliminary screening data. Survey, title, easement, wetland delineation, jurisdictional, geotechnical and permitting verification remain separate due diligence.';
     Object.assign(disclaimer.style, {
       margin: '9px 0 0',
       color: '#8f8f8f',
@@ -245,6 +267,18 @@ export function createBdpPropertyCard({
             ? 'NWI temporarily unavailable'
             : 'Screening unavailable';
         wetlands.replaceChildren(row('NWI screening', label));
+      });
+
+    Promise.resolve()
+      .then(() => soilsLoader(parcel))
+      .then((summary) => {
+        if (token !== renderToken) return;
+        soils.replaceChildren(...soilRows(summary));
+      })
+      .catch((error) => {
+        if (token !== renderToken) return;
+        const label = error?.status === 502 ? 'USDA soils temporarily unavailable' : 'Screening unavailable';
+        soils.replaceChildren(row('Soil screening', label));
       });
   }
 
