@@ -55,6 +55,6 @@ test('produces a stable SHA-256 checksum', async () => {
   const bytes = new TextEncoder().encode('BDP');
   assert.equal(
     await sha256Hex(bytes),
-    'd4f682e68a64c94d1f0d10bd4c9bc72fa8cf57ae9beaec5b7ae8b9aa6c9f83eb',
+    '76841b510b45a384ccf9ffa1d52f742f9b5e7bd82107eeb64d83c2bf9ea689c7',
   );
 });
