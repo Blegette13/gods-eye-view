@@ -1,10 +1,4 @@
-import { fetchBdpParcelEnergy } from '../rrc/client.js';
-import {
-  fetchBdpParcelFlood,
-  fetchBdpParcelWetlands,
-} from '../environment/client.js';
-import { fetchBdpParcelSoils } from '../soil/client.js';
-import { fetchBdpParcelTerrain } from '../terrain/client.js';
+import { runBdpParcelScreening } from '../intelligence/screeningSession.js';
 
 function formatMoney(value) {
   const number = Number(value);
@@ -31,7 +25,7 @@ function formatMiles(meters) {
 function formatPercent(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return '—';
-  return `${formatNumber(number, 2)}%`;
+  return `${formatNumber(number, 1)}%`;
 }
 
 function formatAcres(value) {
@@ -90,6 +84,13 @@ function sectionHeading(text) {
     letterSpacing: '.14em',
   });
   return heading;
+}
+
+function sourceErrorLabel(error, source) {
+  if (!error) return 'No data returned';
+  if (error.status === 503) return 'PostGIS not configured';
+  if (error.status === 502) return `${source} temporarily unavailable`;
+  return 'Screening unavailable';
 }
 
 function energyRows(metrics) {
@@ -157,13 +158,64 @@ function terrainRows(metrics) {
   ];
 }
 
-export function createBdpPropertyCard({
-  energyLoader = fetchBdpParcelEnergy,
-  floodLoader = fetchBdpParcelFlood,
-  wetlandsLoader = fetchBdpParcelWetlands,
-  soilsLoader = fetchBdpParcelSoils,
-  terrainLoader = fetchBdpParcelTerrain,
-} = {}) {
+function intelligenceRows(screening) {
+  const { score, redFlagSummary } = screening;
+  const scoreLabel = score.readiness === 'insufficient-evidence'
+    ? 'WITHHELD · INSUFFICIENT EVIDENCE'
+    : `${formatNumber(score.confidenceAdjustedScore, 0)} / 100 · ${score.readiness.replaceAll('-', ' ').toUpperCase()}`;
+  return [
+    row('BDP score', scoreLabel),
+    row('Model coverage', formatPercent(score.coveragePercent)),
+    row('Evidence conf.', formatPercent(score.confidenceAdjustedCoveragePercent)),
+    row('Live feeds', formatPercent(screening.sourceCoveragePercent)),
+    row('High flags', String(redFlagSummary.high + redFlagSummary.critical)),
+    row('Medium flags', String(redFlagSummary.medium)),
+  ];
+}
+
+function redFlagElements(flags) {
+  const substantive = flags.filter((item) => item.severity !== 'info');
+  const display = substantive.length ? substantive : flags;
+  if (!display.length) return [row('Flags', 'None from current screening feeds')];
+  return display.map((item) => {
+    const label = `${item.severity.toUpperCase()} · ${item.title}`;
+    return row(label, item.detail);
+  });
+}
+
+function appendScreeningResult(containers, screening) {
+  const { evidence, errors } = screening;
+  containers.intelligence.replaceChildren(...intelligenceRows(screening));
+  containers.flags.replaceChildren(...redFlagElements(screening.redFlags));
+
+  containers.energy.replaceChildren(...(
+    evidence.energy
+      ? energyRows(evidence.energy)
+      : [row('RRC screening', sourceErrorLabel(errors.energy, 'RRC'))]
+  ));
+  containers.flood.replaceChildren(...(
+    evidence.flood
+      ? floodRows(evidence.flood)
+      : [row('FEMA screening', sourceErrorLabel(errors.flood, 'FEMA'))]
+  ));
+  containers.wetlands.replaceChildren(...(
+    evidence.wetlands
+      ? wetlandRows(evidence.wetlands)
+      : [row('NWI screening', sourceErrorLabel(errors.wetlands, 'NWI'))]
+  ));
+  containers.soils.replaceChildren(...(
+    evidence.soils
+      ? soilRows(evidence.soils)
+      : [row('Soil screening', sourceErrorLabel(errors.soils, 'USDA soils'))]
+  ));
+  containers.terrain.replaceChildren(...(
+    evidence.terrain
+      ? terrainRows(evidence.terrain)
+      : [row('Terrain', sourceErrorLabel(errors.terrain, 'USGS terrain'))]
+  ));
+}
+
+export function createBdpPropertyCard({ screeningLoader = runBdpParcelScreening } = {}) {
   const root = document.createElement('aside');
   root.id = 'bdp-property-card';
   root.setAttribute('aria-live', 'polite');
@@ -171,7 +223,7 @@ export function createBdpPropertyCard({
     position: 'fixed',
     top: '84px',
     right: '24px',
-    width: '340px',
+    width: '360px',
     maxHeight: 'calc(100vh - 120px)',
     overflow: 'auto',
     zIndex: '1300',
@@ -200,32 +252,39 @@ export function createBdpPropertyCard({
     root.replaceChildren();
 
     const header = document.createElement('div');
-    header.style.display = 'flex';
-    header.style.justifyContent = 'space-between';
-    header.style.gap = '12px';
-    header.style.marginBottom = '12px';
+    Object.assign(header.style, {
+      display: 'flex',
+      justifyContent: 'space-between',
+      gap: '12px',
+      marginBottom: '12px',
+    });
 
     const titles = document.createElement('div');
     const eyebrow = document.createElement('div');
     eyebrow.textContent = 'BDP LAND INTELLIGENCE';
-    eyebrow.style.color = '#a7a7a7';
-    eyebrow.style.fontSize = '10px';
-    eyebrow.style.letterSpacing = '.14em';
+    Object.assign(eyebrow.style, {
+      color: '#a7a7a7',
+      fontSize: '10px',
+      letterSpacing: '.14em',
+    });
 
     const title = document.createElement('strong');
     title.textContent = parcel.property?.situsAddress || `Parcel ${parcel.parcelId}`;
-    title.style.display = 'block';
-    title.style.marginTop = '5px';
-    title.style.color = '#fff';
-    title.style.fontSize = '17px';
-    title.style.lineHeight = '1.2';
+    Object.assign(title.style, {
+      display: 'block',
+      marginTop: '5px',
+      color: '#fff',
+      fontSize: '17px',
+      lineHeight: '1.2',
+    });
 
     const subtitle = document.createElement('div');
     subtitle.textContent = `${parcel.county || parcel.jurisdiction?.county || 'Texas'} County, Texas`;
-    subtitle.style.marginTop = '4px';
-    subtitle.style.color = '#bdbdbd';
-    subtitle.style.fontSize = '12px';
-
+    Object.assign(subtitle.style, {
+      marginTop: '4px',
+      color: '#bdbdbd',
+      fontSize: '12px',
+    });
     titles.append(eyebrow, title, subtitle);
 
     const close = document.createElement('button');
@@ -241,7 +300,6 @@ export function createBdpPropertyCard({
       alignSelf: 'flex-start',
     });
     close.addEventListener('click', hide);
-
     header.append(titles, close);
     root.append(header);
 
@@ -260,104 +318,55 @@ export function createBdpPropertyCard({
       row('Source', parcel.source?.provider || parcel.source?.cad),
     );
 
-    const energy = document.createElement('div');
-    energy.append(row('RRC screening', 'Loading…'));
-    root.append(sectionHeading('ENERGY / OIL & GAS'), energy);
+    const containers = {
+      intelligence: document.createElement('div'),
+      flags: document.createElement('div'),
+      energy: document.createElement('div'),
+      flood: document.createElement('div'),
+      wetlands: document.createElement('div'),
+      soils: document.createElement('div'),
+      terrain: document.createElement('div'),
+    };
+    containers.intelligence.append(row('BDP screening', 'Loading evidence…'));
+    containers.flags.append(row('Flags', 'Loading evidence…'));
+    containers.energy.append(row('RRC screening', 'Loading…'));
+    containers.flood.append(row('FEMA screening', 'Loading…'));
+    containers.wetlands.append(row('NWI screening', 'Loading…'));
+    containers.soils.append(row('Soil screening', 'Loading…'));
+    containers.terrain.append(row('Terrain', 'Loading…'));
 
-    const flood = document.createElement('div');
-    flood.append(row('FEMA screening', 'Loading…'));
-    root.append(sectionHeading('FLOOD / FEMA'), flood);
-
-    const wetlands = document.createElement('div');
-    wetlands.append(row('NWI screening', 'Loading…'));
-    root.append(sectionHeading('WETLANDS'), wetlands);
-
-    const soils = document.createElement('div');
-    soils.append(row('Soil screening', 'Loading…'));
-    root.append(sectionHeading('SOIL / SSURGO'), soils);
-
-    const terrain = document.createElement('div');
-    terrain.append(row('Terrain', 'Loading…'));
-    root.append(sectionHeading('TERRAIN / 3DEP'), terrain);
+    root.append(
+      sectionHeading('BDP INTELLIGENCE'), containers.intelligence,
+      sectionHeading('RED FLAGS'), containers.flags,
+      sectionHeading('ENERGY / OIL & GAS'), containers.energy,
+      sectionHeading('FLOOD / FEMA'), containers.flood,
+      sectionHeading('WETLANDS'), containers.wetlands,
+      sectionHeading('SOIL / SSURGO'), containers.soils,
+      sectionHeading('TERRAIN / 3DEP'), containers.terrain,
+    );
 
     const disclaimer = document.createElement('p');
-    disclaimer.textContent = 'FEMA, RRC, NWI, SSURGO and 3DEP outputs are preliminary screening data. Survey, title, easement, wetland delineation, floodplain administration, jurisdictional, geotechnical, engineering and permitting verification remain separate due diligence.';
+    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. FEMA, RRC, NWI, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, engineering and permitting due diligence remains required.';
     Object.assign(disclaimer.style, {
-      margin: '9px 0 0',
+      margin: '12px 0 0',
       color: '#8f8f8f',
       fontSize: '10px',
       lineHeight: '1.45',
     });
     root.append(disclaimer);
-
     root.style.display = 'block';
 
     Promise.resolve()
-      .then(() => energyLoader(parcel))
-      .then((metrics) => {
+      .then(() => screeningLoader(parcel))
+      .then((screening) => {
         if (token !== renderToken) return;
-        energy.replaceChildren(...energyRows(metrics));
+        appendScreeningResult(containers, screening);
       })
       .catch((error) => {
         if (token !== renderToken) return;
-        const label = error?.status === 503 ? 'PostGIS not configured' : 'Screening unavailable';
-        energy.replaceChildren(row('RRC screening', label));
-      });
-
-    Promise.resolve()
-      .then(() => floodLoader(parcel))
-      .then((metrics) => {
-        if (token !== renderToken) return;
-        flood.replaceChildren(...floodRows(metrics));
-      })
-      .catch((error) => {
-        if (token !== renderToken) return;
-        const label = error?.status === 503
-          ? 'PostGIS not configured'
-          : error?.status === 502
-            ? 'FEMA temporarily unavailable'
-            : 'Screening unavailable';
-        flood.replaceChildren(row('FEMA screening', label));
-      });
-
-    Promise.resolve()
-      .then(() => wetlandsLoader(parcel))
-      .then((metrics) => {
-        if (token !== renderToken) return;
-        wetlands.replaceChildren(...wetlandRows(metrics));
-      })
-      .catch((error) => {
-        if (token !== renderToken) return;
-        const label = error?.status === 503
-          ? 'PostGIS not configured'
-          : error?.status === 502
-            ? 'NWI temporarily unavailable'
-            : 'Screening unavailable';
-        wetlands.replaceChildren(row('NWI screening', label));
-      });
-
-    Promise.resolve()
-      .then(() => soilsLoader(parcel))
-      .then((summary) => {
-        if (token !== renderToken) return;
-        soils.replaceChildren(...soilRows(summary));
-      })
-      .catch((error) => {
-        if (token !== renderToken) return;
-        const label = error?.status === 502 ? 'USDA soils temporarily unavailable' : 'Screening unavailable';
-        soils.replaceChildren(row('Soil screening', label));
-      });
-
-    Promise.resolve()
-      .then(() => terrainLoader(parcel))
-      .then((metrics) => {
-        if (token !== renderToken) return;
-        terrain.replaceChildren(...terrainRows(metrics));
-      })
-      .catch((error) => {
-        if (token !== renderToken) return;
-        const label = error?.status === 502 ? 'USGS terrain temporarily unavailable' : 'Screening unavailable';
-        terrain.replaceChildren(row('Terrain', label));
+        containers.intelligence.replaceChildren(row('BDP screening', 'Screening session unavailable'));
+        containers.flags.replaceChildren(row('Flags', 'Evidence could not be assembled'));
+        console.warn('[BDP:PropertyCard] screening failed:', error);
       });
   }
 
