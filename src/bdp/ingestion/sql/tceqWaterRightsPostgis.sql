@@ -6,6 +6,29 @@
 
 CREATE EXTENSION IF NOT EXISTS postgis;
 
+-- Shared ingestion ledger. RRC creates the same compatible table; keeping the
+-- definition here lets TCEQ be installed independently in a fresh database.
+CREATE TABLE IF NOT EXISTS bdp_ingestion_runs (
+  id BIGSERIAL PRIMARY KEY,
+  source_id TEXT NOT NULL,
+  dataset TEXT NOT NULL,
+  county_fips CHAR(3),
+  source_filename TEXT,
+  source_url TEXT,
+  source_last_modified TIMESTAMPTZ,
+  checksum_sha256 TEXT,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at TIMESTAMPTZ,
+  status TEXT NOT NULL DEFAULT 'running',
+  row_count INTEGER,
+  error_message TEXT,
+  CONSTRAINT bdp_ingestion_runs_status_check
+    CHECK (status IN ('running', 'succeeded', 'failed', 'skipped-unchanged'))
+);
+
+CREATE INDEX IF NOT EXISTS bdp_ingestion_runs_lookup_idx
+  ON bdp_ingestion_runs (source_id, dataset, county_fips, completed_at DESC);
+
 CREATE TABLE IF NOT EXISTS bdp_tceq_water_rights (
   id BIGSERIAL PRIMARY KEY,
   record_status TEXT NOT NULL,
