@@ -1,0 +1,106 @@
+name: BDP Validation
+
+on:
+  pull_request:
+    paths:
+      - 'src/bdp/**'
+      - 'scripts/bdp/**'
+      - 'server/providers/bdp-*.js'
+      - 'server/standalone/vite.config.js'
+      - 'docker-compose.bdp.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/bdp-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bdp-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: BDP unit, build, and PostGIS validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: '1'
+      GEV_REQUIRE_ALLOCATION_GATE: '0'
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: bdp
+      PGUSER: postgres
+    services:
+      postgis:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_DB: bdp
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d bdp"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.0
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Check PostgreSQL client
+        run: psql --version
+
+      - name: Apply BDP RRC spatial schema
+        run: |
+          psql -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/rrcPostgis.sql
+          psql -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/rrcParcelEnergy.sql
+
+      - name: Apply BDP TCEQ spatial schema
+        run: |
+          psql -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/tceqWaterRightsPostgis.sql
+          psql -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/tceqParcelWater.sql
+
+      - name: Verify required spatial objects
+        run: |
+          psql -v ON_ERROR_STOP=1 --tuples-only --no-align <<'SQL'
+          SELECT PostGIS_Version();
+          SELECT to_regclass('public.bdp_rrc_wells') IS NOT NULL;
+          SELECT to_regclass('public.bdp_rrc_pipelines') IS NOT NULL;
+          SELECT to_regclass('public.bdp_tceq_water_rights') IS NOT NULL;
+          SELECT to_regclass('public.bdp_tceq_water_right_points') IS NOT NULL;
+          SELECT to_regprocedure('bdp_rrc_parcel_energy_metrics(geometry,text)') IS NOT NULL;
+          SELECT to_regprocedure('bdp_tceq_parcel_water_metrics(geometry)') IS NOT NULL;
+          SQL
+
+      - name: Smoke test empty-dataset parcel functions
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          SELECT * FROM bdp_rrc_parcel_energy_metrics(
+            ST_GeomFromText('POLYGON((-98.50 29.40,-98.49 29.40,-98.49 29.41,-98.50 29.41,-98.50 29.40))', 4326),
+            '029'
+          );
+          SELECT * FROM bdp_tceq_parcel_water_metrics(
+            ST_GeomFromText('POLYGON((-98.50 29.40,-98.49 29.40,-98.49 29.41,-98.50 29.41,-98.50 29.40))', 4326)
+          );
+          SQL
