@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: bdp
       POSTGRES_USER: bdp
-      POSTGRES_PASSWORD: ${BDP_LOCAL_DB_PASSWORD:-bdp-local-dev}
+      POSTGRES_PASSWORD: ${BDP_LOCAL_DB_PASSWORD:?Set BDP_LOCAL_DB_PASSWORD before starting the local BDP database}
     ports:
       - "127.0.0.1:${BDP_LOCAL_DB_PORT:-54329}:5432"
     healthcheck:
