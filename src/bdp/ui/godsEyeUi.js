@@ -105,16 +105,74 @@ function adaptLocationTray() {
   attachLandSearch(search);
 }
 
+function createPresetButton(mode, label, title) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'bdp-layer-preset-button';
+  button.dataset.bdpPreset = mode;
+  button.textContent = label;
+  button.title = title;
+  button.addEventListener('click', () => {
+    if (button.dataset.busy === 'true') return;
+    button.dataset.busy = 'true';
+    button.setAttribute('aria-busy', 'true');
+    window.dispatchEvent(new CustomEvent('bdp:layer-preset', {
+      detail: { mode },
+    }));
+  });
+  return button;
+}
+
 function createBdpLayerSectionLabel() {
   const section = document.createElement('div');
   section.className = 'bdp-layer-section-label';
-  section.setAttribute('role', 'separator');
-  section.innerHTML = [
-    '<span class="bdp-layer-section-kicker">BDP</span>',
-    '<span class="bdp-layer-section-title">LAND INTELLIGENCE</span>',
-    '<span class="bdp-layer-section-rule" aria-hidden="true"></span>',
-  ].join('');
+  section.setAttribute('role', 'group');
+  section.setAttribute('aria-label', 'BDP land intelligence layers');
+
+  const kicker = document.createElement('span');
+  kicker.className = 'bdp-layer-section-kicker';
+  kicker.textContent = 'BDP';
+
+  const title = document.createElement('span');
+  title.className = 'bdp-layer-section-title';
+  title.textContent = 'LAND INTELLIGENCE';
+
+  const rule = document.createElement('span');
+  rule.className = 'bdp-layer-section-rule';
+  rule.setAttribute('aria-hidden', 'true');
+
+  const actions = document.createElement('span');
+  actions.className = 'bdp-layer-section-actions';
+  actions.append(
+    createPresetButton('screen', 'SCREEN', 'Enable the BDP land-screening layer stack'),
+    createPresetButton('clear', 'CLEAR', 'Turn off BDP land-intelligence layers'),
+  );
+
+  section.append(kicker, title, rule, actions);
   return section;
+}
+
+function attachPresetFeedback() {
+  if (document.body.dataset.bdpPresetFeedbackBound === 'true') return;
+  document.body.dataset.bdpPresetFeedbackBound = 'true';
+
+  window.addEventListener('bdp:layer-preset-result', (event) => {
+    const result = event.detail || {};
+    document.querySelectorAll('.bdp-layer-preset-button').forEach((button) => {
+      button.dataset.busy = 'false';
+      button.setAttribute('aria-busy', 'false');
+    });
+
+    const status = document.getElementById('location-mini-poi');
+    if (!status) return;
+    if (result.ok) {
+      status.textContent = result.mode === 'clear'
+        ? 'BDP land layers cleared'
+        : `BDP land screen active · ${result.enabledCount || 0} layers`;
+    } else {
+      status.textContent = result.message || 'BDP layer preset unavailable';
+    }
+  });
 }
 
 function decorateBdpLayerRows(container) {
@@ -147,6 +205,7 @@ function adaptLayerPanel() {
   }
   if (!dataToggles) return;
 
+  attachPresetFeedback();
   decorateBdpLayerRows(dataToggles);
   layerObserver?.disconnect();
   if (typeof MutationObserver === 'function') {
