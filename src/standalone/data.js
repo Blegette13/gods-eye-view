@@ -16,6 +16,7 @@ import { LAYER_STATE_REGISTRY } from '../data/layerState.js';
 import bexarParcelLayer from '../bdp/parcels/bexarParcelLayer.js';
 import femaFloodLayer from '../bdp/overlays/femaFloodLayer.js';
 import rrcEnergyLayer from '../bdp/overlays/rrcEnergyLayer.js';
+import nwiWetlandsLayer from '../bdp/overlays/nwiWetlandsLayer.js';
 import { extendLayerStateRegistry } from '../bdp/config/layerRegistry.js';
 
 /** Register the standalone layer catalog before allowing state restoration. */
@@ -60,6 +61,7 @@ export function createStandaloneData({
   dataManager.register(bexarParcelLayer);
   dataManager.register(femaFloodLayer);
   dataManager.register(rrcEnergyLayer);
+  dataManager.register(nwiWetlandsLayer);
 
   // Restoration starts only after the complete production registry is sealed.
   dataManager.finalizeRegistrations(extendLayerStateRegistry(LAYER_STATE_REGISTRY));
