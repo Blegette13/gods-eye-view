@@ -29,6 +29,25 @@ export function deriveBdpRedFlags({ parcel, energy, flood, wetlands, terrain } =
     ?? finiteOrNull(flood?.parcel_acres)
     ?? finiteOrNull(wetlands?.parcel_acres);
 
+  const recordCurrency = String(parcel?.source?.recordCurrency || '').trim().toLowerCase();
+  if (['unverified', 'stale'].includes(recordCurrency)) {
+    const provider = parcel?.source?.provider || parcel?.source?.cad || 'parcel source';
+    const lastVerified = parcel?.source?.lastVerified || null;
+    const sourceNotice = String(parcel?.source?.sourceNotice || '').trim();
+    flags.push(flag({
+      id: 'parcel-source-currency-unverified',
+      severity: recordCurrency === 'stale' ? 'high' : 'medium',
+      title: 'Ownership / valuation source currency unverified',
+      detail: sourceNotice || 'BDP retrieved the cited parcel source, but current ownership and valuation freshness have not been established. Verify against current CAD and deed/title records before acquisition decisions.',
+      source: 'BDP source-quality rule',
+      evidence: {
+        recordCurrency,
+        provider,
+        lastVerified,
+      },
+    }));
+  }
+
   const pipelineCrossings = finiteOrNull(energy?.pipeline_crossing_count);
   const pipelineLengthM = finiteOrNull(energy?.pipeline_length_on_parcel_m);
   if (Number.isFinite(pipelineCrossings) && pipelineCrossings > 0) {
@@ -122,8 +141,6 @@ export function deriveBdpRedFlags({ parcel, energy, flood, wetlands, terrain } =
     }));
   }
 
-  // These are deliberately always unresolved until title/legal evidence is
-  // connected. GIS proximity must never be used as a proxy for ownership.
   flags.push(flag({
     id: 'mineral-rights-unverified',
     severity: 'info',
