@@ -121,6 +121,21 @@ function wetlandRows(metrics) {
   ];
 }
 
+function cleanupRows(metrics) {
+  if (!metrics) return [row('EPA screening', 'No metrics returned')];
+  return [
+    row('Nearest cleanup', formatMiles(metrics.nearest_cleanup_m)),
+    row('Nearest site', metrics.nearest_site_name || '—'),
+    row('On parcel', String(metrics.cleanup_sites_on_parcel ?? 0)),
+    row('Sites ≤ 1 mi', String(metrics.cleanup_sites_within_1_mi ?? 0)),
+    row('Sites ≤ 3 mi', String(metrics.cleanup_sites_within_3_mi ?? 0)),
+    row('Sites ≤ 5 mi', String(metrics.cleanup_sites_within_5_mi ?? 0)),
+    row('Superfund ≤ 5 mi', String(metrics.superfund_within_5_mi ?? 0)),
+    row('RCRA CA ≤ 5 mi', String(metrics.rcra_within_5_mi ?? 0)),
+    row('Brownfields ≤ 5 mi', String(metrics.brownfields_within_5_mi ?? 0)),
+  ];
+}
+
 function soilRows(summary) {
   if (!summary) return [row('Soil screening', 'No data returned')];
   const dominant = summary.dominant;
@@ -198,6 +213,11 @@ function appendScreeningResult(containers, screening) {
     evidence.wetlands
       ? wetlandRows(evidence.wetlands)
       : [row('NWI screening', sourceErrorLabel(errors.wetlands, 'NWI'))]
+  ));
+  containers.cleanups.replaceChildren(...(
+    evidence.cleanups
+      ? cleanupRows(evidence.cleanups)
+      : [row('EPA screening', sourceErrorLabel(errors.cleanups, 'EPA cleanups'))]
   ));
   containers.soils.replaceChildren(...(
     evidence.soils
@@ -298,6 +318,7 @@ export function createBdpPropertyCard({ screeningLoader = runBdpParcelScreening 
       energy: document.createElement('div'),
       flood: document.createElement('div'),
       wetlands: document.createElement('div'),
+      cleanups: document.createElement('div'),
       soils: document.createElement('div'),
       terrain: document.createElement('div'),
     };
@@ -306,6 +327,7 @@ export function createBdpPropertyCard({ screeningLoader = runBdpParcelScreening 
     containers.energy.append(row('RRC screening', 'Loading…'));
     containers.flood.append(row('FEMA screening', 'Loading…'));
     containers.wetlands.append(row('NWI screening', 'Loading…'));
+    containers.cleanups.append(row('EPA screening', 'Loading…'));
     containers.soils.append(row('Soil screening', 'Loading…'));
     containers.terrain.append(row('Terrain', 'Loading…'));
 
@@ -315,13 +337,14 @@ export function createBdpPropertyCard({ screeningLoader = runBdpParcelScreening 
       sectionHeading('ENERGY / OIL & GAS'), containers.energy,
       sectionHeading('FLOOD / FEMA'), containers.flood,
       sectionHeading('WETLANDS'), containers.wetlands,
+      sectionHeading('ENVIRONMENT / EPA CLEANUPS'), containers.cleanups,
       sectionHeading('SOIL / SSURGO'), containers.soils,
       sectionHeading('TERRAIN / 3DEP'), containers.terrain,
     );
 
     const disclaimer = document.createElement('p');
     disclaimer.className = 'bdp-property-disclaimer';
-    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. FEMA, RRC, NWI, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, engineering and permitting due diligence remains required.';
+    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. FEMA, RRC, NWI, EPA cleanup, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, engineering and permitting due diligence remains required.';
     body.append(disclaimer);
 
     collapse.addEventListener('click', () => {
