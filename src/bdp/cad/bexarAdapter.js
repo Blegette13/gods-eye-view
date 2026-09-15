@@ -95,6 +95,8 @@ export function normalizeBexarFeature(feature) {
       provider: 'Bexar County ArcGIS REST',
       recordUrl: BEXAR_PARCEL_LAYER_URL,
       lastVerified: new Date().toISOString(),
+      recordCurrency: 'unverified',
+      sourceNotice: 'County GIS metadata contains legacy update text. Verify current ownership and valuation with BCAD/current deed records before acquisition decisions.',
     },
   });
 
