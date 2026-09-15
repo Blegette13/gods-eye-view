@@ -1,4 +1,4 @@
-const LAND_SEARCH_PATTERN = /^(parcel|account|acct)\s*:?[\s]+(.+)$/i;
+const LAND_SEARCH_PATTERN = /^(parcel|account|acct|owner)\s*:?[\s]+(.+)$/i;
 
 function clean(value) {
   return String(value ?? '').trim();
@@ -16,13 +16,24 @@ export function parseBdpLandSearch(value) {
   const match = query.match(LAND_SEARCH_PATTERN);
   if (!match) return null;
 
-  const parcelOrAccountId = clean(match[2]);
-  if (!parcelOrAccountId || parcelOrAccountId.length > 64) return null;
+  const command = match[1].toLowerCase();
+  const term = clean(match[2]);
+  if (!term) return null;
 
+  if (command === 'owner') {
+    if (term.length < 2 || term.length > 70) return null;
+    return Object.freeze({
+      kind: 'owner',
+      value: term,
+      command,
+    });
+  }
+
+  if (term.length > 64) return null;
   return Object.freeze({
     kind: 'parcel',
-    value: parcelOrAccountId,
-    command: match[1].toLowerCase(),
+    value: term,
+    command,
   });
 }
 
