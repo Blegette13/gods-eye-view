@@ -58,6 +58,17 @@ export const BDP_DATA_SOURCES = Object.freeze({
     url: 'https://www.rrc.texas.gov/resource-center/research/data-sets-available-for-download/',
     notes: 'RRC publishes county well and pipeline shapefile archives twice weekly. Prefer those official bulk products and targeted public GIS queries over automated crawling of the interactive viewer.',
   }),
+  tceqWaterRights: Object.freeze({
+    id: 'tceq-water-rights',
+    label: 'TCEQ Surface Water Rights',
+    method: BDP_SOURCE_METHOD.BULK_DOWNLOAD,
+    authority: BDP_AUTHORITY.AUTHORITATIVE,
+    refreshClass: BDP_REFRESH_CLASS.WEEKLY,
+    onDemandRefresh: true,
+    cacheTtlMs: 24 * 60 * 60 * 1000,
+    url: 'https://www.tceq.texas.gov/permitting/water_rights/wr-permitting/wrwud',
+    notes: 'Check TCEQ structured active/inactive water-right files for changes and use the official Water Rights Viewer for spatial verification/context rather than scraping the viewer UI.',
+  }),
   usdaSsurgO: Object.freeze({
     id: 'usda-ssurgo',
     label: 'USDA NRCS SSURGO',
