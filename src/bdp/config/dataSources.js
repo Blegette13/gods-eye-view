@@ -69,6 +69,17 @@ export const BDP_DATA_SOURCES = Object.freeze({
     url: 'https://www.tceq.texas.gov/permitting/water_rights/wr-permitting/wrwud',
     notes: 'Check TCEQ structured active/inactive water-right files for changes and use the official Water Rights Viewer for spatial verification/context rather than scraping the viewer UI.',
   }),
+  epaCleanups: Object.freeze({
+    id: 'epa-cleanups',
+    label: 'EPA Cleanups in My Community',
+    method: BDP_SOURCE_METHOD.GIS_SERVICE,
+    authority: BDP_AUTHORITY.AUTHORITATIVE,
+    refreshClass: BDP_REFRESH_CLASS.WEEKLY,
+    onDemandRefresh: true,
+    cacheTtlMs: 24 * 60 * 60 * 1000,
+    url: 'https://services.arcgis.com/cJ9YHowT8TU7DUyn/arcgis/rest/services/Cleanups_in_my_Community_Sites/FeatureServer/0',
+    notes: 'Use the modern EPA hosted feature layer for Superfund, RCRA corrective-action, Brownfields and response-site screening. Query by viewport/parcel vicinity; do not use the retired legacy CIMC MapServer.',
+  }),
   usdaSsurgO: Object.freeze({
     id: 'usda-ssurgo',
     label: 'USDA NRCS SSURGO',
