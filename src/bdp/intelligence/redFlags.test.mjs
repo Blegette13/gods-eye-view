@@ -1,0 +1,70 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { deriveBdpRedFlags, summarizeBdpRedFlags } from './redFlags.js';
+
+test('flags pipeline crossings, floodway, wetlands, and steep terrain', () => {
+  const flags = deriveBdpRedFlags({
+    parcel: { property: { acres: 100 } },
+    energy: {
+      pipeline_crossing_count: 2,
+      pipeline_length_on_parcel_m: 850,
+      nearest_well_m: 120,
+    },
+    flood: {
+      floodway_acres: 4,
+      sfha_acres: 30,
+      mapped_flood_percent: 35,
+    },
+    wetlands: {
+      nwi_mapped_acres: 25,
+      nwi_percent: 25,
+    },
+    terrain: {
+      slope: { meanDegrees: 12, maxDegrees: 30 },
+    },
+  });
+
+  const ids = flags.map((item) => item.id);
+  assert.ok(ids.includes('pipeline-crossing'));
+  assert.ok(ids.includes('nearby-rrc-well'));
+  assert.ok(ids.includes('fema-floodway'));
+  assert.ok(ids.includes('fema-sfha'));
+  assert.ok(ids.includes('nwi-wetlands'));
+  assert.ok(ids.includes('steep-terrain'));
+  assert.ok(ids.includes('mineral-rights-unverified'));
+  assert.ok(ids.includes('water-rights-ownership-unverified'));
+
+  const summary = summarizeBdpRedFlags(flags);
+  assert.ok(summary.high >= 3);
+  assert.ok(summary.blockingCount >= 3);
+  assert.equal(summary.highestSeverity, 'high');
+});
+
+test('does not create hazard flags when screening evidence is clear or missing', () => {
+  const flags = deriveBdpRedFlags({
+    parcel: { property: { acres: 100 } },
+    energy: { pipeline_crossing_count: 0, nearest_well_m: 5000 },
+    flood: { floodway_acres: 0, sfha_acres: 0, mapped_flood_percent: 0 },
+    wetlands: { nwi_mapped_acres: 0, nwi_percent: 0 },
+    terrain: { slope: { meanDegrees: 2, maxDegrees: 5 } },
+  });
+
+  assert.deepEqual(flags.map((item) => item.id).sort(), [
+    'mineral-rights-unverified',
+    'water-rights-ownership-unverified',
+  ]);
+  const summary = summarizeBdpRedFlags(flags);
+  assert.equal(summary.high, 0);
+  assert.equal(summary.medium, 0);
+  assert.equal(summary.info, 2);
+});
+
+test('uses parcel percentage to escalate large SFHA overlap', () => {
+  const flags = deriveBdpRedFlags({
+    parcel: { property: { acres: 40 } },
+    flood: { floodway_acres: 0, sfha_acres: 20, mapped_flood_percent: 50 },
+  });
+  const sfha = flags.find((item) => item.id === 'fema-sfha');
+  assert.equal(sfha.severity, 'high');
+  assert.equal(sfha.evidence.parcelPercent, 50);
+});
