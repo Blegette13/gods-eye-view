@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { deriveBdpRedFlags, summarizeBdpRedFlags } from './redFlags.js';
 
-test('flags pipeline crossings, floodway, wetlands, and steep terrain', () => {
+test('flags pipeline crossings, floodway, wetlands, cleanup proximity, and steep terrain', () => {
   const flags = deriveBdpRedFlags({
     parcel: { property: { acres: 100 } },
     energy: {
@@ -19,6 +19,15 @@ test('flags pipeline crossings, floodway, wetlands, and steep terrain', () => {
       nwi_mapped_acres: 25,
       nwi_percent: 25,
     },
+    cleanups: {
+      cleanup_sites_on_parcel: 0,
+      nearest_cleanup_m: 600,
+      nearest_site_name: 'TEST SUPERFUND',
+      nearest_is_superfund: true,
+      nearest_is_rcra: false,
+      superfund_within_5_mi: 1,
+      rcra_within_5_mi: 0,
+    },
     terrain: {
       slope: { meanDegrees: 12, maxDegrees: 30 },
     },
@@ -30,6 +39,8 @@ test('flags pipeline crossings, floodway, wetlands, and steep terrain', () => {
   assert.ok(ids.includes('fema-floodway'));
   assert.ok(ids.includes('fema-sfha'));
   assert.ok(ids.includes('nwi-wetlands'));
+  assert.ok(ids.includes('nearby-epa-cleanup'));
+  assert.ok(ids.includes('superfund-within-5-mi'));
   assert.ok(ids.includes('steep-terrain'));
   assert.ok(ids.includes('mineral-rights-unverified'));
   assert.ok(ids.includes('water-rights-ownership-unverified'));
@@ -38,6 +49,24 @@ test('flags pipeline crossings, floodway, wetlands, and steep terrain', () => {
   assert.ok(summary.high >= 3);
   assert.ok(summary.blockingCount >= 3);
   assert.equal(summary.highestSeverity, 'high');
+});
+
+test('flags an EPA cleanup record mapped on the parcel as high severity', () => {
+  const flags = deriveBdpRedFlags({
+    parcel: { property: { acres: 30 } },
+    cleanups: {
+      cleanup_sites_on_parcel: 1,
+      nearest_cleanup_m: 0,
+      nearest_site_name: 'ON TRACT CLEANUP',
+      nearest_is_superfund: false,
+      nearest_is_rcra: true,
+      superfund_within_5_mi: 0,
+      rcra_within_5_mi: 1,
+    },
+  });
+  const cleanup = flags.find((item) => item.id === 'epa-cleanup-on-parcel');
+  assert.equal(cleanup.severity, 'high');
+  assert.match(cleanup.detail, /material environmental due-diligence/i);
 });
 
 test('flags unverified parcel ownership and valuation source currency', () => {
@@ -79,6 +108,12 @@ test('does not create hazard flags when screening evidence is clear or missing',
     energy: { pipeline_crossing_count: 0, nearest_well_m: 5000 },
     flood: { floodway_acres: 0, sfha_acres: 0, mapped_flood_percent: 0 },
     wetlands: { nwi_mapped_acres: 0, nwi_percent: 0 },
+    cleanups: {
+      cleanup_sites_on_parcel: 0,
+      nearest_cleanup_m: 9000,
+      superfund_within_5_mi: 0,
+      rcra_within_5_mi: 0,
+    },
     terrain: { slope: { meanDegrees: 2, maxDegrees: 5 } },
   });
 
