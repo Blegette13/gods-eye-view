@@ -173,7 +173,11 @@ export function deriveBdpRedFlags({ parcel, energy, flood, wetlands, cleanups, t
     }));
   }
 
-  if (Number.isFinite(rcraWithin5) && rcraWithin5 > 0 && !Number.isFinite(superfundWithin5)) {
+  if (
+    Number.isFinite(rcraWithin5)
+    && rcraWithin5 > 0
+    && (!Number.isFinite(superfundWithin5) || superfundWithin5 <= 0)
+  ) {
     flags.push(flag({
       id: 'rcra-cleanup-within-5-mi',
       severity: 'low',
