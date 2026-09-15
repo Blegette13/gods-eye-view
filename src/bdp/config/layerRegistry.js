@@ -19,6 +19,11 @@ export const BDP_LAYER_STATE_REGISTRY = Object.freeze([
     token: 'k',
     disposition: 'enabled-only',
   }),
+  Object.freeze({
+    id: 'bdp-ssurgo-soils',
+    token: 'l',
+    disposition: 'enabled-only',
+  }),
 ]);
 
 /**
