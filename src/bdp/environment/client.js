@@ -36,4 +36,8 @@ export function fetchBdpParcelFlood(parcel, options = {}) {
   return fetchParcelEnvironment('flood', parcel, options);
 }
 
+export function fetchBdpParcelCleanups(parcel, options = {}) {
+  return fetchParcelEnvironment('cleanups', parcel, options);
+}
+
 export default fetchBdpParcelWetlands;
