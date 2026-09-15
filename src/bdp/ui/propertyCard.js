@@ -1,3 +1,5 @@
+import { fetchBdpParcelEnergy } from '../rrc/client.js';
+
 function formatMoney(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return '—';
@@ -12,6 +14,12 @@ function formatNumber(value, digits = 2) {
   const number = Number(value);
   if (!Number.isFinite(number)) return '—';
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: digits }).format(number);
+}
+
+function formatMiles(meters) {
+  const number = Number(meters);
+  if (!Number.isFinite(number)) return '—';
+  return `${formatNumber(number / 1609.344, 2)} mi`;
 }
 
 function row(label, value) {
@@ -30,7 +38,7 @@ function row(label, value) {
   key.style.letterSpacing = '.08em';
 
   const content = document.createElement('span');
-  content.textContent = value || '—';
+  content.textContent = value === 0 ? '0' : (value || '—');
   content.style.color = '#f2f2f2';
   content.style.fontSize = '13px';
   content.style.lineHeight = '1.35';
@@ -40,7 +48,34 @@ function row(label, value) {
   return wrapper;
 }
 
-export function createBdpPropertyCard() {
+function sectionHeading(text) {
+  const heading = document.createElement('div');
+  heading.textContent = text;
+  Object.assign(heading.style, {
+    marginTop: '17px',
+    marginBottom: '3px',
+    color: '#d5d5d5',
+    fontSize: '10px',
+    fontWeight: '700',
+    letterSpacing: '.14em',
+  });
+  return heading;
+}
+
+function energyRows(metrics) {
+  if (!metrics) return [row('RRC screening', 'No metrics returned')];
+  return [
+    row('Nearest well', formatMiles(metrics.nearest_well_m)),
+    row('Wells ≤ 1 mi', String(metrics.wells_within_1_mi ?? 0)),
+    row('Wells ≤ 2 mi', String(metrics.wells_within_2_mi ?? 0)),
+    row('Wells ≤ 5 mi', String(metrics.wells_within_5_mi ?? 0)),
+    row('Nearest pipe', formatMiles(metrics.nearest_pipeline_m)),
+    row('Pipe crossings', String(metrics.pipeline_crossing_count ?? 0)),
+    row('Pipe on tract', formatMiles(metrics.pipeline_length_on_parcel_m)),
+  ];
+}
+
+export function createBdpPropertyCard({ energyLoader = fetchBdpParcelEnergy } = {}) {
   const root = document.createElement('aside');
   root.id = 'bdp-property-card';
   root.setAttribute('aria-live', 'polite');
@@ -63,14 +98,17 @@ export function createBdpPropertyCard() {
   });
 
   document.body.appendChild(root);
+  let renderToken = 0;
 
   function hide() {
+    renderToken += 1;
     root.style.display = 'none';
     root.replaceChildren();
   }
 
   function show(parcel) {
     if (!parcel) return hide();
+    const token = ++renderToken;
     root.replaceChildren();
 
     const header = document.createElement('div');
@@ -134,10 +172,37 @@ export function createBdpPropertyCard() {
       row('Source', parcel.source?.provider || parcel.source?.cad),
     );
 
+    const energy = document.createElement('div');
+    energy.append(row('RRC screening', 'Loading…'));
+    root.append(sectionHeading('ENERGY / OIL & GAS'), energy);
+
+    const disclaimer = document.createElement('p');
+    disclaimer.textContent = 'RRC GIS metrics are preliminary screening data; survey, title, easement and operator verification remain separate due diligence.';
+    Object.assign(disclaimer.style, {
+      margin: '9px 0 0',
+      color: '#8f8f8f',
+      fontSize: '10px',
+      lineHeight: '1.45',
+    });
+    root.append(disclaimer);
+
     root.style.display = 'block';
+
+    Promise.resolve()
+      .then(() => energyLoader(parcel))
+      .then((metrics) => {
+        if (token !== renderToken) return;
+        energy.replaceChildren(...energyRows(metrics));
+      })
+      .catch((error) => {
+        if (token !== renderToken) return;
+        const label = error?.status === 503 ? 'PostGIS not configured' : 'Screening unavailable';
+        energy.replaceChildren(row('RRC screening', label));
+      });
   }
 
   function destroy() {
+    renderToken += 1;
     root.remove();
   }
 
