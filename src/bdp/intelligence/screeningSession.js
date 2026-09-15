@@ -1,5 +1,6 @@
 import { fetchBdpParcelEnergy } from '../rrc/client.js';
 import {
+  fetchBdpParcelCleanups,
   fetchBdpParcelFlood,
   fetchBdpParcelWetlands,
 } from '../environment/client.js';
@@ -15,6 +16,7 @@ export const BDP_SCREENING_SOURCES = Object.freeze([
   'energy',
   'flood',
   'wetlands',
+  'cleanups',
   'soils',
   'terrain',
 ]);
@@ -41,6 +43,7 @@ export async function runBdpParcelScreening(parcel, {
   energyLoader = fetchBdpParcelEnergy,
   floodLoader = fetchBdpParcelFlood,
   wetlandsLoader = fetchBdpParcelWetlands,
+  cleanupsLoader = fetchBdpParcelCleanups,
   soilsLoader = fetchBdpParcelSoils,
   terrainLoader = fetchBdpParcelTerrain,
 } = {}) {
@@ -52,6 +55,7 @@ export async function runBdpParcelScreening(parcel, {
     energy: energyLoader,
     flood: floodLoader,
     wetlands: wetlandsLoader,
+    cleanups: cleanupsLoader,
     soils: soilsLoader,
     terrain: terrainLoader,
   });
@@ -72,6 +76,7 @@ export async function runBdpParcelScreening(parcel, {
   const components = buildCurrentScreeningComponents({
     flood: evidence.flood,
     wetlands: evidence.wetlands,
+    cleanups: evidence.cleanups,
     terrain: evidence.terrain,
     soils: evidence.soils,
   });
@@ -81,6 +86,7 @@ export async function runBdpParcelScreening(parcel, {
     energy: evidence.energy,
     flood: evidence.flood,
     wetlands: evidence.wetlands,
+    cleanups: evidence.cleanups,
     terrain: evidence.terrain,
   });
   const redFlagSummary = summarizeBdpRedFlags(redFlags);
