@@ -135,8 +135,6 @@ function clamp(value, min, max) {
 export function scoreWetlandsEnvironment(wetlands) {
   const percent = finiteOrNull(wetlands?.nwi_percent);
   if (percent === null) return null;
-  // NWI is screening data and does not establish jurisdictional wetlands.
-  // Keep the component low-confidence until contamination/species/etc. exist.
   const score = clamp(100 - percent * 2, 0, 100);
   return Object.freeze({
     score,
@@ -144,6 +142,70 @@ export function scoreWetlandsEnvironment(wetlands) {
     source: 'USFWS NWI screening',
     note: 'Environmental category currently reflects mapped NWI overlap only.',
     evidence: Object.freeze([`NWI mapped ${percent.toFixed(2)}% of parcel`]),
+  });
+}
+
+/** Preliminary contamination/cleanup component from EPA CIMC point screening. */
+export function scoreEpaCleanupEnvironment(cleanups) {
+  const nearestM = finiteOrNull(cleanups?.nearest_cleanup_m);
+  const onParcel = finiteOrNull(cleanups?.cleanup_sites_on_parcel);
+  const superfund = finiteOrNull(cleanups?.superfund_within_5_mi);
+  const rcra = finiteOrNull(cleanups?.rcra_within_5_mi);
+  const brownfields = finiteOrNull(cleanups?.brownfields_within_5_mi);
+  const total = finiteOrNull(cleanups?.cleanup_sites_within_5_mi);
+  if ([nearestM, onParcel, superfund, rcra, brownfields, total].every((value) => value === null)) return null;
+
+  let score = 100;
+  const evidence = [];
+
+  if (Number.isFinite(onParcel) && onParcel > 0) {
+    score -= Math.min(70, 45 + Math.max(0, onParcel - 1) * 10);
+    evidence.push(`${Math.round(onParcel)} EPA cleanup site${onParcel === 1 ? '' : 's'} mapped on parcel`);
+  }
+  if (Number.isFinite(superfund) && superfund > 0) {
+    score -= Math.min(45, superfund * 20);
+    evidence.push(`${Math.round(superfund)} Superfund site${superfund === 1 ? '' : 's'} within 5 mi`);
+  }
+  if (Number.isFinite(rcra) && rcra > 0) {
+    score -= Math.min(30, rcra * 12);
+    evidence.push(`${Math.round(rcra)} RCRA corrective-action site${rcra === 1 ? '' : 's'} within 5 mi`);
+  }
+  if (Number.isFinite(brownfields) && brownfields > 0) {
+    score -= Math.min(18, brownfields * 5);
+    evidence.push(`${Math.round(brownfields)} Brownfields propert${brownfields === 1 ? 'y' : 'ies'} within 5 mi`);
+  }
+  if (Number.isFinite(nearestM)) {
+    const miles = nearestM / 1609.344;
+    if (miles <= 0.25) score -= 25;
+    else if (miles <= 1) score -= 15;
+    else if (miles <= 3) score -= 5;
+    evidence.push(`Nearest EPA cleanup site ${miles.toFixed(2)} mi from tract`);
+  }
+  if (!evidence.length && Number.isFinite(total)) evidence.push(`${Math.round(total)} EPA cleanup sites within 5 mi`);
+
+  return Object.freeze({
+    score: clamp(score, 0, 100),
+    confidence: 0.5,
+    source: 'US EPA Cleanups in My Community screening',
+    note: 'EPA cleanup proximity is screening evidence; site status, contamination extent and parcel impact require record/environmental review.',
+    evidence: Object.freeze(evidence),
+  });
+}
+
+/** Combine the currently implemented environmental feeds without treating either as complete due diligence. */
+export function scoreEnvironmental({ wetlands, cleanups } = {}) {
+  const wetland = scoreWetlandsEnvironment(wetlands);
+  const cleanup = scoreEpaCleanupEnvironment(cleanups);
+  if (!wetland && !cleanup) return null;
+  if (!wetland) return cleanup;
+  if (!cleanup) return wetland;
+
+  return Object.freeze({
+    score: clamp(wetland.score * 0.4 + cleanup.score * 0.6, 0, 100),
+    confidence: 0.62,
+    source: 'USFWS NWI + US EPA cleanup screening',
+    note: 'Environmental category combines mapped wetlands and EPA cleanup proximity; protected species, state-only cleanup programs and site-specific environmental investigations remain unscored.',
+    evidence: Object.freeze([...wetland.evidence, ...cleanup.evidence]),
   });
 }
 
@@ -199,9 +261,9 @@ export function scoreTerrainSoil({ terrain, soils } = {}) {
   });
 }
 
-export function buildCurrentScreeningComponents({ flood, wetlands, terrain, soils } = {}) {
+export function buildCurrentScreeningComponents({ flood, wetlands, cleanups, terrain, soils } = {}) {
   return Object.freeze({
-    environmental: scoreWetlandsEnvironment(wetlands),
+    environmental: scoreEnvironmental({ wetlands, cleanups }),
     floodWater: scoreFemaFloodWater(flood),
     terrainSoil: scoreTerrainSoil({ terrain, soils }),
   });
