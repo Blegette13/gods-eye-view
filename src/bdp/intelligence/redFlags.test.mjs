@@ -69,6 +69,21 @@ test('flags an EPA cleanup record mapped on the parcel as high severity', () => 
   assert.match(cleanup.detail, /material environmental due-diligence/i);
 });
 
+test('flags RCRA corrective action when there is no Superfund site in the radius', () => {
+  const flags = deriveBdpRedFlags({
+    parcel: { property: { acres: 30 } },
+    cleanups: {
+      cleanup_sites_on_parcel: 0,
+      nearest_cleanup_m: 5000,
+      superfund_within_5_mi: 0,
+      rcra_within_5_mi: 2,
+    },
+  });
+  const rcra = flags.find((item) => item.id === 'rcra-cleanup-within-5-mi');
+  assert.equal(rcra.severity, 'low');
+  assert.equal(rcra.evidence.rcraWithin5Miles, 2);
+});
+
 test('flags unverified parcel ownership and valuation source currency', () => {
   const flags = deriveBdpRedFlags({
     parcel: {
