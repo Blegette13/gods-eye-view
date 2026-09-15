@@ -9,6 +9,11 @@ export const BDP_LAYER_STATE_REGISTRY = Object.freeze([
     token: 'h',
     disposition: 'enabled-only',
   }),
+  Object.freeze({
+    id: 'bdp-rrc-energy',
+    token: 'j',
+    disposition: 'enabled-only',
+  }),
 ]);
 
 /**
