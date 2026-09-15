@@ -36,6 +36,8 @@ const EMPTY_SOURCE = Object.freeze({
   recordUrl: '',
   provider: '',
   lastVerified: '',
+  recordCurrency: 'unknown',
+  sourceNotice: '',
 });
 
 function clone(value) {
@@ -67,6 +69,10 @@ export function createEmptyParcel() {
  * Merge provider/CAD output into the canonical BDP parcel contract.
  * County adapters should map their source fields into this shape before
  * rendering, scoring, reporting, or AI analysis.
+ *
+ * `lastVerified` means BDP successfully retrieved/checked the cited source at
+ * that time. It does not imply the upstream record itself is current. Use
+ * `recordCurrency` and `sourceNotice` to communicate source-data freshness.
  */
 export function normalizeParcel(input = {}) {
   const parcel = createEmptyParcel();
@@ -92,6 +98,9 @@ export function normalizeParcel(input = {}) {
   for (const key of ['askingPrice', 'verifiedSalePrice', 'estimatedValue', 'pricePerAcre']) {
     parcel.acquisition[key] = finiteNumberOrNull(parcel.acquisition[key]);
   }
+
+  parcel.source.recordCurrency = String(parcel.source.recordCurrency || 'unknown').trim().toLowerCase();
+  parcel.source.sourceNotice = String(parcel.source.sourceNotice || '').trim();
 
   if (!parcel.jurisdiction.county) parcel.jurisdiction.county = parcel.county;
   if (!parcel.county && parcel.jurisdiction.county) parcel.county = parcel.jurisdiction.county;
