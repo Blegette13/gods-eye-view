@@ -9,6 +9,7 @@ const BDP_LAYER_IDS = new Set([
   'bdp-rrc-energy',
   'bdp-nwi-wetlands',
   'bdp-ssurgo-soils',
+  'bdp-epa-cleanups',
 ]);
 
 let layerObserver = null;
