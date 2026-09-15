@@ -6,6 +6,8 @@ import {
   buildCurrentScreeningComponents,
   calculateBdpScore,
   normalizeComponentScore,
+  scoreEnvironmental,
+  scoreEpaCleanupEnvironment,
   scoreFemaFloodWater,
   scoreTerrainSoil,
   scoreWetlandsEnvironment,
@@ -54,6 +56,25 @@ test('marks a sufficiently covered model as decision-support', () => {
 
 test('screening helpers remain explicitly preliminary', () => {
   const wetlands = scoreWetlandsEnvironment({ nwi_percent: 15 });
+  const cleanups = scoreEpaCleanupEnvironment({
+    nearest_cleanup_m: 800,
+    cleanup_sites_on_parcel: 0,
+    cleanup_sites_within_5_mi: 3,
+    superfund_within_5_mi: 1,
+    rcra_within_5_mi: 1,
+    brownfields_within_5_mi: 1,
+  });
+  const environmental = scoreEnvironmental({
+    wetlands: { nwi_percent: 15 },
+    cleanups: {
+      nearest_cleanup_m: 800,
+      cleanup_sites_on_parcel: 0,
+      cleanup_sites_within_5_mi: 3,
+      superfund_within_5_mi: 1,
+      rcra_within_5_mi: 1,
+      brownfields_within_5_mi: 1,
+    },
+  });
   const flood = scoreFemaFloodWater({ mapped_flood_percent: 20, floodway_acres: 2 });
   const terrainSoil = scoreTerrainSoil({
     terrain: { slope: { meanDegrees: 6 } },
@@ -61,15 +82,39 @@ test('screening helpers remain explicitly preliminary', () => {
   });
 
   assert.equal(wetlands.confidence, 0.35);
+  assert.equal(cleanups.confidence, 0.5);
+  assert.equal(environmental.confidence, 0.62);
   assert.equal(flood.confidence, 0.45);
   assert.equal(terrainSoil.confidence, 0.7);
-  assert.ok(flood.score < wetlands.score);
+  assert.ok(cleanups.score < 100);
+  assert.ok(environmental.evidence.some((item) => item.includes('Superfund')));
   assert.ok(terrainSoil.evidence.some((item) => item.includes('Prime farmland')));
+});
+
+test('EPA cleanup overlap can sharply reduce the preliminary environmental score', () => {
+  const cleanups = scoreEpaCleanupEnvironment({
+    nearest_cleanup_m: 0,
+    cleanup_sites_on_parcel: 1,
+    cleanup_sites_within_5_mi: 1,
+    superfund_within_5_mi: 1,
+    rcra_within_5_mi: 0,
+    brownfields_within_5_mi: 0,
+  });
+  assert.ok(cleanups.score <= 10);
+  assert.ok(cleanups.evidence.some((item) => item.includes('mapped on parcel')));
 });
 
 test('builds only currently supported screening categories', () => {
   const components = buildCurrentScreeningComponents({
     wetlands: { nwi_percent: 0 },
+    cleanups: {
+      nearest_cleanup_m: 9000,
+      cleanup_sites_on_parcel: 0,
+      cleanup_sites_within_5_mi: 0,
+      superfund_within_5_mi: 0,
+      rcra_within_5_mi: 0,
+      brownfields_within_5_mi: 0,
+    },
     flood: { mapped_flood_percent: 0, floodway_acres: 0 },
     terrain: { slope: { meanDegrees: 2 } },
     soils: { dominant: { mappedSharePercent: 80, farmlandClass: '' } },
@@ -78,4 +123,5 @@ test('builds only currently supported screening categories', () => {
   const result = calculateBdpScore({ components });
   assert.equal(result.coveragePercent, 23);
   assert.equal(result.readiness, 'insufficient-evidence');
+  assert.equal(components.environmental.confidence, 0.62);
 });
