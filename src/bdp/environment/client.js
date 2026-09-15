@@ -9,11 +9,11 @@ async function readError(response) {
   }
 }
 
-export async function fetchBdpParcelWetlands(parcel, { fetchImpl = globalThis.fetch, signal } = {}) {
+async function fetchParcelEnvironment(path, parcel, { fetchImpl = globalThis.fetch, signal } = {}) {
   if (typeof fetchImpl !== 'function') throw new Error('A fetch implementation is required');
-  if (!parcel?.property?.geometry) throw new Error('Parcel geometry is required for wetlands screening');
+  if (!parcel?.property?.geometry) throw new Error('Parcel geometry is required for environmental screening');
 
-  const response = await fetchImpl(`${BDP_ENVIRONMENT_API_BASE}/wetlands`, {
+  const response = await fetchImpl(`${BDP_ENVIRONMENT_API_BASE}/${path}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json' },
     body: JSON.stringify({ geometry: parcel.property.geometry }),
@@ -26,6 +26,14 @@ export async function fetchBdpParcelWetlands(parcel, { fetchImpl = globalThis.fe
   }
   const payload = await response.json();
   return payload?.metrics || null;
+}
+
+export function fetchBdpParcelWetlands(parcel, options = {}) {
+  return fetchParcelEnvironment('wetlands', parcel, options);
+}
+
+export function fetchBdpParcelFlood(parcel, options = {}) {
+  return fetchParcelEnvironment('flood', parcel, options);
 }
 
 export default fetchBdpParcelWetlands;
