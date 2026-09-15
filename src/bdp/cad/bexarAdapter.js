@@ -98,8 +98,6 @@ export function normalizeBexarFeature(feature) {
     },
   });
 
-  // Preserve fields that matter for later tax/use analysis without making the
-  // core statewide schema Bexar-specific.
   parcel.providerData = {
     objectId: finite(properties.OBJECTID),
     accountNumber: clean(properties.AcctNumb),
@@ -129,6 +127,13 @@ function sanitizeParcelLookup(value) {
   return raw;
 }
 
+function sanitizeOwnerLookup(value) {
+  const raw = clean(value);
+  if (raw.length < 2 || raw.length > 70) throw new Error('Bexar owner search must contain 2-70 characters');
+  if (!/^[A-Za-z0-9&.,'() -]+$/.test(raw)) throw new Error('Bexar owner search contains unsupported characters');
+  return raw;
+}
+
 export function buildBexarParcelLookupUrl(parcelOrAccountId) {
   const raw = sanitizeParcelLookup(parcelOrAccountId);
   const escaped = raw.replaceAll("'", "''");
@@ -138,6 +143,17 @@ export function buildBexarParcelLookupUrl(parcelOrAccountId) {
   return queryUrl({
     where: clauses.join(' OR '),
     resultRecordCount: '5',
+  });
+}
+
+export function buildBexarOwnerLookupUrl(ownerName, { limit = 100 } = {}) {
+  const raw = sanitizeOwnerLookup(ownerName);
+  const escaped = raw.replaceAll("'", "''");
+  const recordLimit = Math.max(1, Math.min(250, Math.floor(Number(limit) || 100)));
+  return queryUrl({
+    where: `Owner LIKE '%${escaped}%'`,
+    orderByFields: 'Acres DESC',
+    resultRecordCount: String(recordLimit),
   });
 }
 
@@ -181,6 +197,11 @@ export const bexarCadAdapter = Object.freeze({
   async fetchParcel(parcelOrAccountId, options = {}) {
     const geojson = await fetchGeoJson(buildBexarParcelLookupUrl(parcelOrAccountId), options);
     return normalizeFeatures(geojson)[0] || null;
+  },
+
+  async fetchParcelsByOwner(ownerName, options = {}) {
+    const geojson = await fetchGeoJson(buildBexarOwnerLookupUrl(ownerName, options), options);
+    return normalizeFeatures(geojson);
   },
 
   async fetchParcelsInBounds(bounds, options = {}) {
