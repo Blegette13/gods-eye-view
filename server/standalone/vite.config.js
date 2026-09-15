@@ -4,6 +4,7 @@ import { createBrowserViteConfig } from '../../build/vite.js';
 import { localProviderPlugins } from '../providers/local.js';
 import { bdpRrcProviderPlugin } from '../providers/bdp-rrc.js';
 import { bdpEnvironmentProviderPlugin } from '../providers/bdp-environment.js';
+import { bdpSoilProviderPlugin } from '../providers/bdp-soil.js';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -18,6 +19,7 @@ export default defineConfig(({ mode }) => {
       ...localProviderPlugins(),
       bdpRrcProviderPlugin(),
       bdpEnvironmentProviderPlugin(),
+      bdpSoilProviderPlugin(),
     ],
     googleApiKey: process.env.GOOGLE_MAPS_API_KEY,
     cesiumToken: process.env.CESIUM_ION_TOKEN,
