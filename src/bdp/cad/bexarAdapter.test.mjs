@@ -44,6 +44,8 @@ test('normalizeBexarFeature maps BCAD fields into the BDP parcel contract', () =
   assert.equal(parcel.acquisition.pricePerAcre, 25000);
   assert.equal(parcel.providerData.accountNumber, 'A-123456');
   assert.equal(parcel.property.geometry.type, 'Polygon');
+  assert.equal(parcel.source.recordCurrency, 'unverified');
+  assert.match(parcel.source.sourceNotice, /Verify current ownership/i);
 });
 
 test('parcel lookup URL uses the official ArcGIS query endpoint', () => {
