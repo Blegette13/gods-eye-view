@@ -1,4 +1,5 @@
 import { fetchBdpParcelEnergy } from '../rrc/client.js';
+import { fetchBdpParcelWetlands } from '../environment/client.js';
 
 function formatMoney(value) {
   const number = Number(value);
@@ -20,6 +21,18 @@ function formatMiles(meters) {
   const number = Number(meters);
   if (!Number.isFinite(number)) return '—';
   return `${formatNumber(number / 1609.344, 2)} mi`;
+}
+
+function formatPercent(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '—';
+  return `${formatNumber(number, 2)}%`;
+}
+
+function formatAcres(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '—';
+  return `${formatNumber(number, 2)} ac`;
 }
 
 function row(label, value) {
@@ -75,7 +88,21 @@ function energyRows(metrics) {
   ];
 }
 
-export function createBdpPropertyCard({ energyLoader = fetchBdpParcelEnergy } = {}) {
+function wetlandRows(metrics) {
+  if (!metrics) return [row('NWI screening', 'No metrics returned')];
+  return [
+    row('NWI mapped', formatAcres(metrics.nwi_mapped_acres)),
+    row('NWI share', formatPercent(metrics.nwi_percent)),
+    row('NWI features', String(metrics.nwi_feature_count ?? 0)),
+    row('NWI types', String(metrics.nwi_type_count ?? 0)),
+    row('Non-NWI acres', formatAcres(metrics.preliminary_non_nwi_acres)),
+  ];
+}
+
+export function createBdpPropertyCard({
+  energyLoader = fetchBdpParcelEnergy,
+  wetlandsLoader = fetchBdpParcelWetlands,
+} = {}) {
   const root = document.createElement('aside');
   root.id = 'bdp-property-card';
   root.setAttribute('aria-live', 'polite');
@@ -176,8 +203,12 @@ export function createBdpPropertyCard({ energyLoader = fetchBdpParcelEnergy } = 
     energy.append(row('RRC screening', 'Loading…'));
     root.append(sectionHeading('ENERGY / OIL & GAS'), energy);
 
+    const wetlands = document.createElement('div');
+    wetlands.append(row('NWI screening', 'Loading…'));
+    root.append(sectionHeading('WETLANDS'), wetlands);
+
     const disclaimer = document.createElement('p');
-    disclaimer.textContent = 'RRC GIS metrics are preliminary screening data; survey, title, easement and operator verification remain separate due diligence.';
+    disclaimer.textContent = 'RRC and NWI outputs are preliminary screening data. Survey, title, easement, wetland delineation, jurisdictional and permitting verification remain separate due diligence.';
     Object.assign(disclaimer.style, {
       margin: '9px 0 0',
       color: '#8f8f8f',
@@ -198,6 +229,22 @@ export function createBdpPropertyCard({ energyLoader = fetchBdpParcelEnergy } = 
         if (token !== renderToken) return;
         const label = error?.status === 503 ? 'PostGIS not configured' : 'Screening unavailable';
         energy.replaceChildren(row('RRC screening', label));
+      });
+
+    Promise.resolve()
+      .then(() => wetlandsLoader(parcel))
+      .then((metrics) => {
+        if (token !== renderToken) return;
+        wetlands.replaceChildren(...wetlandRows(metrics));
+      })
+      .catch((error) => {
+        if (token !== renderToken) return;
+        const label = error?.status === 503
+          ? 'PostGIS not configured'
+          : error?.status === 502
+            ? 'NWI temporarily unavailable'
+            : 'Screening unavailable';
+        wetlands.replaceChildren(row('NWI screening', label));
       });
   }
 
