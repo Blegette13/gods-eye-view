@@ -24,6 +24,11 @@ export const BDP_LAYER_STATE_REGISTRY = Object.freeze([
     token: 'l',
     disposition: 'enabled-only',
   }),
+  Object.freeze({
+    id: 'bdp-epa-cleanups',
+    token: 'n',
+    disposition: 'enabled-only',
+  }),
 ]);
 
 /**
