@@ -48,25 +48,15 @@ function formatDegrees(value) {
 
 function row(label, value) {
   const wrapper = document.createElement('div');
-  wrapper.style.display = 'grid';
-  wrapper.style.gridTemplateColumns = '108px minmax(0,1fr)';
-  wrapper.style.gap = '12px';
-  wrapper.style.padding = '7px 0';
-  wrapper.style.borderBottom = '1px solid rgba(255,255,255,.08)';
+  wrapper.className = 'bdp-property-row';
 
   const key = document.createElement('span');
+  key.className = 'bdp-property-key';
   key.textContent = label;
-  key.style.color = '#9a9a9a';
-  key.style.fontSize = '11px';
-  key.style.textTransform = 'uppercase';
-  key.style.letterSpacing = '.08em';
 
   const content = document.createElement('span');
+  content.className = 'bdp-property-value';
   content.textContent = value === 0 ? '0' : (value || '—');
-  content.style.color = '#f2f2f2';
-  content.style.fontSize = '13px';
-  content.style.lineHeight = '1.35';
-  content.style.overflowWrap = 'anywhere';
 
   wrapper.append(key, content);
   return wrapper;
@@ -74,15 +64,8 @@ function row(label, value) {
 
 function sectionHeading(text) {
   const heading = document.createElement('div');
+  heading.className = 'bdp-property-section-heading';
   heading.textContent = text;
-  Object.assign(heading.style, {
-    marginTop: '17px',
-    marginBottom: '3px',
-    color: '#d5d5d5',
-    fontSize: '10px',
-    fontWeight: '700',
-    letterSpacing: '.14em',
-  });
   return heading;
 }
 
@@ -160,11 +143,14 @@ function terrainRows(metrics) {
 
 function intelligenceRows(screening) {
   const { score, redFlagSummary } = screening;
-  const scoreLabel = score.readiness === 'insufficient-evidence'
+  const withheld = score.readiness === 'insufficient-evidence';
+  const scoreLabel = withheld
     ? 'WITHHELD · INSUFFICIENT EVIDENCE'
     : `${formatNumber(score.confidenceAdjustedScore, 0)} / 100 · ${score.readiness.replaceAll('-', ' ').toUpperCase()}`;
+  const scoreRow = row('BDP score', scoreLabel);
+  scoreRow.dataset.bdpScoreState = withheld ? 'withheld' : score.readiness;
   return [
-    row('BDP score', scoreLabel),
+    scoreRow,
     row('Model coverage', formatPercent(score.coveragePercent)),
     row('Evidence conf.', formatPercent(score.confidenceAdjustedCoveragePercent)),
     row('Live feeds', formatPercent(screening.sourceCoveragePercent)),
@@ -178,8 +164,9 @@ function redFlagElements(flags) {
   const display = substantive.length ? substantive : flags;
   if (!display.length) return [row('Flags', 'None from current screening feeds')];
   return display.map((item) => {
-    const label = `${item.severity.toUpperCase()} · ${item.title}`;
-    return row(label, item.detail);
+    const element = row(`${item.severity.toUpperCase()} · ${item.title}`, item.detail);
+    element.dataset.bdpSeverity = item.severity;
+    return element;
   });
 }
 
@@ -215,27 +202,26 @@ function appendScreeningResult(containers, screening) {
   ));
 }
 
+function actionButton(icon, label) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'bdp-property-action';
+  button.setAttribute('aria-label', label);
+  button.title = label;
+  const symbol = document.createElement('span');
+  symbol.className = 'material-symbols-outlined';
+  symbol.setAttribute('aria-hidden', 'true');
+  symbol.textContent = icon;
+  button.append(symbol);
+  return button;
+}
+
 export function createBdpPropertyCard({ screeningLoader = runBdpParcelScreening } = {}) {
   const root = document.createElement('aside');
   root.id = 'bdp-property-card';
+  root.className = 'bdp-property-panel';
   root.setAttribute('aria-live', 'polite');
-  Object.assign(root.style, {
-    position: 'fixed',
-    top: '84px',
-    right: '24px',
-    width: '360px',
-    maxHeight: 'calc(100vh - 120px)',
-    overflow: 'auto',
-    zIndex: '1300',
-    display: 'none',
-    padding: '18px',
-    border: '1px solid rgba(255,255,255,.16)',
-    borderRadius: '10px',
-    background: 'rgba(18,18,18,.94)',
-    boxShadow: '0 18px 50px rgba(0,0,0,.35)',
-    backdropFilter: 'blur(12px)',
-    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-  });
+  root.dataset.collapsed = 'false';
 
   document.body.appendChild(root);
   let renderToken = 0;
@@ -250,60 +236,38 @@ export function createBdpPropertyCard({ screeningLoader = runBdpParcelScreening 
     if (!parcel) return hide();
     const token = ++renderToken;
     root.replaceChildren();
+    root.dataset.collapsed = 'false';
 
     const header = document.createElement('div');
-    Object.assign(header.style, {
-      display: 'flex',
-      justifyContent: 'space-between',
-      gap: '12px',
-      marginBottom: '12px',
-    });
+    header.className = 'bdp-property-header';
 
     const titles = document.createElement('div');
+    titles.className = 'bdp-property-titles';
+
     const eyebrow = document.createElement('div');
+    eyebrow.className = 'bdp-property-eyebrow';
     eyebrow.textContent = 'BDP LAND INTELLIGENCE';
-    Object.assign(eyebrow.style, {
-      color: '#a7a7a7',
-      fontSize: '10px',
-      letterSpacing: '.14em',
-    });
 
     const title = document.createElement('strong');
+    title.className = 'bdp-property-title';
     title.textContent = parcel.property?.situsAddress || `Parcel ${parcel.parcelId}`;
-    Object.assign(title.style, {
-      display: 'block',
-      marginTop: '5px',
-      color: '#fff',
-      fontSize: '17px',
-      lineHeight: '1.2',
-    });
 
     const subtitle = document.createElement('div');
+    subtitle.className = 'bdp-property-subtitle';
     subtitle.textContent = `${parcel.county || parcel.jurisdiction?.county || 'Texas'} County, Texas`;
-    Object.assign(subtitle.style, {
-      marginTop: '4px',
-      color: '#bdbdbd',
-      fontSize: '12px',
-    });
     titles.append(eyebrow, title, subtitle);
 
-    const close = document.createElement('button');
-    close.type = 'button';
-    close.setAttribute('aria-label', 'Close property card');
-    close.textContent = '×';
-    Object.assign(close.style, {
-      border: '0',
-      background: 'transparent',
-      color: '#d8d8d8',
-      fontSize: '22px',
-      cursor: 'pointer',
-      alignSelf: 'flex-start',
-    });
-    close.addEventListener('click', hide);
-    header.append(titles, close);
-    root.append(header);
+    const actions = document.createElement('div');
+    actions.className = 'bdp-property-actions';
+    const collapse = actionButton('keyboard_arrow_up', 'Collapse property intelligence');
+    const close = actionButton('close', 'Close property intelligence');
+    actions.append(collapse, close);
+    header.append(titles, actions);
 
-    root.append(
+    const body = document.createElement('div');
+    body.className = 'bdp-property-body';
+
+    body.append(
       row('Owner', parcel.owner?.name),
       row('Parcel ID', parcel.parcelId),
       row('Account', parcel.providerData?.accountNumber),
@@ -335,7 +299,7 @@ export function createBdpPropertyCard({ screeningLoader = runBdpParcelScreening 
     containers.soils.append(row('Soil screening', 'Loading…'));
     containers.terrain.append(row('Terrain', 'Loading…'));
 
-    root.append(
+    body.append(
       sectionHeading('BDP INTELLIGENCE'), containers.intelligence,
       sectionHeading('RED FLAGS'), containers.flags,
       sectionHeading('ENERGY / OIL & GAS'), containers.energy,
@@ -346,14 +310,25 @@ export function createBdpPropertyCard({ screeningLoader = runBdpParcelScreening 
     );
 
     const disclaimer = document.createElement('p');
+    disclaimer.className = 'bdp-property-disclaimer';
     disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. FEMA, RRC, NWI, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, engineering and permitting due diligence remains required.';
-    Object.assign(disclaimer.style, {
-      margin: '12px 0 0',
-      color: '#8f8f8f',
-      fontSize: '10px',
-      lineHeight: '1.45',
+    body.append(disclaimer);
+
+    collapse.addEventListener('click', () => {
+      const collapsed = root.dataset.collapsed !== 'true';
+      root.dataset.collapsed = String(collapsed);
+      body.hidden = collapsed;
+      collapse.querySelector('.material-symbols-outlined').textContent = collapsed
+        ? 'keyboard_arrow_down'
+        : 'keyboard_arrow_up';
+      collapse.setAttribute('aria-label', collapsed
+        ? 'Expand property intelligence'
+        : 'Collapse property intelligence');
+      collapse.title = collapse.getAttribute('aria-label');
     });
-    root.append(disclaimer);
+    close.addEventListener('click', hide);
+
+    root.append(header, body);
     root.style.display = 'block';
 
     Promise.resolve()
