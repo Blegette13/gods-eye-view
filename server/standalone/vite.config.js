@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import { createBrowserViteConfig } from '../../build/vite.js';
 import { localProviderPlugins } from '../providers/local.js';
+import { bdpRrcProviderPlugin } from '../providers/bdp-rrc.js';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -12,7 +13,7 @@ export default defineConfig(({ mode }) => {
     if (process.env[key] === undefined) process.env[key] = value;
   }
   return createBrowserViteConfig({
-    plugins: localProviderPlugins(),
+    plugins: [...localProviderPlugins(), bdpRrcProviderPlugin()],
     googleApiKey: process.env.GOOGLE_MAPS_API_KEY,
     cesiumToken: process.env.CESIUM_ION_TOKEN,
     host: process.env.HOST,
