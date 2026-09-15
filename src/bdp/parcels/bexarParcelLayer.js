@@ -98,6 +98,16 @@ export function createBexarParcelLayer({
     count = parcels.length;
   }
 
+  async function focusSnapshot(parcels) {
+    await replaceSnapshot(parcels);
+    lastBoundsKey = '';
+    lastUpdate = Date.now();
+    status = parcels.length ? 'nominal' : 'empty';
+    if (dataSource && parcels.length) {
+      await viewer.flyTo(dataSource, { duration: 1.15 });
+    }
+  }
+
   async function focusParcel(parcelOrAccountId, { signal } = {}) {
     if (!viewer || !propertyCard) throw new Error('Bexar parcel layer is not initialized');
     if (!enabled) throw new Error('Bexar parcel layer must be enabled before parcel lookup');
@@ -112,16 +122,35 @@ export function createBexarParcelLayer({
         return null;
       }
 
-      await replaceSnapshot([parcel]);
-      lastBoundsKey = '';
-      lastUpdate = Date.now();
-      status = 'nominal';
-
-      if (dataSource) {
-        await viewer.flyTo(dataSource, { duration: 1.15 });
-      }
+      await focusSnapshot([parcel]);
       propertyCard.show(parcel);
       return parcel;
+    } catch (error) {
+      if (error?.name === 'AbortError') throw error;
+      lastError = error instanceof Error ? error.message : String(error);
+      status = dataSource ? 'degraded' : 'unavailable';
+      throw error;
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function focusOwner(ownerName, { signal, limit = 100 } = {}) {
+    if (!viewer || !propertyCard) throw new Error('Bexar parcel layer is not initialized');
+    if (!enabled) throw new Error('Bexar parcel layer must be enabled before owner lookup');
+
+    loading = true;
+    status = 'loading';
+    lastError = null;
+    try {
+      const parcels = await adapter.fetchParcelsByOwner(ownerName, { signal, limit });
+      propertyCard.hide();
+      if (!parcels.length) {
+        status = dataSource ? 'nominal' : 'empty';
+        return [];
+      }
+      await focusSnapshot(parcels);
+      return parcels;
     } catch (error) {
       if (error?.name === 'AbortError') throw error;
       lastError = error instanceof Error ? error.message : String(error);
@@ -167,6 +196,7 @@ export function createBexarParcelLayer({
     },
 
     focusParcel,
+    focusOwner,
 
     async update(targetViewer) {
       if (!enabled || loading) return true;
