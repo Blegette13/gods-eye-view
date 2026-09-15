@@ -283,7 +283,9 @@
   line-height: 1.55;
 }
 
-#bdp-property-card [data-bdp-score-state='withheld'] .bdp-property-value {
+#bdp-property-card [data-bdp-score-state='withheld'] .bdp-property-value,
+#bdp-property-card [data-bdp-source-currency='unverified'] .bdp-property-value,
+#bdp-property-card [data-bdp-source-currency='stale'] .bdp-property-value {
   color: #ffdc78 !important;
 }
 
