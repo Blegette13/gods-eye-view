@@ -44,18 +44,7 @@ function adaptLocationTray() {
   search.setAttribute('aria-label', 'Search map by address, place, or coordinates');
 }
 
-function decorateBdpLayerRows(container) {
-  if (!container) return;
-
-  container.querySelectorAll('.bdp-layer-section-label').forEach((node) => node.remove());
-  const rows = [...container.querySelectorAll('.data-toggle-row')];
-  for (const row of rows) {
-    row.classList.toggle('bdp-layer-row', BDP_LAYER_IDS.has(row.dataset.layerId));
-  }
-
-  const firstBdpRow = rows.find((row) => BDP_LAYER_IDS.has(row.dataset.layerId));
-  if (!firstBdpRow) return;
-
+function createBdpLayerSectionLabel() {
   const section = document.createElement('div');
   section.className = 'bdp-layer-section-label';
   section.setAttribute('role', 'separator');
@@ -64,7 +53,28 @@ function decorateBdpLayerRows(container) {
     '<span class="bdp-layer-section-title">LAND INTELLIGENCE</span>',
     '<span class="bdp-layer-section-rule" aria-hidden="true"></span>',
   ].join('');
-  firstBdpRow.before(section);
+  return section;
+}
+
+function decorateBdpLayerRows(container) {
+  if (!container) return;
+
+  const rows = [...container.querySelectorAll('.data-toggle-row')];
+  for (const row of rows) {
+    row.classList.toggle('bdp-layer-row', BDP_LAYER_IDS.has(row.dataset.layerId));
+  }
+
+  const firstBdpRow = rows.find((row) => BDP_LAYER_IDS.has(row.dataset.layerId));
+  const existing = container.querySelector('.bdp-layer-section-label');
+
+  if (!firstBdpRow) {
+    existing?.remove();
+    return;
+  }
+  if (existing?.nextElementSibling === firstBdpRow) return;
+
+  existing?.remove();
+  firstBdpRow.before(createBdpLayerSectionLabel());
 }
 
 function adaptLayerPanel() {
