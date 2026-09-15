@@ -23,7 +23,7 @@ function percentOf(acres, parcelAcres) {
   return (acres / parcelAcres) * 100;
 }
 
-export function deriveBdpRedFlags({ parcel, energy, flood, wetlands, terrain } = {}) {
+export function deriveBdpRedFlags({ parcel, energy, flood, wetlands, cleanups, terrain } = {}) {
   const flags = [];
   const parcelAcres = finiteOrNull(parcel?.property?.acres)
     ?? finiteOrNull(flood?.parcel_acres)
@@ -123,6 +123,64 @@ export function deriveBdpRedFlags({ parcel, energy, flood, wetlands, terrain } =
       detail: `${nwiAcres.toFixed(2)} acres${Number.isFinite(nwiPercent) ? ` (${nwiPercent.toFixed(1)}%)` : ''} overlap National Wetlands Inventory polygons. NWI is screening data and does not establish federal jurisdiction.`,
       source: 'U.S. Fish & Wildlife Service National Wetlands Inventory',
       evidence: { nwiAcres, nwiPercent },
+    }));
+  }
+
+  const cleanupOnParcel = finiteOrNull(cleanups?.cleanup_sites_on_parcel);
+  const nearestCleanupM = finiteOrNull(cleanups?.nearest_cleanup_m);
+  const superfundWithin5 = finiteOrNull(cleanups?.superfund_within_5_mi);
+  const rcraWithin5 = finiteOrNull(cleanups?.rcra_within_5_mi);
+  const nearestSiteName = String(cleanups?.nearest_site_name || '').trim();
+  const nearestHighConcern = cleanups?.nearest_is_superfund === true || cleanups?.nearest_is_rcra === true;
+
+  if (Number.isFinite(cleanupOnParcel) && cleanupOnParcel > 0) {
+    flags.push(flag({
+      id: 'epa-cleanup-on-parcel',
+      severity: 'high',
+      title: 'EPA cleanup site mapped on parcel',
+      detail: `${Math.round(cleanupOnParcel)} EPA cleanup record${cleanupOnParcel === 1 ? '' : 's'} map to the tract. Treat this as a material environmental due-diligence issue until site boundaries, cleanup status and contamination extent are reviewed.`,
+      source: 'U.S. EPA Cleanups in My Community',
+      evidence: {
+        cleanupSitesOnParcel: cleanupOnParcel,
+        nearestSiteName: nearestSiteName || null,
+      },
+    }));
+  } else if (Number.isFinite(nearestCleanupM) && nearestCleanupM <= 1609.344) {
+    const miles = nearestCleanupM / 1609.344;
+    flags.push(flag({
+      id: 'nearby-epa-cleanup',
+      severity: nearestHighConcern && miles <= 0.5 ? 'high' : 'medium',
+      title: 'EPA cleanup site near parcel',
+      detail: `${nearestSiteName || 'The nearest EPA cleanup site'} is approximately ${miles.toFixed(2)} miles from the tract. Review the cleanup program, status, migration pathway and site-specific records before acquisition conclusions.`,
+      source: 'U.S. EPA Cleanups in My Community',
+      evidence: {
+        nearestCleanupMeters: nearestCleanupM,
+        nearestSiteName: nearestSiteName || null,
+        nearestIsSuperfund: cleanups?.nearest_is_superfund === true,
+        nearestIsRcra: cleanups?.nearest_is_rcra === true,
+      },
+    }));
+  }
+
+  if (Number.isFinite(superfundWithin5) && superfundWithin5 > 0 && !(Number.isFinite(cleanupOnParcel) && cleanupOnParcel > 0)) {
+    flags.push(flag({
+      id: 'superfund-within-5-mi',
+      severity: 'medium',
+      title: 'Superfund site within 5 miles',
+      detail: `${Math.round(superfundWithin5)} EPA Superfund site${superfundWithin5 === 1 ? '' : 's'} are mapped within 5 miles of the tract. Proximity alone does not establish parcel contamination, but warrants environmental review.`,
+      source: 'U.S. EPA Cleanups in My Community',
+      evidence: { superfundWithin5Miles: superfundWithin5 },
+    }));
+  }
+
+  if (Number.isFinite(rcraWithin5) && rcraWithin5 > 0 && !Number.isFinite(superfundWithin5)) {
+    flags.push(flag({
+      id: 'rcra-cleanup-within-5-mi',
+      severity: 'low',
+      title: 'RCRA corrective-action site within 5 miles',
+      detail: `${Math.round(rcraWithin5)} RCRA corrective-action site${rcraWithin5 === 1 ? '' : 's'} are mapped within 5 miles. Review only if location/pathway context makes the site relevant to the tract.`,
+      source: 'U.S. EPA Cleanups in My Community',
+      evidence: { rcraWithin5Miles: rcraWithin5 },
     }));
   }
 
