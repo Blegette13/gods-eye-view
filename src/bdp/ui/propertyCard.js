@@ -1,5 +1,8 @@
 import { fetchBdpParcelEnergy } from '../rrc/client.js';
-import { fetchBdpParcelWetlands } from '../environment/client.js';
+import {
+  fetchBdpParcelFlood,
+  fetchBdpParcelWetlands,
+} from '../environment/client.js';
 import { fetchBdpParcelSoils } from '../soil/client.js';
 import { fetchBdpParcelTerrain } from '../terrain/client.js';
 
@@ -102,6 +105,18 @@ function energyRows(metrics) {
   ];
 }
 
+function floodRows(metrics) {
+  if (!metrics) return [row('FEMA screening', 'No metrics returned')];
+  return [
+    row('Mapped flood', formatAcres(metrics.mapped_flood_acres)),
+    row('Flood share', formatPercent(metrics.mapped_flood_percent)),
+    row('SFHA', formatAcres(metrics.sfha_acres)),
+    row('Floodway', formatAcres(metrics.floodway_acres)),
+    row('Moderate', formatAcres(metrics.moderate_acres)),
+    row('Non-mapped', formatAcres(metrics.preliminary_non_mapped_flood_acres)),
+  ];
+}
+
 function wetlandRows(metrics) {
   if (!metrics) return [row('NWI screening', 'No metrics returned')];
   return [
@@ -144,6 +159,7 @@ function terrainRows(metrics) {
 
 export function createBdpPropertyCard({
   energyLoader = fetchBdpParcelEnergy,
+  floodLoader = fetchBdpParcelFlood,
   wetlandsLoader = fetchBdpParcelWetlands,
   soilsLoader = fetchBdpParcelSoils,
   terrainLoader = fetchBdpParcelTerrain,
@@ -248,6 +264,10 @@ export function createBdpPropertyCard({
     energy.append(row('RRC screening', 'Loading…'));
     root.append(sectionHeading('ENERGY / OIL & GAS'), energy);
 
+    const flood = document.createElement('div');
+    flood.append(row('FEMA screening', 'Loading…'));
+    root.append(sectionHeading('FLOOD / FEMA'), flood);
+
     const wetlands = document.createElement('div');
     wetlands.append(row('NWI screening', 'Loading…'));
     root.append(sectionHeading('WETLANDS'), wetlands);
@@ -261,7 +281,7 @@ export function createBdpPropertyCard({
     root.append(sectionHeading('TERRAIN / 3DEP'), terrain);
 
     const disclaimer = document.createElement('p');
-    disclaimer.textContent = 'RRC, NWI, SSURGO and 3DEP outputs are preliminary screening data. Survey, title, easement, wetland delineation, jurisdictional, geotechnical, engineering and permitting verification remain separate due diligence.';
+    disclaimer.textContent = 'FEMA, RRC, NWI, SSURGO and 3DEP outputs are preliminary screening data. Survey, title, easement, wetland delineation, floodplain administration, jurisdictional, geotechnical, engineering and permitting verification remain separate due diligence.';
     Object.assign(disclaimer.style, {
       margin: '9px 0 0',
       color: '#8f8f8f',
@@ -282,6 +302,22 @@ export function createBdpPropertyCard({
         if (token !== renderToken) return;
         const label = error?.status === 503 ? 'PostGIS not configured' : 'Screening unavailable';
         energy.replaceChildren(row('RRC screening', label));
+      });
+
+    Promise.resolve()
+      .then(() => floodLoader(parcel))
+      .then((metrics) => {
+        if (token !== renderToken) return;
+        flood.replaceChildren(...floodRows(metrics));
+      })
+      .catch((error) => {
+        if (token !== renderToken) return;
+        const label = error?.status === 503
+          ? 'PostGIS not configured'
+          : error?.status === 502
+            ? 'FEMA temporarily unavailable'
+            : 'Screening unavailable';
+        flood.replaceChildren(row('FEMA screening', label));
       });
 
     Promise.resolve()
