@@ -13,6 +13,8 @@ import militaryInstallationsLayer from '../data/militaryInstallations.js';
 import militaryAwarenessLayer from '../data/militaryAwareness.js';
 import localDataLayers from '../data/localLayers.js';
 import { LAYER_STATE_REGISTRY } from '../data/layerState.js';
+import bexarParcelLayer from '../bdp/parcels/bexarParcelLayer.js';
+import { extendLayerStateRegistry } from '../bdp/config/layerRegistry.js';
 
 /** Register the standalone layer catalog before allowing state restoration. */
 export function createStandaloneData({
@@ -49,8 +51,14 @@ export function createStandaloneData({
   for (const layer of localDataLayers) {
     dataManager.register(layer);
   }
+
+  // BDP Land Intelligence production layers. Keep BDP-specific registration
+  // adjacent to, but separate from, the upstream layer catalog so future
+  // upstream merges remain straightforward.
+  dataManager.register(bexarParcelLayer);
+
   // Restoration starts only after the complete production registry is sealed.
-  dataManager.finalizeRegistrations(LAYER_STATE_REGISTRY);
+  dataManager.finalizeRegistrations(extendLayerStateRegistry(LAYER_STATE_REGISTRY));
   if (allowQaRegistration) {
     window.__gevQaRegisterLayer = (targetManager, layerModule) => {
       if (targetManager !== dataManager)
