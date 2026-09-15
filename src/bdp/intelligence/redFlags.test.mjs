@@ -40,6 +40,39 @@ test('flags pipeline crossings, floodway, wetlands, and steep terrain', () => {
   assert.equal(summary.highestSeverity, 'high');
 });
 
+test('flags unverified parcel ownership and valuation source currency', () => {
+  const flags = deriveBdpRedFlags({
+    parcel: {
+      property: { acres: 25 },
+      source: {
+        provider: 'Bexar County ArcGIS REST',
+        recordCurrency: 'unverified',
+        lastVerified: '2026-09-15T22:00:00.000Z',
+        sourceNotice: 'Verify current ownership with CAD and deed records.',
+      },
+    },
+  });
+
+  const sourceFlag = flags.find((item) => item.id === 'parcel-source-currency-unverified');
+  assert.equal(sourceFlag.severity, 'medium');
+  assert.equal(sourceFlag.evidence.recordCurrency, 'unverified');
+  assert.equal(sourceFlag.evidence.provider, 'Bexar County ArcGIS REST');
+  assert.match(sourceFlag.detail, /Verify current ownership/i);
+});
+
+test('escalates explicitly stale parcel source currency', () => {
+  const flags = deriveBdpRedFlags({
+    parcel: {
+      source: {
+        recordCurrency: 'stale',
+        provider: 'Example CAD',
+      },
+    },
+  });
+  const sourceFlag = flags.find((item) => item.id === 'parcel-source-currency-unverified');
+  assert.equal(sourceFlag.severity, 'high');
+});
+
 test('does not create hazard flags when screening evidence is clear or missing', () => {
   const flags = deriveBdpRedFlags({
     parcel: { property: { acres: 100 } },
