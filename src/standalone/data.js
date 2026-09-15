@@ -67,6 +67,59 @@ export function createStandaloneData({
 
   // Restoration starts only after the complete production registry is sealed.
   dataManager.finalizeRegistrations(extendLayerStateRegistry(LAYER_STATE_REGISTRY));
+
+  let parcelSearchController = null;
+  const handleBdpLandSearch = async (event) => {
+    const command = event?.detail;
+    if (command?.kind !== 'parcel' || !command.value) return;
+
+    parcelSearchController?.abort();
+    parcelSearchController = new AbortController();
+    const { signal } = parcelSearchController;
+
+    try {
+      await dataManager.setEnabled('bdp-bexar-parcels', true, {
+        origin: 'user',
+        signal,
+      });
+      if (signal.aborted) return;
+
+      const parcel = await bexarParcelLayer.focusParcel(command.value, { signal });
+      if (signal.aborted) return;
+
+      window.dispatchEvent(new CustomEvent('bdp:land-search-result', {
+        detail: parcel
+          ? {
+              ok: true,
+              query: command.value,
+              parcelId: parcel.parcelId,
+              owner: parcel.owner?.name || '',
+            }
+          : {
+              ok: false,
+              query: command.value,
+              message: `No Bexar parcel found for ${command.value}`,
+            },
+      }));
+    } catch (error) {
+      if (signal.aborted || error?.name === 'AbortError') return;
+      console.warn('[BDP:LandSearch] parcel lookup failed:', error);
+      window.dispatchEvent(new CustomEvent('bdp:land-search-result', {
+        detail: {
+          ok: false,
+          query: command.value,
+          message: error instanceof Error ? error.message : 'Parcel lookup unavailable',
+        },
+      }));
+    }
+  };
+  window.addEventListener('bdp:land-search', handleBdpLandSearch);
+  defer(() => {
+    parcelSearchController?.abort();
+    parcelSearchController = null;
+    window.removeEventListener('bdp:land-search', handleBdpLandSearch);
+  });
+
   if (allowQaRegistration) {
     window.__gevQaRegisterLayer = (targetManager, layerModule) => {
       if (targetManager !== dataManager)
