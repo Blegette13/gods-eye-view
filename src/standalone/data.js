@@ -27,7 +27,6 @@ export function createStandaloneData({
   allowQaRegistration,
   defer,
 }) {
-  // Initialize data layer manager
   const dataManager = new DataLayerManager(viewer, {
     allowQaRegistration,
   });
@@ -65,13 +64,12 @@ export function createStandaloneData({
   dataManager.register(nwiWetlandsLayer);
   dataManager.register(ssurgoSoilLayer);
 
-  // Restoration starts only after the complete production registry is sealed.
   dataManager.finalizeRegistrations(extendLayerStateRegistry(LAYER_STATE_REGISTRY));
 
   let parcelSearchController = null;
   const handleBdpLandSearch = async (event) => {
     const command = event?.detail;
-    if (command?.kind !== 'parcel' || !command.value) return;
+    if (!['parcel', 'owner'].includes(command?.kind) || !command.value) return;
 
     parcelSearchController?.abort();
     parcelSearchController = new AbortController();
@@ -84,6 +82,30 @@ export function createStandaloneData({
       });
       if (signal.aborted) return;
 
+      if (command.kind === 'owner') {
+        const parcels = await bexarParcelLayer.focusOwner(command.value, {
+          signal,
+          limit: 100,
+        });
+        if (signal.aborted) return;
+        window.dispatchEvent(new CustomEvent('bdp:land-search-result', {
+          detail: parcels.length
+            ? {
+                ok: true,
+                kind: 'owner',
+                query: command.value,
+                count: parcels.length,
+              }
+            : {
+                ok: false,
+                kind: 'owner',
+                query: command.value,
+                message: `No Bexar parcels found for owner ${command.value}`,
+              },
+        }));
+        return;
+      }
+
       const parcel = await bexarParcelLayer.focusParcel(command.value, { signal });
       if (signal.aborted) return;
 
@@ -91,24 +113,27 @@ export function createStandaloneData({
         detail: parcel
           ? {
               ok: true,
+              kind: 'parcel',
               query: command.value,
               parcelId: parcel.parcelId,
               owner: parcel.owner?.name || '',
             }
           : {
               ok: false,
+              kind: 'parcel',
               query: command.value,
               message: `No Bexar parcel found for ${command.value}`,
             },
       }));
     } catch (error) {
       if (signal.aborted || error?.name === 'AbortError') return;
-      console.warn('[BDP:LandSearch] parcel lookup failed:', error);
+      console.warn('[BDP:LandSearch] lookup failed:', error);
       window.dispatchEvent(new CustomEvent('bdp:land-search-result', {
         detail: {
           ok: false,
+          kind: command.kind,
           query: command.value,
-          message: error instanceof Error ? error.message : 'Parcel lookup unavailable',
+          message: error instanceof Error ? error.message : 'Land lookup unavailable',
         },
       }));
     }
