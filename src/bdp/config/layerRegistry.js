@@ -4,6 +4,11 @@ export const BDP_LAYER_STATE_REGISTRY = Object.freeze([
     token: 'p',
     disposition: 'enabled-only',
   }),
+  Object.freeze({
+    id: 'bdp-fema-flood',
+    token: 'h',
+    disposition: 'enabled-only',
+  }),
 ]);
 
 /**
