@@ -15,6 +15,14 @@ test('parses explicit parcel and account commands', () => {
   });
 });
 
+test('parses explicit owner commands', () => {
+  assert.deepEqual(parseBdpLandSearch('owner: Smith Holdings LLC'), {
+    kind: 'owner',
+    value: 'Smith Holdings LLC',
+    command: 'owner',
+  });
+});
+
 test('leaves ordinary God\'s Eye location searches untouched', () => {
   assert.equal(parseBdpLandSearch('Austin, TX'), null);
   assert.equal(parseBdpLandSearch('29.4241,-98.4936'), null);
@@ -24,4 +32,6 @@ test('leaves ordinary God\'s Eye location searches untouched', () => {
 test('rejects empty or oversized land commands', () => {
   assert.equal(parseBdpLandSearch('parcel:'), null);
   assert.equal(parseBdpLandSearch(`parcel: ${'x'.repeat(65)}`), null);
+  assert.equal(parseBdpLandSearch('owner: A'), null);
+  assert.equal(parseBdpLandSearch(`owner: ${'x'.repeat(71)}`), null);
 });
