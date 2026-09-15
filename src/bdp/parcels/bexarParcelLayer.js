@@ -98,6 +98,40 @@ export function createBexarParcelLayer({
     count = parcels.length;
   }
 
+  async function focusParcel(parcelOrAccountId, { signal } = {}) {
+    if (!viewer || !propertyCard) throw new Error('Bexar parcel layer is not initialized');
+    if (!enabled) throw new Error('Bexar parcel layer must be enabled before parcel lookup');
+
+    loading = true;
+    status = 'loading';
+    lastError = null;
+    try {
+      const parcel = await adapter.fetchParcel(parcelOrAccountId, { signal });
+      if (!parcel) {
+        status = dataSource ? 'nominal' : 'empty';
+        return null;
+      }
+
+      await replaceSnapshot([parcel]);
+      lastBoundsKey = '';
+      lastUpdate = Date.now();
+      status = 'nominal';
+
+      if (dataSource) {
+        await viewer.flyTo(dataSource, { duration: 1.15 });
+      }
+      propertyCard.show(parcel);
+      return parcel;
+    } catch (error) {
+      if (error?.name === 'AbortError') throw error;
+      lastError = error instanceof Error ? error.message : String(error);
+      status = dataSource ? 'degraded' : 'unavailable';
+      throw error;
+    } finally {
+      loading = false;
+    }
+  }
+
   const layer = {
     id: 'bdp-bexar-parcels',
     name: 'BDP · Bexar Parcels',
@@ -131,6 +165,8 @@ export function createBexarParcelLayer({
       requestController?.abort();
       requestController = null;
     },
+
+    focusParcel,
 
     async update(targetViewer) {
       if (!enabled || loading) return true;
