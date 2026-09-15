@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   BEXAR_COUNTY_FIPS,
   buildBexarBoundsUrl,
+  buildBexarOwnerLookupUrl,
   buildBexarParcelLookupUrl,
   normalizeBexarFeature,
 } from './bexarAdapter.js';
@@ -51,6 +52,14 @@ test('parcel lookup URL uses the official ArcGIS query endpoint', () => {
   assert.equal(url.searchParams.get('f'), 'geojson');
   assert.match(url.searchParams.get('where'), /PropID=123456/);
   assert.equal(url.searchParams.get('outSR'), '4326');
+});
+
+test('owner lookup uses a bounded substring query and acreage ordering', () => {
+  const url = new URL(buildBexarOwnerLookupUrl("O'NEIL LAND LLC", { limit: 999 }));
+  assert.equal(url.hostname, 'maps.bexar.org');
+  assert.equal(url.searchParams.get('resultRecordCount'), '250');
+  assert.equal(url.searchParams.get('orderByFields'), 'Acres DESC');
+  assert.equal(url.searchParams.get('where'), "Owner LIKE '%O''NEIL LAND LLC%'");
 });
 
 test('bounds query is WGS84 and capped at the ArcGIS service limit', () => {
