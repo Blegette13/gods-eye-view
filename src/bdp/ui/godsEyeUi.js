@@ -10,6 +10,7 @@ const BDP_LAYER_IDS = new Set([
   'bdp-nwi-wetlands',
   'bdp-ssurgo-soils',
   'bdp-epa-cleanups',
+  'bdp-txdot-traffic',
 ]);
 
 let layerObserver = null;
