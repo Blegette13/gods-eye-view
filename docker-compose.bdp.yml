@@ -1,0 +1,26 @@
+services:
+  bdp-postgis:
+    image: postgis/postgis:17-3.5
+    container_name: bdp-postgis
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: bdp
+      POSTGRES_USER: bdp
+      POSTGRES_PASSWORD: ${BDP_LOCAL_DB_PASSWORD:?Set BDP_LOCAL_DB_PASSWORD before starting the local BDP database}
+    ports:
+      - "127.0.0.1:${BDP_LOCAL_DB_PORT:-54329}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bdp -d bdp"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    volumes:
+      - bdp_postgis_data:/var/lib/postgresql/data
+      - ./src/bdp/ingestion/sql/rrcPostgis.sql:/docker-entrypoint-initdb.d/20-rrc-postgis.sql:ro
+      - ./src/bdp/ingestion/sql/rrcParcelEnergy.sql:/docker-entrypoint-initdb.d/21-rrc-parcel-energy.sql:ro
+      - ./src/bdp/ingestion/sql/tceqWaterRightsPostgis.sql:/docker-entrypoint-initdb.d/30-tceq-water-rights.sql:ro
+      - ./src/bdp/ingestion/sql/tceqParcelWater.sql:/docker-entrypoint-initdb.d/31-tceq-parcel-water.sql:ro
+
+volumes:
+  bdp_postgis_data:
