@@ -6,11 +6,14 @@ import {
 } from '../environment/client.js';
 import { fetchBdpParcelSoils } from '../soil/client.js';
 import { fetchBdpParcelTerrain } from '../terrain/client.js';
+import { fetchBdpParcelTransportation } from '../transportation/client.js';
 import {
   buildCurrentScreeningComponents,
   calculateBdpScore,
 } from './acquisitionScore.js';
+import { scoreAccessTraffic } from './accessTrafficScore.js';
 import { deriveBdpRedFlags, summarizeBdpRedFlags } from './redFlags.js';
+import { deriveAccessTrafficFlags } from './transportationFlags.js';
 
 export const BDP_SCREENING_SOURCES = Object.freeze([
   'energy',
@@ -19,6 +22,7 @@ export const BDP_SCREENING_SOURCES = Object.freeze([
   'cleanups',
   'soils',
   'terrain',
+  'transportation',
 ]);
 
 function serializeError(error) {
@@ -46,6 +50,7 @@ export async function runBdpParcelScreening(parcel, {
   cleanupsLoader = fetchBdpParcelCleanups,
   soilsLoader = fetchBdpParcelSoils,
   terrainLoader = fetchBdpParcelTerrain,
+  transportationLoader = fetchBdpParcelTransportation,
 } = {}) {
   if (!parcel?.property?.geometry) {
     throw new Error('Parcel geometry is required for BDP screening');
@@ -58,6 +63,7 @@ export async function runBdpParcelScreening(parcel, {
     cleanups: cleanupsLoader,
     soils: soilsLoader,
     terrain: terrainLoader,
+    transportation: transportationLoader,
   });
 
   const settled = await Promise.allSettled(
@@ -73,22 +79,32 @@ export async function runBdpParcelScreening(parcel, {
       : null;
   });
 
-  const components = buildCurrentScreeningComponents({
-    flood: evidence.flood,
-    wetlands: evidence.wetlands,
-    cleanups: evidence.cleanups,
-    terrain: evidence.terrain,
-    soils: evidence.soils,
-  });
+  const components = {
+    ...buildCurrentScreeningComponents({
+      flood: evidence.flood,
+      wetlands: evidence.wetlands,
+      cleanups: evidence.cleanups,
+      terrain: evidence.terrain,
+      soils: evidence.soils,
+    }),
+    accessTraffic: scoreAccessTraffic(evidence.transportation),
+  };
   const score = calculateBdpScore({ components });
-  const redFlags = deriveBdpRedFlags({
-    parcel,
-    energy: evidence.energy,
-    flood: evidence.flood,
-    wetlands: evidence.wetlands,
-    cleanups: evidence.cleanups,
-    terrain: evidence.terrain,
-  });
+  const redFlags = Object.freeze([
+    ...deriveBdpRedFlags({
+      parcel,
+      energy: evidence.energy,
+      flood: evidence.flood,
+      wetlands: evidence.wetlands,
+      cleanups: evidence.cleanups,
+      terrain: evidence.terrain,
+    }),
+    ...deriveAccessTrafficFlags(evidence.transportation),
+  ].sort((a, b) => {
+    const severityRank = { critical: 4, high: 3, medium: 2, low: 1, info: 0 };
+    return (severityRank[b.severity] || 0) - (severityRank[a.severity] || 0)
+      || a.id.localeCompare(b.id);
+  }));
   const redFlagSummary = summarizeBdpRedFlags(redFlags);
 
   const succeededSources = BDP_SCREENING_SOURCES.filter((source) => evidence[source] !== null);
