@@ -19,6 +19,7 @@ import rrcEnergyLayer from '../bdp/overlays/rrcEnergyLayer.js';
 import nwiWetlandsLayer from '../bdp/overlays/nwiWetlandsLayer.js';
 import ssurgoSoilLayer from '../bdp/overlays/ssurgoSoilLayer.js';
 import epaCleanupLayer from '../bdp/overlays/epaCleanupLayer.js';
+import txdotTrafficLayer from '../bdp/overlays/txdotTrafficLayer.js';
 import { extendLayerStateRegistry } from '../bdp/config/layerRegistry.js';
 
 const BDP_SCREEN_LAYER_IDS = Object.freeze([
@@ -28,6 +29,7 @@ const BDP_SCREEN_LAYER_IDS = Object.freeze([
   'bdp-nwi-wetlands',
   'bdp-ssurgo-soils',
   'bdp-epa-cleanups',
+  'bdp-txdot-traffic',
 ]);
 
 /** Register the standalone layer catalog before allowing state restoration. */
@@ -71,6 +73,7 @@ export function createStandaloneData({
   dataManager.register(nwiWetlandsLayer);
   dataManager.register(ssurgoSoilLayer);
   dataManager.register(epaCleanupLayer);
+  dataManager.register(txdotTrafficLayer);
 
   dataManager.finalizeRegistrations(extendLayerStateRegistry(LAYER_STATE_REGISTRY));
 
