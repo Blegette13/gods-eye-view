@@ -29,6 +29,11 @@ export const BDP_LAYER_STATE_REGISTRY = Object.freeze([
     token: 'n',
     disposition: 'enabled-only',
   }),
+  Object.freeze({
+    id: 'bdp-txdot-traffic',
+    token: 'o',
+    disposition: 'enabled-only',
+  }),
 ]);
 
 /**
