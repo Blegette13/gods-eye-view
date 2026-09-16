@@ -40,10 +40,22 @@ function formatFeet(value) {
   return `${formatNumber(number, 0)} ft`;
 }
 
+function formatDistanceFeetFromMeters(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '—';
+  return `${formatNumber(number * 3.280839895, 0)} ft`;
+}
+
 function formatDegrees(value) {
   const number = Number(value);
   if (!Number.isFinite(number)) return '—';
   return `${formatNumber(number, 1)}°`;
+}
+
+function formatVehicles(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '—';
+  return `${formatNumber(number, 0)} / day`;
 }
 
 function row(label, value) {
@@ -136,6 +148,27 @@ function cleanupRows(metrics) {
   ];
 }
 
+function transportationRows(metrics) {
+  if (!metrics) return [row('TxDOT screening', 'No metrics returned')];
+  const roadLabel = [metrics.nearest_road_name, metrics.nearest_road_system]
+    .filter(Boolean)
+    .join(' · ');
+  return [
+    row('Legal access', 'UNVERIFIED'),
+    row('Nearest road', roadLabel || '—'),
+    row('Road distance', formatDistanceFeetFromMeters(metrics.nearest_road_m)),
+    row('Centerline on tract', metrics.road_centerline_intersects_parcel ? 'YES · MAPPED' : 'NO'),
+    row('Roads ≤ 250 ft', String(metrics.road_centerlines_within_250_ft ?? 0)),
+    row('Nearest AADT', formatVehicles(metrics.nearest_aadt_current)),
+    row('AADT route', metrics.nearest_aadt_route || '—'),
+    row('AADT distance', formatMiles(metrics.nearest_aadt_m)),
+    row('Count station', metrics.nearest_station_id || '—'),
+    row('Station distance', formatMiles(metrics.nearest_station_m)),
+    row('Latest count year', metrics.nearest_station_latest_year ? String(metrics.nearest_station_latest_year) : '—'),
+    row('5-year change', formatPercent(metrics.nearest_station_5yr_change_percent)),
+  ];
+}
+
 function soilRows(summary) {
   if (!summary) return [row('Soil screening', 'No data returned')];
   const dominant = summary.dominant;
@@ -218,6 +251,11 @@ function appendScreeningResult(containers, screening) {
     evidence.cleanups
       ? cleanupRows(evidence.cleanups)
       : [row('EPA screening', sourceErrorLabel(errors.cleanups, 'EPA cleanups'))]
+  ));
+  containers.transportation.replaceChildren(...(
+    evidence.transportation
+      ? transportationRows(evidence.transportation)
+      : [row('TxDOT screening', sourceErrorLabel(errors.transportation, 'TxDOT'))]
   ));
   containers.soils.replaceChildren(...(
     evidence.soils
@@ -319,6 +357,7 @@ export function createBdpPropertyCard({ screeningLoader = runBdpParcelScreening 
       flood: document.createElement('div'),
       wetlands: document.createElement('div'),
       cleanups: document.createElement('div'),
+      transportation: document.createElement('div'),
       soils: document.createElement('div'),
       terrain: document.createElement('div'),
     };
@@ -328,12 +367,14 @@ export function createBdpPropertyCard({ screeningLoader = runBdpParcelScreening 
     containers.flood.append(row('FEMA screening', 'Loading…'));
     containers.wetlands.append(row('NWI screening', 'Loading…'));
     containers.cleanups.append(row('EPA screening', 'Loading…'));
+    containers.transportation.append(row('TxDOT screening', 'Loading…'));
     containers.soils.append(row('Soil screening', 'Loading…'));
     containers.terrain.append(row('Terrain', 'Loading…'));
 
     body.append(
       sectionHeading('BDP INTELLIGENCE'), containers.intelligence,
       sectionHeading('RED FLAGS'), containers.flags,
+      sectionHeading('ACCESS / TXDOT TRAFFIC'), containers.transportation,
       sectionHeading('ENERGY / OIL & GAS'), containers.energy,
       sectionHeading('FLOOD / FEMA'), containers.flood,
       sectionHeading('WETLANDS'), containers.wetlands,
@@ -344,7 +385,7 @@ export function createBdpPropertyCard({ screeningLoader = runBdpParcelScreening 
 
     const disclaimer = document.createElement('p');
     disclaimer.className = 'bdp-property-disclaimer';
-    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. FEMA, RRC, NWI, EPA cleanup, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, engineering and permitting due diligence remains required.';
+    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. TxDOT roadway proximity does not prove legal access/frontage. FEMA, RRC, NWI, EPA cleanup, TxDOT, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, traffic/ROW, engineering and permitting due diligence remains required.';
     body.append(disclaimer);
 
     collapse.addEventListener('click', () => {
