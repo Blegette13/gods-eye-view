@@ -75,7 +75,9 @@ export function createStandaloneData({
   dataManager.register(epaCleanupLayer);
   dataManager.register(txdotTrafficLayer);
 
-  dataManager.finalizeRegistrations(extendLayerStateRegistry(LAYER_STATE_REGISTRY));
+  dataManager.finalizeRegistrations(
+    extendLayerStateRegistry(LAYER_STATE_REGISTRY),
+  );
 
   let parcelSearchController = null;
   const handleBdpLandSearch = async (event) => {
@@ -99,54 +101,63 @@ export function createStandaloneData({
           limit: 100,
         });
         if (signal.aborted) return;
-        window.dispatchEvent(new CustomEvent('bdp:land-search-result', {
-          detail: parcels.length
-            ? {
-                ok: true,
-                kind: 'owner',
-                query: command.value,
-                count: parcels.length,
-              }
-            : {
-                ok: false,
-                kind: 'owner',
-                query: command.value,
-                message: `No Bexar parcels found for owner ${command.value}`,
-              },
-        }));
+        window.dispatchEvent(
+          new CustomEvent('bdp:land-search-result', {
+            detail: parcels.length
+              ? {
+                  ok: true,
+                  kind: 'owner',
+                  query: command.value,
+                  count: parcels.length,
+                }
+              : {
+                  ok: false,
+                  kind: 'owner',
+                  query: command.value,
+                  message: `No Bexar parcels found for owner ${command.value}`,
+                },
+          }),
+        );
         return;
       }
 
-      const parcel = await bexarParcelLayer.focusParcel(command.value, { signal });
+      const parcel = await bexarParcelLayer.focusParcel(command.value, {
+        signal,
+      });
       if (signal.aborted) return;
 
-      window.dispatchEvent(new CustomEvent('bdp:land-search-result', {
-        detail: parcel
-          ? {
-              ok: true,
-              kind: 'parcel',
-              query: command.value,
-              parcelId: parcel.parcelId,
-              owner: parcel.owner?.name || '',
-            }
-          : {
-              ok: false,
-              kind: 'parcel',
-              query: command.value,
-              message: `No Bexar parcel found for ${command.value}`,
-            },
-      }));
+      window.dispatchEvent(
+        new CustomEvent('bdp:land-search-result', {
+          detail: parcel
+            ? {
+                ok: true,
+                kind: 'parcel',
+                query: command.value,
+                parcelId: parcel.parcelId,
+                owner: parcel.owner?.name || '',
+              }
+            : {
+                ok: false,
+                kind: 'parcel',
+                query: command.value,
+                message: `No Bexar parcel found for ${command.value}`,
+              },
+        }),
+      );
     } catch (error) {
       if (signal.aborted || error?.name === 'AbortError') return;
       console.warn('[BDP:LandSearch] lookup failed:', error);
-      window.dispatchEvent(new CustomEvent('bdp:land-search-result', {
-        detail: {
-          ok: false,
-          kind: command.kind,
-          query: command.value,
-          message: error instanceof Error ? error.message : 'Land lookup unavailable',
-        },
-      }));
+      window.dispatchEvent(
+        new CustomEvent('bdp:land-search-result', {
+          detail: {
+            ok: false,
+            kind: command.kind,
+            query: command.value,
+            message:
+              error instanceof Error ? error.message : 'Land lookup unavailable',
+          },
+        }),
+      );
     }
   };
   window.addEventListener('bdp:land-search', handleBdpLandSearch);
@@ -180,22 +191,27 @@ export function createStandaloneData({
       } catch (error) {
         if (signal.aborted || error?.name === 'AbortError') return;
         failures.push(layerId);
-        console.warn(`[BDP:LayerPreset] ${mode} failed for ${layerId}:`, error);
+        console.warn(
+          `[BDP:LayerPreset] ${mode} failed for ${layerId}:`,
+          error,
+        );
       }
     }
 
-    window.dispatchEvent(new CustomEvent('bdp:layer-preset-result', {
-      detail: {
-        ok: failures.length === 0,
-        mode,
-        enabledCount: mode === 'screen' ? changedCount : 0,
-        clearedCount: mode === 'clear' ? changedCount : 0,
-        failures,
-        message: failures.length
-          ? `BDP ${mode} completed with ${failures.length} layer issue${failures.length === 1 ? '' : 's'}`
-          : '',
-      },
-    }));
+    window.dispatchEvent(
+      new CustomEvent('bdp:layer-preset-result', {
+        detail: {
+          ok: failures.length === 0,
+          mode,
+          enabledCount: mode === 'screen' ? changedCount : 0,
+          clearedCount: mode === 'clear' ? changedCount : 0,
+          failures,
+          message: failures.length
+            ? `BDP ${mode} completed with ${failures.length} layer issue${failures.length === 1 ? '' : 's'}`
+            : '',
+        },
+      }),
+    );
   };
   window.addEventListener('bdp:layer-preset', handleBdpLayerPreset);
   defer(() => {
