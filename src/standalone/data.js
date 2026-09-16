@@ -154,7 +154,9 @@ export function createStandaloneData({
             kind: command.kind,
             query: command.value,
             message:
-              error instanceof Error ? error.message : 'Land lookup unavailable',
+              error instanceof Error
+                ? error.message
+                : 'Land lookup unavailable',
           },
         }),
       );
@@ -191,10 +193,7 @@ export function createStandaloneData({
       } catch (error) {
         if (signal.aborted || error?.name === 'AbortError') return;
         failures.push(layerId);
-        console.warn(
-          `[BDP:LayerPreset] ${mode} failed for ${layerId}:`,
-          error,
-        );
+        console.warn(`[BDP:LayerPreset] ${mode} failed for ${layerId}:`, error);
       }
     }
 
