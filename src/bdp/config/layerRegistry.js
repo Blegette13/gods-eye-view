@@ -34,6 +34,11 @@ export const BDP_LAYER_STATE_REGISTRY = Object.freeze([
     token: 'o',
     disposition: 'enabled-only',
   }),
+  Object.freeze({
+    id: 'bdp-utilities-infrastructure',
+    token: 'v',
+    disposition: 'enabled-only',
+  }),
 ]);
 
 /**
