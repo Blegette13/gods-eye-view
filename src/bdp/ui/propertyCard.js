@@ -169,6 +169,39 @@ function transportationRows(metrics) {
   ];
 }
 
+function utilityRows(metrics) {
+  if (!metrics) return [row('Utilities', 'No data returned')];
+
+  const serviceNames = Array.isArray(metrics.water_service_names)
+    ? metrics.water_service_names.filter(Boolean).join(', ')
+    : '';
+  const ccnUtilities = Array.isArray(metrics.water_ccn_utilities)
+    ? metrics.water_ccn_utilities.filter(Boolean).join(', ')
+    : '';
+  const ccnNumbers = Array.isArray(metrics.water_ccn_numbers)
+    ? metrics.water_ccn_numbers.filter(Boolean).join(', ')
+    : '';
+
+  return [
+    row('Water capacity', 'UNVERIFIED'),
+    row('Current water svc', formatPercent(metrics.water_service_overlap_percent)),
+    row('Water provider(s)', serviceNames || '—'),
+    row('Water CCN', formatPercent(metrics.water_ccn_overlap_percent)),
+    row('CCN utility', ccnUtilities || '—'),
+    row('CCN number(s)', ccnNumbers || '—'),
+    row('Electric capacity', 'UNVERIFIED'),
+    row('Nearest transmission', formatMiles(metrics.nearest_transmission_m)),
+    row('Transmission crossings', String(metrics.transmission_crossing_count ?? 0)),
+    row('Transmission on tract', formatMiles(metrics.transmission_length_on_parcel_m)),
+    row(
+      'Transmission source',
+      metrics.transmission_data_currency === 'archived-2024'
+        ? 'ARCHIVED 2024 · SCREENING'
+        : 'SCREENING ONLY',
+    ),
+  ];
+}
+
 function soilRows(summary) {
   if (!summary) return [row('Soil screening', 'No data returned')];
   const dominant = summary.dominant;
@@ -256,6 +289,11 @@ function appendScreeningResult(containers, screening) {
     evidence.transportation
       ? transportationRows(evidence.transportation)
       : [row('TxDOT screening', sourceErrorLabel(errors.transportation, 'TxDOT'))]
+  ));
+  containers.utilities.replaceChildren(...(
+    evidence.utilities
+      ? utilityRows(evidence.utilities)
+      : [row('Utilities', sourceErrorLabel(errors.utilities, 'utility GIS'))]
   ));
   containers.soils.replaceChildren(...(
     evidence.soils
@@ -358,6 +396,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       wetlands: document.createElement('div'),
       cleanups: document.createElement('div'),
       transportation: document.createElement('div'),
+      utilities: document.createElement('div'),
       soils: document.createElement('div'),
       terrain: document.createElement('div'),
     };
@@ -368,6 +407,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     containers.wetlands.append(row('NWI screening', 'Loading…'));
     containers.cleanups.append(row('EPA screening', 'Loading…'));
     containers.transportation.append(row('TxDOT screening', 'Loading…'));
+    containers.utilities.append(row('Utilities', 'Loading…'));
     containers.soils.append(row('Soil screening', 'Loading…'));
     containers.terrain.append(row('Terrain', 'Loading…'));
 
@@ -375,6 +415,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       sectionHeading('BDP INTELLIGENCE'), containers.intelligence,
       sectionHeading('RED FLAGS'), containers.flags,
       sectionHeading('ACCESS / TXDOT TRAFFIC'), containers.transportation,
+      sectionHeading('UTILITIES / INFRASTRUCTURE'), containers.utilities,
       sectionHeading('ENERGY / OIL & GAS'), containers.energy,
       sectionHeading('FLOOD / FEMA'), containers.flood,
       sectionHeading('WETLANDS'), containers.wetlands,
@@ -385,7 +426,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
 
     const disclaimer = document.createElement('p');
     disclaimer.className = 'bdp-property-disclaimer';
-    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. TxDOT roadway proximity does not prove legal access/frontage. FEMA, RRC, NWI, EPA cleanup, TxDOT, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, traffic/ROW, engineering and permitting due diligence remains required.';
+    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. TxDOT roadway proximity does not prove legal access/frontage. Utility service areas/CCNs do not prove capacity, taps, extension cost or electric service; archived transmission mapping does not prove current line/easement conditions. FEMA, RRC, NWI, EPA cleanup, TxDOT, utility GIS, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, utility, traffic/ROW, engineering and permitting due diligence remains required.';
     body.append(disclaimer);
 
     collapse.addEventListener('click', () => {
