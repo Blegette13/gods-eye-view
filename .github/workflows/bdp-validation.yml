@@ -72,7 +72,7 @@ jobs:
         if: steps.formatting.outcome == 'failure'
         run: |
           npm run format
-          git diff -- src/tooling/viteBuild.test.mjs
+          git diff -- src/standalone/data.js
           exit 1
 
       - name: Run unit tests
