@@ -68,17 +68,14 @@ test('root config retains existing named exports and standalone provider order',
     configuredNames.slice(0, localNames.length - 1),
     localNames.slice(0, -1),
   );
-  assert.deepEqual(
-    configuredNames.slice(localNames.length - 1, -1),
-    [
-      'bdp-rrc-provider',
-      'bdp-environment-provider',
-      'bdp-soil-provider',
-      'bdp-terrain-provider',
-      'bdp-transportation-provider',
-      'bdp-intelligence-provider',
-    ],
-  );
+  assert.deepEqual(configuredNames.slice(localNames.length - 1, -1), [
+    'bdp-rrc-provider',
+    'bdp-environment-provider',
+    'bdp-soil-provider',
+    'bdp-terrain-provider',
+    'bdp-transportation-provider',
+    'bdp-intelligence-provider',
+  ]);
   assert.equal(config.plugins.at(-1).name, 'gev-key-setup');
 });
 
