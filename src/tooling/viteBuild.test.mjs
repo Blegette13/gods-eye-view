@@ -62,7 +62,9 @@ test('root config retains existing named exports and standalone provider order',
   for (const [name, value] of Object.entries(providers))
     assert.equal(compatibility[name], value, name);
   const config = standaloneConfig({ mode: 'test' });
-  const localNames = providers.localProviderPlugins().map((plugin) => plugin.name);
+  const localNames = providers
+    .localProviderPlugins()
+    .map((plugin) => plugin.name);
   const configuredNames = config.plugins.slice(1).map((plugin) => plugin.name);
   assert.deepEqual(
     configuredNames.slice(0, localNames.length - 1),
