@@ -5,14 +5,14 @@ import {
   extendLayerStateRegistry,
 } from './layerRegistry.js';
 
-test('BDP layer registry adds parcel, flood, RRC, NWI, SSURGO, EPA, and TxDOT layers with unique identities', () => {
+test('BDP layer registry adds land-intelligence layers with unique identities', () => {
   const upstream = Object.freeze([
     Object.freeze({ id: 'traffic', token: 't', disposition: 'enabled-only' }),
   ]);
 
   const registry = extendLayerStateRegistry(upstream);
 
-  assert.equal(registry.length, 8);
+  assert.equal(registry.length, 9);
   assert.deepEqual(registry[0], upstream[0]);
   assert.equal(registry[1].id, 'bdp-bexar-parcels');
   assert.equal(registry[1].token, 'p');
@@ -28,9 +28,11 @@ test('BDP layer registry adds parcel, flood, RRC, NWI, SSURGO, EPA, and TxDOT la
   assert.equal(registry[6].token, 'n');
   assert.equal(registry[7].id, 'bdp-txdot-traffic');
   assert.equal(registry[7].token, 'o');
+  assert.equal(registry[8].id, 'bdp-utilities-infrastructure');
+  assert.equal(registry[8].token, 'v');
   assert.ok(BDP_LAYER_STATE_REGISTRY.every((entry) => entry.disposition === 'enabled-only'));
-  assert.equal(BDP_LAYER_STATE_REGISTRY.length, 7);
-  assert.equal(new Set(BDP_LAYER_STATE_REGISTRY.map((entry) => entry.id)).size, 7);
+  assert.equal(BDP_LAYER_STATE_REGISTRY.length, 8);
+  assert.equal(new Set(BDP_LAYER_STATE_REGISTRY.map((entry) => entry.id)).size, 8);
   assert.equal(new Set(BDP_LAYER_STATE_REGISTRY.map((entry) => entry.token)).size, 7);
 });
 
