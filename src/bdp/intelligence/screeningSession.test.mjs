@@ -70,8 +70,8 @@ test('keeps partial evidence when providers fail', async () => {
   });
 
   assert.equal(result.sourceCoveragePercent, (2 / 7) * 100);
-  assert.deepEqual(result.succeededSources.sort(), ['soils', 'terrain']);
-  assert.deepEqual(result.failedSources.sort(), ['cleanups', 'energy', 'flood', 'transportation', 'wetlands']);
+  assert.deepEqual([...result.succeededSources].sort(), ['soils', 'terrain']);
+  assert.deepEqual([...result.failedSources].sort(), ['cleanups', 'energy', 'flood', 'transportation', 'wetlands']);
   assert.equal(result.errors.energy.status, 503);
   assert.equal(result.errors.cleanups.status, 503);
   assert.equal(result.errors.transportation.status, 503);
