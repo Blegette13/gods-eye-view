@@ -56,7 +56,7 @@ async function fetchSmallJson(url) {
   return payload;
 }
 
-async function fetchTerrainScreening(input) {
+export async function screenBdpParcelTerrain(input) {
   normalizeTerrainParcelRequest(input);
   const [elevation, slope] = await Promise.all([
     fetchSmallJson(build3depStatisticsUrl(input, { mode: 'elevation' })),
@@ -110,7 +110,7 @@ async function handleBdpTerrain(request, response, next) {
         return sendJson(response, 405, { error: 'method_not_allowed' });
       }
       const input = await readJsonBody(request);
-      const metrics = await fetchTerrainScreening(input);
+      const metrics = await screenBdpParcelTerrain(input);
       return sendJson(response, 200, {
         source: 'USGS 3D Elevation Program (3DEP)',
         screeningOnly: true,
