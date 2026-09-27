@@ -127,6 +127,33 @@ async function fetchEpaCleanupParcelFeatures(parcelInput) {
   });
 }
 
+export async function screenBdpParcelWetlands(input) {
+  const sourceFeatures = await fetchNwiParcelFeatures(input);
+  const metrics = await queryPostgisJson(buildNwiOverlapSql(input, sourceFeatures));
+  return Object.freeze({
+    sourceFeatureCount: sourceFeatures.features.length,
+    metrics,
+  });
+}
+
+export async function screenBdpParcelFlood(input) {
+  const sourceFeatures = await fetchFemaParcelFeatures(input);
+  const metrics = await queryPostgisJson(buildFemaOverlapSql(input, sourceFeatures));
+  return Object.freeze({
+    sourceFeatureCount: sourceFeatures.features.length,
+    metrics,
+  });
+}
+
+export async function screenBdpParcelCleanups(input) {
+  const sourceFeatures = await fetchEpaCleanupParcelFeatures(input);
+  const metrics = await queryPostgisJson(buildEpaCleanupMetricsSql(input, sourceFeatures));
+  return Object.freeze({
+    sourceFeatureCount: sourceFeatures.features.length,
+    metrics,
+  });
+}
+
 function upstreamSource(error) {
   if (error?.code === 'FEMA_UPSTREAM_FAILED') return 'FEMA NFHL';
   if (error?.code === 'EPA_CLEANUPS_UPSTREAM_FAILED') return 'US EPA Cleanups in My Community';
@@ -193,13 +220,11 @@ async function handleBdpEnvironment(request, response, next) {
         return sendJson(response, 405, { error: 'method_not_allowed' });
       }
       const input = await readJsonBody(request);
-      const sourceFeatures = await fetchNwiParcelFeatures(input);
-      const metrics = await queryPostgisJson(buildNwiOverlapSql(input, sourceFeatures));
+      const result = await screenBdpParcelWetlands(input);
       return sendJson(response, 200, {
         source: 'U.S. Fish & Wildlife Service National Wetlands Inventory',
         screeningOnly: true,
-        sourceFeatureCount: sourceFeatures.features.length,
-        metrics,
+        ...result,
       });
     }
 
@@ -209,13 +234,11 @@ async function handleBdpEnvironment(request, response, next) {
         return sendJson(response, 405, { error: 'method_not_allowed' });
       }
       const input = await readJsonBody(request);
-      const sourceFeatures = await fetchFemaParcelFeatures(input);
-      const metrics = await queryPostgisJson(buildFemaOverlapSql(input, sourceFeatures));
+      const result = await screenBdpParcelFlood(input);
       return sendJson(response, 200, {
         source: 'FEMA National Flood Hazard Layer',
         screeningOnly: true,
-        sourceFeatureCount: sourceFeatures.features.length,
-        metrics,
+        ...result,
       });
     }
 
@@ -225,13 +248,11 @@ async function handleBdpEnvironment(request, response, next) {
         return sendJson(response, 405, { error: 'method_not_allowed' });
       }
       const input = await readJsonBody(request);
-      const sourceFeatures = await fetchEpaCleanupParcelFeatures(input);
-      const metrics = await queryPostgisJson(buildEpaCleanupMetricsSql(input, sourceFeatures));
+      const result = await screenBdpParcelCleanups(input);
       return sendJson(response, 200, {
         source: 'U.S. EPA Cleanups in My Community',
         screeningOnly: true,
-        sourceFeatureCount: sourceFeatures.features.length,
-        metrics,
+        ...result,
       });
     }
 
