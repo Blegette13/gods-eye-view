@@ -16,14 +16,19 @@ export default defineConfig(({ mode }) => {
   for (const [key, value] of Object.entries(loaded)) {
     if (process.env[key] === undefined) process.env[key] = value;
   }
+
+  const localPlugins = localProviderPlugins();
+  const keySetupPlugin = localPlugins.at(-1);
+
   return createBrowserViteConfig({
     plugins: [
-      ...localProviderPlugins(),
+      ...localPlugins.slice(0, -1),
       bdpRrcProviderPlugin(),
       bdpEnvironmentProviderPlugin(),
       bdpSoilProviderPlugin(),
       bdpTerrainProviderPlugin(),
       bdpTransportationProviderPlugin(),
+      keySetupPlugin,
     ],
     googleApiKey: process.env.GOOGLE_MAPS_API_KEY,
     cesiumToken: process.env.CESIUM_ION_TOKEN,
