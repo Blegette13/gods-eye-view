@@ -1,4 +1,4 @@
-import { runBdpParcelScreening } from '../intelligence/screeningSession.js';
+import { fetchBdpParcelIntelligence } from '../intelligence/client.js';
 
 function formatMoney(value) {
   const number = Number(value);
@@ -283,7 +283,7 @@ function actionButton(icon, label) {
   return button;
 }
 
-export function createBdpPropertyCard({ screeningLoader = runBdpParcelScreening } = {}) {
+export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntelligence } = {}) {
   const root = document.createElement('aside');
   root.id = 'bdp-property-card';
   root.className = 'bdp-property-panel';
