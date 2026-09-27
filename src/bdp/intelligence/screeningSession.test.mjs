@@ -44,10 +44,16 @@ test('collects screening evidence and derives score coverage/red flags', async (
       nearest_station_m: 1000,
       nearest_station_5yr_change_percent: 10,
     }),
+    utilitiesLoader: async () => ({
+      water_service_overlap_percent: 100,
+      water_ccn_overlap_percent: 100,
+      nearest_transmission_m: 2000,
+      transmission_crossing_count: 0,
+    }),
   });
 
   assert.equal(result.sourceCoveragePercent, 100);
-  assert.equal(result.score.coveragePercent, 31);
+  assert.equal(result.score.coveragePercent, 43);
   assert.equal(result.score.readiness, 'insufficient-evidence');
   assert.ok(result.redFlags.some((item) => item.id === 'pipeline-crossing'));
   assert.ok(result.redFlags.some((item) => item.id === 'nearby-epa-cleanup'));
@@ -55,6 +61,8 @@ test('collects screening evidence and derives score coverage/red flags', async (
   assert.deepEqual(result.failedSources, []);
   assert.ok(result.score.components.environmental.evidence.some((item) => item.includes('Superfund')));
   assert.equal(result.score.components.accessTraffic.status, 'preliminary');
+  assert.equal(result.score.components.utilitiesInfrastructure.status, 'preliminary');
+  assert.ok(result.redFlags.some((item) => item.id === 'utility-capacity-unverified'));
 });
 
 test('keeps partial evidence when providers fail', async () => {
@@ -67,17 +75,20 @@ test('keeps partial evidence when providers fail', async () => {
     soilsLoader: async () => ({ dominant: { mappedSharePercent: 90, farmlandClass: '' } }),
     terrainLoader: async () => ({ slope: { meanDegrees: 4, maxDegrees: 9 } }),
     transportationLoader: async () => { throw unavailable; },
+    utilitiesLoader: async () => { throw unavailable; },
   });
 
-  assert.equal(result.sourceCoveragePercent, (2 / 7) * 100);
+  assert.equal(result.sourceCoveragePercent, (2 / 8) * 100);
   assert.deepEqual([...result.succeededSources].sort(), ['soils', 'terrain']);
-  assert.deepEqual([...result.failedSources].sort(), ['cleanups', 'energy', 'flood', 'transportation', 'wetlands']);
+  assert.deepEqual([...result.failedSources].sort(), ['cleanups', 'energy', 'flood', 'transportation', 'utilities', 'wetlands']);
   assert.equal(result.errors.energy.status, 503);
   assert.equal(result.errors.cleanups.status, 503);
   assert.equal(result.errors.transportation.status, 503);
+  assert.equal(result.errors.utilities.status, 503);
   assert.equal(result.score.coveragePercent, 5);
   assert.equal(result.score.components.environmental.status, 'unknown');
   assert.equal(result.score.components.floodWater.status, 'unknown');
   assert.equal(result.score.components.terrainSoil.status, 'preliminary');
   assert.equal(result.score.components.accessTraffic.status, 'unknown');
+  assert.equal(result.score.components.utilitiesInfrastructure.status, 'unknown');
 });
