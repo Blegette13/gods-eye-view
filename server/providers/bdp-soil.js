@@ -31,7 +31,7 @@ async function readJsonBody(request) {
   return JSON.parse(text);
 }
 
-async function fetchSsurgoScreening(input) {
+export async function screenBdpParcelSoils(input) {
   const request = buildSsurgoParcelRequest(input);
   const response = await fetch(request.url, {
     ...request.init,
@@ -104,7 +104,7 @@ async function handleBdpSoil(request, response, next) {
         return sendJson(response, 405, { error: 'method_not_allowed' });
       }
       const input = await readJsonBody(request);
-      const summary = await fetchSsurgoScreening(input);
+      const summary = await screenBdpParcelSoils(input);
       return sendJson(response, 200, {
         source: 'USDA NRCS SSURGO / Soil Data Access',
         screeningOnly: true,
