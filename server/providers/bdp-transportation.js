@@ -86,6 +86,29 @@ async function fetchGeoJson(url, label, normalize) {
   return normalize(JSON.parse(text));
 }
 
+export async function screenBdpParcelTransportation(input) {
+  const urls = buildTxdotParcelQueryUrls(input);
+  const [roadways, aadt, history] = await Promise.all([
+    fetchGeoJson(urls.roadways, 'TxDOT roadways', normalizeTxdotRoadways),
+    fetchGeoJson(urls.aadt, 'TxDOT AADT', normalizeTxdotAadt),
+    fetchGeoJson(urls.history, 'TxDOT AADT history', normalizeTxdotAadtHistory),
+  ]);
+  const metrics = await queryPostgisJson(buildTxdotParcelMetricsSql(input, {
+    roadways,
+    aadt,
+    history,
+  }));
+
+  return Object.freeze({
+    sourceFeatureCounts: Object.freeze({
+      roadways: roadways.features.length,
+      aadt: aadt.features.length,
+      history: history.features.length,
+    }),
+    metrics,
+  });
+}
+
 function publicError(error) {
   if (error?.code === 'BDP_POSTGIS_NOT_CONFIGURED' || error?.code === 'ENOENT') {
     return {
@@ -141,27 +164,12 @@ async function handleTransportation(request, response, next) {
     }
 
     const input = await readJsonBody(request);
-    const urls = buildTxdotParcelQueryUrls(input);
-    const [roadways, aadt, history] = await Promise.all([
-      fetchGeoJson(urls.roadways, 'TxDOT roadways', normalizeTxdotRoadways),
-      fetchGeoJson(urls.aadt, 'TxDOT AADT', normalizeTxdotAadt),
-      fetchGeoJson(urls.history, 'TxDOT AADT history', normalizeTxdotAadtHistory),
-    ]);
-    const metrics = await queryPostgisJson(buildTxdotParcelMetricsSql(input, {
-      roadways,
-      aadt,
-      history,
-    }));
+    const result = await screenBdpParcelTransportation(input);
 
     return sendJson(response, 200, {
       source: 'Texas Department of Transportation GRID / Traffic Monitoring Program',
       screeningOnly: true,
-      sourceFeatureCounts: {
-        roadways: roadways.features.length,
-        aadt: aadt.features.length,
-        history: history.features.length,
-      },
-      metrics,
+      ...result,
     });
   } catch (error) {
     const { status, payload } = publicError(error);
