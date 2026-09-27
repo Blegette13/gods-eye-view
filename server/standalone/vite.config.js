@@ -7,6 +7,7 @@ import { bdpEnvironmentProviderPlugin } from '../providers/bdp-environment.js';
 import { bdpSoilProviderPlugin } from '../providers/bdp-soil.js';
 import { bdpTerrainProviderPlugin } from '../providers/bdp-terrain.js';
 import { bdpTransportationProviderPlugin } from '../providers/bdp-transportation.js';
+import { bdpIntelligenceProviderPlugin } from '../providers/bdp-intelligence.js';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -28,6 +29,7 @@ export default defineConfig(({ mode }) => {
       bdpSoilProviderPlugin(),
       bdpTerrainProviderPlugin(),
       bdpTransportationProviderPlugin(),
+      bdpIntelligenceProviderPlugin(),
       keySetupPlugin,
     ],
     googleApiKey: process.env.GOOGLE_MAPS_API_KEY,
