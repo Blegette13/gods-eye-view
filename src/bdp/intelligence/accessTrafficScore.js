@@ -63,7 +63,7 @@ export function scoreAccessTraffic(transportation) {
     score: clamp(score, 0, 100),
     confidence: 0.55,
     source: 'TxDOT GRID roadways + AADT + five-year count-station screening',
-    note: 'Mapped roadway proximity/AADT do not establish legal access, frontage, driveway approval, ROW dimensions or site-specific traffic impact.',
+    note: 'Mapped roadway proximity/AADT evidence does not establish legal access, frontage, driveway approval, ROW dimensions or site-specific traffic impact.',
     evidence: Object.freeze(evidence),
   });
 }
