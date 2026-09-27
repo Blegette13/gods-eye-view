@@ -7,13 +7,16 @@ import {
 import { fetchBdpParcelSoils } from '../soil/client.js';
 import { fetchBdpParcelTerrain } from '../terrain/client.js';
 import { fetchBdpParcelTransportation } from '../transportation/client.js';
+import { fetchBdpParcelUtilities } from '../utilities/client.js';
 import {
   buildCurrentScreeningComponents,
   calculateBdpScore,
 } from './acquisitionScore.js';
 import { scoreAccessTraffic } from './accessTrafficScore.js';
+import { scoreUtilitiesInfrastructure } from './utilitiesScore.js';
 import { deriveBdpRedFlags, summarizeBdpRedFlags } from './redFlags.js';
 import { deriveAccessTrafficFlags } from './transportationFlags.js';
+import { deriveUtilitiesFlags } from './utilitiesFlags.js';
 
 export const BDP_SCREENING_SOURCES = Object.freeze([
   'energy',
@@ -23,6 +26,7 @@ export const BDP_SCREENING_SOURCES = Object.freeze([
   'soils',
   'terrain',
   'transportation',
+  'utilities',
 ]);
 
 function serializeError(error) {
@@ -51,6 +55,7 @@ export async function runBdpParcelScreening(parcel, {
   soilsLoader = fetchBdpParcelSoils,
   terrainLoader = fetchBdpParcelTerrain,
   transportationLoader = fetchBdpParcelTransportation,
+  utilitiesLoader = fetchBdpParcelUtilities,
 } = {}) {
   if (!parcel?.property?.geometry) {
     throw new Error('Parcel geometry is required for BDP screening');
@@ -64,6 +69,7 @@ export async function runBdpParcelScreening(parcel, {
     soils: soilsLoader,
     terrain: terrainLoader,
     transportation: transportationLoader,
+    utilities: utilitiesLoader,
   });
 
   const settled = await Promise.allSettled(
@@ -88,6 +94,7 @@ export async function runBdpParcelScreening(parcel, {
       soils: evidence.soils,
     }),
     accessTraffic: scoreAccessTraffic(evidence.transportation),
+    utilitiesInfrastructure: scoreUtilitiesInfrastructure(evidence.utilities),
   };
   const score = calculateBdpScore({ components });
   const redFlags = Object.freeze([
@@ -100,6 +107,7 @@ export async function runBdpParcelScreening(parcel, {
       terrain: evidence.terrain,
     }),
     ...deriveAccessTrafficFlags(evidence.transportation),
+    ...deriveUtilitiesFlags(evidence.utilities),
   ].sort((a, b) => {
     const severityRank = { critical: 4, high: 3, medium: 2, low: 1, info: 0 };
     return (severityRank[b.severity] || 0) - (severityRank[a.severity] || 0)
