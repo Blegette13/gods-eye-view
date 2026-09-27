@@ -76,6 +76,10 @@ function featureRequest(url) {
   };
 }
 
+export async function screenBdpParcelEnergy(input) {
+  return queryPostgisJson(buildRrcEnergySql(input));
+}
+
 function publicError(error) {
   if (error?.code === 'BDP_POSTGIS_NOT_CONFIGURED' || error?.code === 'ENOENT') {
     return {
@@ -140,7 +144,7 @@ async function handleBdpRrc(request, response, next) {
         return sendJson(response, 405, { error: 'method_not_allowed' });
       }
       const input = await readJsonBody(request);
-      const payload = await queryPostgisJson(buildRrcEnergySql(input));
+      const payload = await screenBdpParcelEnergy(input);
       return sendJson(response, 200, {
         source: 'Railroad Commission of Texas GIS',
         screeningOnly: true,
