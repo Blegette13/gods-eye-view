@@ -77,6 +77,7 @@ test('root config retains existing named exports and standalone provider order',
     'bdp-terrain-provider',
     'bdp-transportation-provider',
     'bdp-utilities-provider',
+    'bdp-water-rights-provider',
     'bdp-intelligence-provider',
   ]);
   assert.equal(config.plugins.at(-1).name, 'gev-key-setup');
