@@ -211,15 +211,6 @@ export function deriveBdpRedFlags({ parcel, energy, flood, wetlands, cleanups, t
     source: 'BDP due-diligence rule',
     requiresVerification: true,
   }));
-  flags.push(flag({
-    id: 'water-rights-ownership-unverified',
-    severity: 'info',
-    title: 'Water-right ownership not verified',
-    detail: 'Nearby diversion points or water-right records do not establish that a water right belongs to the parcel owner.',
-    source: 'BDP due-diligence rule',
-    requiresVerification: true,
-  }));
-
   return Object.freeze(flags.sort((a, b) => {
     const severity = SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity];
     return severity || a.id.localeCompare(b.id);
