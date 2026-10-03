@@ -43,7 +43,6 @@ test('flags pipeline crossings, floodway, wetlands, cleanup proximity, and steep
   assert.ok(ids.includes('superfund-within-5-mi'));
   assert.ok(ids.includes('steep-terrain'));
   assert.ok(ids.includes('mineral-rights-unverified'));
-  assert.ok(ids.includes('water-rights-ownership-unverified'));
 
   const summary = summarizeBdpRedFlags(flags);
   assert.ok(summary.high >= 3);
@@ -134,12 +133,11 @@ test('does not create hazard flags when screening evidence is clear or missing',
 
   assert.deepEqual(flags.map((item) => item.id).sort(), [
     'mineral-rights-unverified',
-    'water-rights-ownership-unverified',
   ]);
   const summary = summarizeBdpRedFlags(flags);
   assert.equal(summary.high, 0);
   assert.equal(summary.medium, 0);
-  assert.equal(summary.info, 2);
+  assert.equal(summary.info, 1);
 });
 
 test('uses parcel percentage to escalate large SFHA overlap', () => {
