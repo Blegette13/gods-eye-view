@@ -13,6 +13,7 @@ import { screenBdpParcelSoils } from './bdp-soil.js';
 import { screenBdpParcelTerrain } from './bdp-terrain.js';
 import { screenBdpParcelTransportation } from './bdp-transportation.js';
 import { screenBdpParcelUtilities } from './bdp-utilities.js';
+import { screenBdpParcelWaterRights } from './bdp-water-rights.js';
 
 const MAX_BODY_BYTES = 1_000_000;
 
@@ -95,6 +96,9 @@ export async function screenBdpParcelIntelligence(parcelInput) {
     utilitiesLoader: screened(async (candidate) => (
       await screenBdpParcelUtilities(parcelGeometryInput(candidate))
     ).metrics),
+    waterRightsLoader: screened((candidate) => (
+      screenBdpParcelWaterRights(parcelGeometryInput(candidate))
+    )),
   });
 }
 
