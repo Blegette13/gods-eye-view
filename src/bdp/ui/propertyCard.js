@@ -202,6 +202,19 @@ function utilityRows(metrics) {
   ];
 }
 
+function waterRightsRows(metrics) {
+  if (!metrics) return [row('TCEQ water rights', 'No data returned')];
+
+  return [
+    row('Ownership', 'UNVERIFIED'),
+    row('Nearest mapped point', formatMiles(metrics.nearest_water_right_point_m)),
+    row('Points on parcel', String(metrics.water_right_points_on_parcel ?? 0)),
+    row('Points ≤ 1 mi', String(metrics.water_right_points_within_1_mi ?? 0)),
+    row('Points ≤ 5 mi', String(metrics.water_right_points_within_5_mi ?? 0)),
+    row('Distinct rights ≤ 5 mi', String(metrics.distinct_water_rights_within_5_mi ?? 0)),
+  ];
+}
+
 function soilRows(summary) {
   if (!summary) return [row('Soil screening', 'No data returned')];
   const dominant = summary.dominant;
@@ -294,6 +307,11 @@ function appendScreeningResult(containers, screening) {
     evidence.utilities
       ? utilityRows(evidence.utilities)
       : [row('Utilities', sourceErrorLabel(errors.utilities, 'utility GIS'))]
+  ));
+  containers.waterRights.replaceChildren(...(
+    evidence.waterRights
+      ? waterRightsRows(evidence.waterRights)
+      : [row('TCEQ water rights', sourceErrorLabel(errors.waterRights, 'TCEQ water rights'))]
   ));
   containers.soils.replaceChildren(...(
     evidence.soils
@@ -397,6 +415,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       cleanups: document.createElement('div'),
       transportation: document.createElement('div'),
       utilities: document.createElement('div'),
+      waterRights: document.createElement('div'),
       soils: document.createElement('div'),
       terrain: document.createElement('div'),
     };
@@ -408,6 +427,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     containers.cleanups.append(row('EPA screening', 'Loading…'));
     containers.transportation.append(row('TxDOT screening', 'Loading…'));
     containers.utilities.append(row('Utilities', 'Loading…'));
+    containers.waterRights.append(row('TCEQ water rights', 'Loading…'));
     containers.soils.append(row('Soil screening', 'Loading…'));
     containers.terrain.append(row('Terrain', 'Loading…'));
 
@@ -416,6 +436,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       sectionHeading('RED FLAGS'), containers.flags,
       sectionHeading('ACCESS / TXDOT TRAFFIC'), containers.transportation,
       sectionHeading('UTILITIES / INFRASTRUCTURE'), containers.utilities,
+      sectionHeading('SURFACE WATER RIGHTS / TCEQ'), containers.waterRights,
       sectionHeading('ENERGY / OIL & GAS'), containers.energy,
       sectionHeading('FLOOD / FEMA'), containers.flood,
       sectionHeading('WETLANDS'), containers.wetlands,
@@ -426,7 +447,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
 
     const disclaimer = document.createElement('p');
     disclaimer.className = 'bdp-property-disclaimer';
-    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. TxDOT roadway proximity does not prove legal access/frontage. Utility service areas/CCNs do not prove capacity, taps, extension cost or electric service; archived transmission mapping does not prove current line/easement conditions. FEMA, RRC, NWI, EPA cleanup, TxDOT, utility GIS, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, utility, traffic/ROW, engineering and permitting due diligence remains required.';
+    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. TxDOT roadway proximity does not prove legal access/frontage. Utility service areas/CCNs do not prove capacity, taps, extension cost or electric service; archived transmission mapping does not prove current line/easement conditions. TCEQ water-right points do not prove that a right belongs to the parcel owner, conveys with the tract, or provides available supply. FEMA, RRC, NWI, EPA cleanup, TxDOT, utility GIS, TCEQ water-right GIS, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, utility, water-right, traffic/ROW, engineering and permitting due diligence remains required.';
     body.append(disclaimer);
 
     collapse.addEventListener('click', () => {
