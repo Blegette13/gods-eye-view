@@ -50,6 +50,13 @@ test('collects screening evidence and derives score coverage/red flags', async (
       nearest_transmission_m: 2000,
       transmission_crossing_count: 0,
     }),
+    waterRightsLoader: async () => ({
+      nearest_water_right_point_m: 500,
+      water_right_points_on_parcel: 0,
+      water_right_points_within_1_mi: 1,
+      water_right_points_within_5_mi: 3,
+      distinct_water_rights_within_5_mi: 2,
+    }),
   });
 
   assert.equal(result.sourceCoveragePercent, 100);
@@ -63,6 +70,7 @@ test('collects screening evidence and derives score coverage/red flags', async (
   assert.equal(result.score.components.accessTraffic.status, 'preliminary');
   assert.equal(result.score.components.utilitiesInfrastructure.status, 'preliminary');
   assert.ok(result.redFlags.some((item) => item.id === 'utility-capacity-unverified'));
+  assert.ok(result.redFlags.some((item) => item.id === 'tceq-water-right-point-nearby'));
 });
 
 test('keeps partial evidence when providers fail', async () => {
@@ -76,15 +84,17 @@ test('keeps partial evidence when providers fail', async () => {
     terrainLoader: async () => ({ slope: { meanDegrees: 4, maxDegrees: 9 } }),
     transportationLoader: async () => { throw unavailable; },
     utilitiesLoader: async () => { throw unavailable; },
+    waterRightsLoader: async () => { throw unavailable; },
   });
 
-  assert.equal(result.sourceCoveragePercent, (2 / 8) * 100);
+  assert.equal(result.sourceCoveragePercent, (2 / 9) * 100);
   assert.deepEqual([...result.succeededSources].sort(), ['soils', 'terrain']);
-  assert.deepEqual([...result.failedSources].sort(), ['cleanups', 'energy', 'flood', 'transportation', 'utilities', 'wetlands']);
+  assert.deepEqual([...result.failedSources].sort(), ['cleanups', 'energy', 'flood', 'transportation', 'utilities', 'waterRights', 'wetlands']);
   assert.equal(result.errors.energy.status, 503);
   assert.equal(result.errors.cleanups.status, 503);
   assert.equal(result.errors.transportation.status, 503);
   assert.equal(result.errors.utilities.status, 503);
+  assert.equal(result.errors.waterRights.status, 503);
   assert.equal(result.score.coveragePercent, 5);
   assert.equal(result.score.components.environmental.status, 'unknown');
   assert.equal(result.score.components.floodWater.status, 'unknown');
