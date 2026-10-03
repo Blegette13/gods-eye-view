@@ -8,6 +8,7 @@ import { fetchBdpParcelSoils } from '../soil/client.js';
 import { fetchBdpParcelTerrain } from '../terrain/client.js';
 import { fetchBdpParcelTransportation } from '../transportation/client.js';
 import { fetchBdpParcelUtilities } from '../utilities/client.js';
+import { fetchBdpParcelWaterRights } from '../water/client.js';
 import {
   buildCurrentScreeningComponents,
   calculateBdpScore,
@@ -17,6 +18,7 @@ import { scoreUtilitiesInfrastructure } from './utilitiesScore.js';
 import { deriveBdpRedFlags, summarizeBdpRedFlags } from './redFlags.js';
 import { deriveAccessTrafficFlags } from './transportationFlags.js';
 import { deriveUtilitiesFlags } from './utilitiesFlags.js';
+import { deriveWaterRightsFlags } from './waterRightsFlags.js';
 
 export const BDP_SCREENING_SOURCES = Object.freeze([
   'energy',
@@ -27,6 +29,7 @@ export const BDP_SCREENING_SOURCES = Object.freeze([
   'terrain',
   'transportation',
   'utilities',
+  'waterRights',
 ]);
 
 function serializeError(error) {
@@ -56,6 +59,7 @@ export async function runBdpParcelScreening(parcel, {
   terrainLoader = fetchBdpParcelTerrain,
   transportationLoader = fetchBdpParcelTransportation,
   utilitiesLoader = fetchBdpParcelUtilities,
+  waterRightsLoader = fetchBdpParcelWaterRights,
 } = {}) {
   if (!parcel?.property?.geometry) {
     throw new Error('Parcel geometry is required for BDP screening');
@@ -70,6 +74,7 @@ export async function runBdpParcelScreening(parcel, {
     terrain: terrainLoader,
     transportation: transportationLoader,
     utilities: utilitiesLoader,
+    waterRights: waterRightsLoader,
   });
 
   const settled = await Promise.allSettled(
@@ -108,6 +113,7 @@ export async function runBdpParcelScreening(parcel, {
     }),
     ...deriveAccessTrafficFlags(evidence.transportation),
     ...deriveUtilitiesFlags(evidence.utilities),
+    ...deriveWaterRightsFlags(evidence.waterRights),
   ].sort((a, b) => {
     const severityRank = { critical: 4, high: 3, medium: 2, low: 1, info: 0 };
     return (severityRank[b.severity] || 0) - (severityRank[a.severity] || 0)
