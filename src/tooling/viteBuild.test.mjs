@@ -62,10 +62,24 @@ test('root config retains existing named exports and standalone provider order',
   for (const [name, value] of Object.entries(providers))
     assert.equal(compatibility[name], value, name);
   const config = standaloneConfig({ mode: 'test' });
+  const localNames = providers
+    .localProviderPlugins()
+    .map((plugin) => plugin.name);
+  const configuredNames = config.plugins.slice(1).map((plugin) => plugin.name);
   assert.deepEqual(
-    config.plugins.slice(1).map((plugin) => plugin.name),
-    providers.localProviderPlugins().map((plugin) => plugin.name),
+    configuredNames.slice(0, localNames.length - 1),
+    localNames.slice(0, -1),
   );
+  assert.deepEqual(configuredNames.slice(localNames.length - 1, -1), [
+    'bdp-rrc-provider',
+    'bdp-environment-provider',
+    'bdp-soil-provider',
+    'bdp-terrain-provider',
+    'bdp-transportation-provider',
+    'bdp-utilities-provider',
+    'bdp-water-rights-provider',
+    'bdp-intelligence-provider',
+  ]);
   assert.equal(config.plugins.at(-1).name, 'gev-key-setup');
 });
 
