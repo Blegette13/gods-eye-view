@@ -33,7 +33,7 @@ test('BDP layer registry adds land-intelligence layers with unique identities', 
   assert.ok(BDP_LAYER_STATE_REGISTRY.every((entry) => entry.disposition === 'enabled-only'));
   assert.equal(BDP_LAYER_STATE_REGISTRY.length, 8);
   assert.equal(new Set(BDP_LAYER_STATE_REGISTRY.map((entry) => entry.id)).size, 8);
-  assert.equal(new Set(BDP_LAYER_STATE_REGISTRY.map((entry) => entry.token)).size, 7);
+  assert.equal(new Set(BDP_LAYER_STATE_REGISTRY.map((entry) => entry.token)).size, 8);
 });
 
 test('BDP extension does not mutate the upstream registry', () => {
