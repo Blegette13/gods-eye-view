@@ -1,4 +1,7 @@
-import { BDP_WATER_API_BASE } from './apiContract.js';
+import {
+  BDP_WATER_API_BASE,
+  normalizeWaterRightsBounds,
+} from './apiContract.js';
 
 async function readJsonResponse(response, label) {
   let payload = null;
@@ -15,6 +18,37 @@ async function readJsonResponse(response, label) {
     throw error;
   }
 
+  return payload;
+}
+
+export function buildTceqWaterRightFeaturesUrl(boundsInput) {
+  const bounds = normalizeWaterRightsBounds(boundsInput);
+  const params = new URLSearchParams({
+    west: String(bounds.west),
+    south: String(bounds.south),
+    east: String(bounds.east),
+    north: String(bounds.north),
+  });
+  return `${BDP_WATER_API_BASE}/features?${params.toString()}`;
+}
+
+export async function fetchTceqWaterRightFeatures(
+  bounds,
+  { signal, fetchImpl = globalThis.fetch } = {},
+) {
+  if (typeof fetchImpl !== 'function') throw new Error('A fetch implementation is required');
+  const response = await fetchImpl(buildTceqWaterRightFeaturesUrl(bounds), {
+    signal,
+    headers: { accept: 'application/json' },
+  });
+  const payload = await readJsonResponse(response, 'BDP TCEQ water-right feature service');
+  if (
+    !payload?.points
+    || payload.points.type !== 'FeatureCollection'
+    || !Array.isArray(payload.points.features)
+  ) {
+    throw new Error('BDP TCEQ water-right feature service returned malformed GeoJSON');
+  }
   return payload;
 }
 
