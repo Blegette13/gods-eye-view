@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import {
   BDP_WATER_API_BASE,
   buildTceqParcelWaterSql,
+  buildTceqWaterRightFeaturesSql,
 } from '../../src/bdp/water/apiContract.js';
 
 const execFileAsync = promisify(execFile);
@@ -119,22 +120,42 @@ async function handleWaterRights(request, response, next) {
   if (!url.pathname.startsWith(BDP_WATER_API_BASE)) return next();
 
   try {
-    if (url.pathname !== `${BDP_WATER_API_BASE}/rights`) {
-      return sendJson(response, 404, { error: 'not_found' });
-    }
-    if (request.method !== 'POST') {
-      response.setHeader('Allow', 'POST');
-      return sendJson(response, 405, { error: 'method_not_allowed' });
+    if (url.pathname === `${BDP_WATER_API_BASE}/features`) {
+      if (request.method !== 'GET') {
+        response.setHeader('Allow', 'GET');
+        return sendJson(response, 405, { error: 'method_not_allowed' });
+      }
+      const payload = await queryPostgisJson(buildTceqWaterRightFeaturesSql({
+        west: url.searchParams.get('west'),
+        south: url.searchParams.get('south'),
+        east: url.searchParams.get('east'),
+        north: url.searchParams.get('north'),
+      }));
+      return sendJson(response, 200, payload || {
+        source: 'Texas Commission on Environmental Quality surface-water rights GIS',
+        screeningOnly: true,
+        ownershipInferred: false,
+        points: { type: 'FeatureCollection', features: [] },
+      });
     }
 
-    const input = await readJsonBody(request);
-    const metrics = await screenBdpParcelWaterRights(input);
-    return sendJson(response, 200, {
-      source: 'Texas Commission on Environmental Quality surface-water rights',
-      screeningOnly: true,
-      ownershipInferred: false,
-      metrics,
-    });
+    if (url.pathname === `${BDP_WATER_API_BASE}/rights`) {
+      if (request.method !== 'POST') {
+        response.setHeader('Allow', 'POST');
+        return sendJson(response, 405, { error: 'method_not_allowed' });
+      }
+
+      const input = await readJsonBody(request);
+      const metrics = await screenBdpParcelWaterRights(input);
+      return sendJson(response, 200, {
+        source: 'Texas Commission on Environmental Quality surface-water rights',
+        screeningOnly: true,
+        ownershipInferred: false,
+        metrics,
+      });
+    }
+
+    return sendJson(response, 404, { error: 'not_found' });
   } catch (error) {
     const { status, payload } = publicError(error);
     if (status >= 500) console.warn('[BDP:Water Rights Provider]', error?.message || error);
