@@ -39,6 +39,11 @@ export const BDP_LAYER_STATE_REGISTRY = Object.freeze([
     token: 'v',
     disposition: 'enabled-only',
   }),
+  Object.freeze({
+    id: 'bdp-tceq-water-rights',
+    token: 'y',
+    disposition: 'enabled-only',
+  }),
 ]);
 
 /**
