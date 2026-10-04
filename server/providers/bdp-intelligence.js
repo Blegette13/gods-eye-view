@@ -7,6 +7,7 @@ import { screenBdpParcelEnergy } from './bdp-rrc.js';
 import {
   screenBdpParcelCleanups,
   screenBdpParcelFlood,
+  screenBdpParcelMsw,
   screenBdpParcelWetlands,
 } from './bdp-environment.js';
 import { screenBdpParcelSoils } from './bdp-soil.js';
@@ -87,6 +88,9 @@ export async function screenBdpParcelIntelligence(parcelInput) {
     ).metrics),
     cleanupsLoader: screened(async (candidate) => (
       await screenBdpParcelCleanups(parcelGeometryInput(candidate))
+    ).metrics),
+    mswLoader: screened(async (candidate) => (
+      await screenBdpParcelMsw(parcelGeometryInput(candidate))
     ).metrics),
     soilsLoader: screened((candidate) => screenBdpParcelSoils(parcelGeometryInput(candidate))),
     terrainLoader: screened((candidate) => screenBdpParcelTerrain(parcelGeometryInput(candidate))),
