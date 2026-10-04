@@ -18,7 +18,7 @@ test('cemetery intersection is high severity and restricted archaeology stays un
   assert.equal(cemetery.evidence.overlapAcres, 2.5);
 
   const archaeology = flags.find((item) => item.id === 'archeology-public-screen-incomplete');
-  assert.equal(archeology.severity, 'info');
+  assert.equal(archaeology.severity, 'info');
   assert.match(archaeology.detail, /must not be interpreted as archeological clearance/i);
 });
 
