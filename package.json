@@ -50,7 +50,9 @@
     "test": "node scripts/run-unit-tests.mjs",
     "test:track": "node scripts/track-regression.mjs",
     "qa:map-source-tray": "node scripts/qa-map-source-tray.mjs",
-    "check:boundaries": "node scripts/check-package-boundaries.mjs"
+    "check:boundaries": "node scripts/check-package-boundaries.mjs",
+    "bdp:tceq-msw:download": "node scripts/bdp/tceq-msw-download.mjs",
+    "bdp:tceq-msw:import": "node scripts/bdp/tceq-msw-import.mjs"
   },
   "dependencies": {
     "@mapbox/vector-tile": "^3.0.0",
