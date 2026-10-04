@@ -2,6 +2,7 @@ import { fetchBdpParcelEnergy } from '../rrc/client.js';
 import {
   fetchBdpParcelCleanups,
   fetchBdpParcelFlood,
+  fetchBdpParcelMsw,
   fetchBdpParcelWetlands,
 } from '../environment/client.js';
 import { fetchBdpParcelSoils } from '../soil/client.js';
@@ -19,12 +20,14 @@ import { deriveBdpRedFlags, summarizeBdpRedFlags } from './redFlags.js';
 import { deriveAccessTrafficFlags } from './transportationFlags.js';
 import { deriveUtilitiesFlags } from './utilitiesFlags.js';
 import { deriveWaterRightsFlags } from './waterRightsFlags.js';
+import { deriveMswFlags } from './mswFlags.js';
 
 export const BDP_SCREENING_SOURCES = Object.freeze([
   'energy',
   'flood',
   'wetlands',
   'cleanups',
+  'msw',
   'soils',
   'terrain',
   'transportation',
@@ -55,6 +58,7 @@ export async function runBdpParcelScreening(parcel, {
   floodLoader = fetchBdpParcelFlood,
   wetlandsLoader = fetchBdpParcelWetlands,
   cleanupsLoader = fetchBdpParcelCleanups,
+  mswLoader = fetchBdpParcelMsw,
   soilsLoader = fetchBdpParcelSoils,
   terrainLoader = fetchBdpParcelTerrain,
   transportationLoader = fetchBdpParcelTransportation,
@@ -70,6 +74,7 @@ export async function runBdpParcelScreening(parcel, {
     flood: floodLoader,
     wetlands: wetlandsLoader,
     cleanups: cleanupsLoader,
+    msw: mswLoader,
     soils: soilsLoader,
     terrain: terrainLoader,
     transportation: transportationLoader,
@@ -95,6 +100,7 @@ export async function runBdpParcelScreening(parcel, {
       flood: evidence.flood,
       wetlands: evidence.wetlands,
       cleanups: evidence.cleanups,
+      msw: evidence.msw,
       terrain: evidence.terrain,
       soils: evidence.soils,
     }),
@@ -114,6 +120,7 @@ export async function runBdpParcelScreening(parcel, {
     ...deriveAccessTrafficFlags(evidence.transportation),
     ...deriveUtilitiesFlags(evidence.utilities),
     ...deriveWaterRightsFlags(evidence.waterRights),
+    ...deriveMswFlags(evidence.msw),
   ].sort((a, b) => {
     const severityRank = { critical: 4, high: 3, medium: 2, low: 1, info: 0 };
     return (severityRank[b.severity] || 0) - (severityRank[a.severity] || 0)
