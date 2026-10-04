@@ -12,7 +12,7 @@ test('TCEQ MSW catalog uses the official statewide files', () => {
   assert.equal(TCEQ_MSW_DATASETS.revoked.filename, 'msw-revoked-or-not-issued-texas.xls');
   assert.equal(TCEQ_MSW_DATASETS.unnumbered.filename, 'msw-unum-texas.xlsx');
   for (const spec of Object.values(TCEQ_MSW_DATASETS)) {
-    assert.match(spec.url, /^https://www.tceq.texas.gov//);
+    assert.match(spec.url, /^https:\/\/www\.tceq\.texas\.gov\//);
   }
 });
 
