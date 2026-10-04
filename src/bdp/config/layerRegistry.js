@@ -44,6 +44,11 @@ export const BDP_LAYER_STATE_REGISTRY = Object.freeze([
     token: 'y',
     disposition: 'enabled-only',
   }),
+  Object.freeze({
+    id: 'bdp-tceq-msw',
+    token: 'z',
+    disposition: 'enabled-only',
+  }),
 ]);
 
 /**
