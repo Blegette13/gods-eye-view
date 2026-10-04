@@ -4,6 +4,7 @@ export const BDP_CULTURAL_API_BASE = '/api/bdp/cultural';
 export const THC_CEMETERY_LAYER_URL =
   'https://services7.arcgis.com/2hv9bZMrcgZpr7i9/ArcGIS/rest/services/Historical/FeatureServer/5';
 export const THC_CEMETERY_MAX_FEATURES = 2_000;
+export const THC_CEMETERY_MAX_VIEW_SPAN_DEGREES = 0.75;
 export const THC_CEMETERY_PAD_DEGREES = 0.08;
 
 const OUT_FIELDS = [
@@ -31,6 +32,56 @@ function paddedBounds(bounds, pad = THC_CEMETERY_PAD_DEGREES) {
     east: Math.min(180, bounds.east + pad),
     north: Math.min(90, bounds.north + pad),
   });
+}
+
+export function normalizeCemeteryBounds(input = {}) {
+  const bounds = {
+    west: Number(input.west),
+    south: Number(input.south),
+    east: Number(input.east),
+    north: Number(input.north),
+  };
+
+  if (Object.values(bounds).some((value) => !Number.isFinite(value))) {
+    throw new Error('THC cemetery bounds must be finite WGS84 coordinates');
+  }
+  if (
+    bounds.west < -180
+    || bounds.east > 180
+    || bounds.south < -90
+    || bounds.north > 90
+  ) {
+    throw new Error('THC cemetery bounds must be valid WGS84 coordinates');
+  }
+  if (bounds.west >= bounds.east || bounds.south >= bounds.north) {
+    throw new Error('THC cemetery bounds must have positive width and height');
+  }
+  if (
+    bounds.east - bounds.west > THC_CEMETERY_MAX_VIEW_SPAN_DEGREES
+    || bounds.north - bounds.south > THC_CEMETERY_MAX_VIEW_SPAN_DEGREES
+  ) {
+    throw new Error(
+      `THC cemetery viewport must be ${THC_CEMETERY_MAX_VIEW_SPAN_DEGREES} degrees or smaller`,
+    );
+  }
+  return Object.freeze(bounds);
+}
+
+export function buildThcCemeteryViewportQueryUrl(boundsInput) {
+  const bounds = normalizeCemeteryBounds(boundsInput);
+  const params = new URLSearchParams({
+    where: '1=1',
+    geometry: `${bounds.west},${bounds.south},${bounds.east},${bounds.north}`,
+    geometryType: 'esriGeometryEnvelope',
+    inSR: '4326',
+    spatialRel: 'esriSpatialRelIntersects',
+    outFields: OUT_FIELDS,
+    returnGeometry: 'true',
+    outSR: '4326',
+    resultRecordCount: String(THC_CEMETERY_MAX_FEATURES),
+    f: 'geojson',
+  });
+  return `${THC_CEMETERY_LAYER_URL}/query?${params.toString()}`;
 }
 
 export function buildThcCemeteryParcelQueryUrl(parcelInput) {
