@@ -185,6 +185,35 @@ function cemeteryRows(metrics) {
   ];
 }
 
+function entitlementRows(metrics) {
+  if (!metrics) return [row('Entitlement', 'No data returned')];
+
+  const jurisdiction = String(metrics.jurisdiction_screen || 'unresolved')
+    .replaceAll('-', ' ')
+    .toUpperCase();
+  const special = [
+    metrics.dominant_zoning_spec_district,
+    metrics.dominant_zoning_spec_condition,
+  ].filter(Boolean).join(' · ');
+
+  return [
+    row('Jurisdiction', jurisdiction),
+    row('Legal entitlement', 'UNVERIFIED'),
+    row('City zoning cover', formatPercent(metrics.city_zoning_coverage_percent)),
+    row('Dominant zoning', metrics.dominant_zoning_code || metrics.dominant_zoning_base || '—'),
+    row('Zoning share', formatPercent(metrics.dominant_zoning_share_percent)),
+    row('Zoning detail', metrics.dominant_zoning_detail || metrics.dominant_zoning_base_description || '—'),
+    row('Special zoning', special || 'NONE MAPPED'),
+    row('Specific condition', metrics.dominant_zoning_spec_condition_detail || '—'),
+    row('Zoning case', metrics.dominant_zoning_case_no || '—'),
+    row('ETJ overlap', formatPercent(metrics.etj_overlap_percent)),
+    row('Future land use', metrics.dominant_future_land_use || '—'),
+    row('Future-use share', formatPercent(metrics.dominant_future_land_use_share_percent)),
+    row('Future-use plan', metrics.dominant_future_land_use_plan || '—'),
+    row('Center tier', metrics.dominant_future_land_use_center_tiers || '—'),
+  ];
+}
+
 function transportationRows(metrics) {
   if (!metrics) return [row('TxDOT screening', 'No metrics returned')];
   const roadLabel = [metrics.nearest_road_name, metrics.nearest_road_system]
@@ -345,6 +374,11 @@ function appendScreeningResult(containers, screening) {
       ? cemeteryRows(evidence.cemeteries)
       : [row('THC cemeteries', sourceErrorLabel(errors.cemeteries, 'THC cemeteries'))]
   ));
+  containers.entitlement.replaceChildren(...(
+    evidence.entitlement
+      ? entitlementRows(evidence.entitlement)
+      : [row('Entitlement', sourceErrorLabel(errors.entitlement, 'San Antonio entitlement GIS'))]
+  ));
   containers.transportation.replaceChildren(...(
     evidence.transportation
       ? transportationRows(evidence.transportation)
@@ -462,6 +496,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       cleanups: document.createElement('div'),
       msw: document.createElement('div'),
       cemeteries: document.createElement('div'),
+      entitlement: document.createElement('div'),
       transportation: document.createElement('div'),
       utilities: document.createElement('div'),
       waterRights: document.createElement('div'),
@@ -476,6 +511,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     containers.cleanups.append(row('EPA screening', 'Loading…'));
     containers.msw.append(row('TCEQ MSW', 'Loading…'));
     containers.cemeteries.append(row('THC cemeteries', 'Loading…'));
+    containers.entitlement.append(row('Entitlement', 'Loading…'));
     containers.transportation.append(row('TxDOT screening', 'Loading…'));
     containers.utilities.append(row('Utilities', 'Loading…'));
     containers.waterRights.append(row('TCEQ water rights', 'Loading…'));
@@ -485,6 +521,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     body.append(
       sectionHeading('BDP INTELLIGENCE'), containers.intelligence,
       sectionHeading('RED FLAGS'), containers.flags,
+      sectionHeading('ENTITLEMENT / ZONING'), containers.entitlement,
       sectionHeading('ACCESS / TXDOT TRAFFIC'), containers.transportation,
       sectionHeading('UTILITIES / INFRASTRUCTURE'), containers.utilities,
       sectionHeading('SURFACE WATER RIGHTS / TCEQ'), containers.waterRights,
@@ -500,7 +537,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
 
     const disclaimer = document.createElement('p');
     disclaimer.className = 'bdp-property-disclaimer';
-    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. TxDOT roadway proximity does not prove legal access/frontage. Utility service areas/CCNs do not prove capacity, taps, extension cost or electric service; archived transmission mapping does not prove current line/easement conditions. TCEQ water-right points do not prove that a right belongs to the parcel owner, conveys with the tract, or provides available supply. TCEQ MSW coordinates may be a gate, benchmark, centroid, or other point and do not prove exact waste boundaries or parcel contamination. THC cemetery geometry is public screening data and is not a boundary survey; exact archeological site locations are restricted and are not publicly screened, so absence from this interface is not archeological clearance. FEMA, RRC, NWI, EPA cleanup, TCEQ MSW, THC public cultural data, TxDOT, utility GIS, TCEQ water-right GIS, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, utility, water-right, traffic/ROW, engineering and permitting due diligence remains required.';
+    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. TxDOT roadway proximity does not prove legal access/frontage. Utility service areas/CCNs do not prove capacity, taps, extension cost or electric service; archived transmission mapping does not prove current line/easement conditions. TCEQ water-right points do not prove that a right belongs to the parcel owner, conveys with the tract, or provides available supply. TCEQ MSW coordinates may be a gate, benchmark, centroid, or other point and do not prove exact waste boundaries or parcel contamination. San Antonio zoning, ETJ and Future Land Use GIS are planning screens and do not establish legal entitlement, vested rights, density, overlays or permitted development. THC cemetery geometry is public screening data and is not a boundary survey; exact archeological site locations are restricted and are not publicly screened, so absence from this interface is not archeological clearance. FEMA, RRC, NWI, EPA cleanup, TCEQ MSW, THC public cultural data, TxDOT, utility GIS, TCEQ water-right GIS, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, utility, water-right, traffic/ROW, engineering and permitting due diligence remains required.';
     body.append(disclaimer);
 
     collapse.addEventListener('click', () => {
