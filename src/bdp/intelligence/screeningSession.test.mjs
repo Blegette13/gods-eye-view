@@ -81,10 +81,26 @@ test('collects screening evidence and derives score coverage/red flags', async (
       cemeteries_within_5_mi: 1,
       archaeology_public_screen_status: 'restricted-location-data-not-screened',
     }),
+    entitlementLoader: async () => ({
+      jurisdiction_screen: 'san-antonio-city-zoned',
+      city_zoning_coverage_percent: 100,
+      zoning_feature_count: 1,
+      city_zoning_feature_count: 1,
+      zoning_special_condition_count: 0,
+      dominant_zoning_base: 'R-6',
+      dominant_zoning_code: 'R-6',
+      dominant_zoning_share_percent: 100,
+      etj_overlap_percent: 0,
+      future_land_use_coverage_percent: 100,
+      dominant_future_land_use: 'Low Density Residential',
+      dominant_future_land_use_plan: 'Area Plan',
+      dominant_future_land_use_share_percent: 100,
+      legal_entitlement_determined: false,
+    }),
   });
 
   assert.equal(result.sourceCoveragePercent, 100);
-  assert.equal(result.score.coveragePercent, 43);
+  assert.equal(result.score.coveragePercent, 55);
   assert.equal(result.score.readiness, 'insufficient-evidence');
   assert.ok(result.redFlags.some((item) => item.id === 'pipeline-crossing'));
   assert.ok(result.redFlags.some((item) => item.id === 'nearby-epa-cleanup'));
@@ -93,11 +109,13 @@ test('collects screening evidence and derives score coverage/red flags', async (
   assert.ok(result.score.components.environmental.evidence.some((item) => item.includes('Superfund')));
   assert.equal(result.score.components.accessTraffic.status, 'preliminary');
   assert.equal(result.score.components.utilitiesInfrastructure.status, 'preliminary');
+  assert.equal(result.score.components.entitlementZoning.status, 'preliminary');
   assert.ok(result.redFlags.some((item) => item.id === 'utility-capacity-unverified'));
   assert.ok(result.redFlags.some((item) => item.id === 'tceq-water-right-point-nearby'));
   assert.ok(result.redFlags.some((item) => item.id === 'active-landfill-within-1-mi'));
   assert.ok(result.redFlags.some((item) => item.id === 'thc-cemetery-adjacent'));
   assert.ok(result.redFlags.some((item) => item.id === 'archeology-public-screen-incomplete'));
+  assert.ok(result.redFlags.some((item) => item.id === 'legal-entitlement-unverified'));
   assert.match(result.score.components.environmental.source, /TCEQ MSW/);
 });
 
@@ -115,11 +133,12 @@ test('keeps partial evidence when providers fail', async () => {
     utilitiesLoader: async () => { throw unavailable; },
     waterRightsLoader: async () => { throw unavailable; },
     cemeteriesLoader: async () => { throw unavailable; },
+    entitlementLoader: async () => { throw unavailable; },
   });
 
-  assert.equal(result.sourceCoveragePercent, (2 / 11) * 100);
+  assert.equal(result.sourceCoveragePercent, (2 / 12) * 100);
   assert.deepEqual([...result.succeededSources].sort(), ['soils', 'terrain']);
-  assert.deepEqual([...result.failedSources].sort(), ['cemeteries', 'cleanups', 'energy', 'flood', 'msw', 'transportation', 'utilities', 'waterRights', 'wetlands']);
+  assert.deepEqual([...result.failedSources].sort(), ['cemeteries', 'cleanups', 'energy', 'entitlement', 'flood', 'msw', 'transportation', 'utilities', 'waterRights', 'wetlands']);
   assert.equal(result.errors.energy.status, 503);
   assert.equal(result.errors.cleanups.status, 503);
   assert.equal(result.errors.msw.status, 503);
@@ -127,10 +146,12 @@ test('keeps partial evidence when providers fail', async () => {
   assert.equal(result.errors.utilities.status, 503);
   assert.equal(result.errors.waterRights.status, 503);
   assert.equal(result.errors.cemeteries.status, 503);
+  assert.equal(result.errors.entitlement.status, 503);
   assert.equal(result.score.coveragePercent, 5);
   assert.equal(result.score.components.environmental.status, 'unknown');
   assert.equal(result.score.components.floodWater.status, 'unknown');
   assert.equal(result.score.components.terrainSoil.status, 'preliminary');
   assert.equal(result.score.components.accessTraffic.status, 'unknown');
   assert.equal(result.score.components.utilitiesInfrastructure.status, 'unknown');
+  assert.equal(result.score.components.entitlementZoning.status, 'unknown');
 });
