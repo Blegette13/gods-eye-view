@@ -54,6 +54,11 @@ export const BDP_LAYER_STATE_REGISTRY = Object.freeze([
     token: '1',
     disposition: 'enabled-only',
   }),
+  Object.freeze({
+    id: 'bdp-san-antonio-entitlement',
+    token: '2',
+    disposition: 'enabled-only',
+  }),
 ]);
 
 /**
