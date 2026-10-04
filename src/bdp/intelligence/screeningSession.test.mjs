@@ -34,6 +34,19 @@ test('collects screening evidence and derives score coverage/red flags', async (
       brownfields_within_5_mi: 0,
       nearest_site_name: 'TEST SITE',
     }),
+    mswLoader: async () => ({
+      nearest_msw_site_m: 1200,
+      nearest_site_name: 'TEST LANDFILL',
+      msw_points_on_parcel: 0,
+      active_landfills_within_1_mi: 1,
+      active_landfills_within_3_mi: 1,
+      closed_sites_within_1_mi: 0,
+      closed_sites_within_3_mi: 0,
+      unauthorized_sites_within_1_mi: 0,
+      unauthorized_sites_within_3_mi: 0,
+      hazardous_history_sites_within_3_mi: 0,
+      all_msw_sites_within_5_mi: 1,
+    }),
     soilsLoader: async () => ({ dominant: { mappedSharePercent: 80, farmlandClass: 'Prime farmland' } }),
     terrainLoader: async () => ({ slope: { meanDegrees: 3, maxDegrees: 8 } }),
     transportationLoader: async () => ({
@@ -71,6 +84,8 @@ test('collects screening evidence and derives score coverage/red flags', async (
   assert.equal(result.score.components.utilitiesInfrastructure.status, 'preliminary');
   assert.ok(result.redFlags.some((item) => item.id === 'utility-capacity-unverified'));
   assert.ok(result.redFlags.some((item) => item.id === 'tceq-water-right-point-nearby'));
+  assert.ok(result.redFlags.some((item) => item.id === 'active-landfill-within-1-mi'));
+  assert.match(result.score.components.environmental.source, /TCEQ MSW/);
 });
 
 test('keeps partial evidence when providers fail', async () => {
@@ -80,6 +95,7 @@ test('keeps partial evidence when providers fail', async () => {
     floodLoader: async () => { throw unavailable; },
     wetlandsLoader: async () => { throw unavailable; },
     cleanupsLoader: async () => { throw unavailable; },
+    mswLoader: async () => { throw unavailable; },
     soilsLoader: async () => ({ dominant: { mappedSharePercent: 90, farmlandClass: '' } }),
     terrainLoader: async () => ({ slope: { meanDegrees: 4, maxDegrees: 9 } }),
     transportationLoader: async () => { throw unavailable; },
@@ -87,11 +103,12 @@ test('keeps partial evidence when providers fail', async () => {
     waterRightsLoader: async () => { throw unavailable; },
   });
 
-  assert.equal(result.sourceCoveragePercent, (2 / 9) * 100);
+  assert.equal(result.sourceCoveragePercent, (2 / 10) * 100);
   assert.deepEqual([...result.succeededSources].sort(), ['soils', 'terrain']);
-  assert.deepEqual([...result.failedSources].sort(), ['cleanups', 'energy', 'flood', 'transportation', 'utilities', 'waterRights', 'wetlands']);
+  assert.deepEqual([...result.failedSources].sort(), ['cleanups', 'energy', 'flood', 'msw', 'transportation', 'utilities', 'waterRights', 'wetlands']);
   assert.equal(result.errors.energy.status, 503);
   assert.equal(result.errors.cleanups.status, 503);
+  assert.equal(result.errors.msw.status, 503);
   assert.equal(result.errors.transportation.status, 503);
   assert.equal(result.errors.utilities.status, 503);
   assert.equal(result.errors.waterRights.status, 503);
