@@ -168,6 +168,23 @@ function mswRows(metrics) {
   ];
 }
 
+function cemeteryRows(metrics) {
+  if (!metrics) return [row('THC cemeteries', 'No data returned')];
+
+  return [
+    row('Nearest cemetery', formatMiles(metrics.nearest_cemetery_m)),
+    row('Nearest name', metrics.nearest_cemetery_name || '—'),
+    row('Nearest type', metrics.nearest_cemetery_type || '—'),
+    row('Cemeteries on tract', String(metrics.cemeteries_intersecting_parcel ?? 0)),
+    row('Overlap', formatAcres(metrics.cemetery_overlap_acres)),
+    row('Overlap share', formatPercent(metrics.cemetery_overlap_percent)),
+    row('Cemeteries ≤ 1 mi', String(metrics.cemeteries_within_1_mi ?? 0)),
+    row('Cemeteries ≤ 3 mi', String(metrics.cemeteries_within_3_mi ?? 0)),
+    row('Cemeteries ≤ 5 mi', String(metrics.cemeteries_within_5_mi ?? 0)),
+    row('Archeology', 'RESTRICTED DATA · NOT PUBLICLY SCREENED'),
+  ];
+}
+
 function transportationRows(metrics) {
   if (!metrics) return [row('TxDOT screening', 'No metrics returned')];
   const roadLabel = [metrics.nearest_road_name, metrics.nearest_road_system]
@@ -323,6 +340,11 @@ function appendScreeningResult(containers, screening) {
       ? mswRows(evidence.msw)
       : [row('TCEQ MSW', sourceErrorLabel(errors.msw, 'TCEQ MSW'))]
   ));
+  containers.cemeteries.replaceChildren(...(
+    evidence.cemeteries
+      ? cemeteryRows(evidence.cemeteries)
+      : [row('THC cemeteries', sourceErrorLabel(errors.cemeteries, 'THC cemeteries'))]
+  ));
   containers.transportation.replaceChildren(...(
     evidence.transportation
       ? transportationRows(evidence.transportation)
@@ -439,6 +461,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       wetlands: document.createElement('div'),
       cleanups: document.createElement('div'),
       msw: document.createElement('div'),
+      cemeteries: document.createElement('div'),
       transportation: document.createElement('div'),
       utilities: document.createElement('div'),
       waterRights: document.createElement('div'),
@@ -452,6 +475,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     containers.wetlands.append(row('NWI screening', 'Loading…'));
     containers.cleanups.append(row('EPA screening', 'Loading…'));
     containers.msw.append(row('TCEQ MSW', 'Loading…'));
+    containers.cemeteries.append(row('THC cemeteries', 'Loading…'));
     containers.transportation.append(row('TxDOT screening', 'Loading…'));
     containers.utilities.append(row('Utilities', 'Loading…'));
     containers.waterRights.append(row('TCEQ water rights', 'Loading…'));
@@ -469,13 +493,14 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       sectionHeading('WETLANDS'), containers.wetlands,
       sectionHeading('ENVIRONMENT / EPA CLEANUPS'), containers.cleanups,
       sectionHeading('WASTE / TCEQ MSW'), containers.msw,
+      sectionHeading('CULTURAL / CEMETERIES'), containers.cemeteries,
       sectionHeading('SOIL / SSURGO'), containers.soils,
       sectionHeading('TERRAIN / 3DEP'), containers.terrain,
     );
 
     const disclaimer = document.createElement('p');
     disclaimer.className = 'bdp-property-disclaimer';
-    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. TxDOT roadway proximity does not prove legal access/frontage. Utility service areas/CCNs do not prove capacity, taps, extension cost or electric service; archived transmission mapping does not prove current line/easement conditions. TCEQ water-right points do not prove that a right belongs to the parcel owner, conveys with the tract, or provides available supply. TCEQ MSW coordinates may be a gate, benchmark, centroid, or other point and do not prove exact waste boundaries or parcel contamination. FEMA, RRC, NWI, EPA cleanup, TCEQ MSW, TxDOT, utility GIS, TCEQ water-right GIS, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, utility, water-right, traffic/ROW, engineering and permitting due diligence remains required.';
+    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. TxDOT roadway proximity does not prove legal access/frontage. Utility service areas/CCNs do not prove capacity, taps, extension cost or electric service; archived transmission mapping does not prove current line/easement conditions. TCEQ water-right points do not prove that a right belongs to the parcel owner, conveys with the tract, or provides available supply. TCEQ MSW coordinates may be a gate, benchmark, centroid, or other point and do not prove exact waste boundaries or parcel contamination. THC cemetery geometry is public screening data and is not a boundary survey; exact archeological site locations are restricted and are not publicly screened, so absence from this interface is not archeological clearance. FEMA, RRC, NWI, EPA cleanup, TCEQ MSW, THC public cultural data, TxDOT, utility GIS, TCEQ water-right GIS, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, utility, water-right, traffic/ROW, engineering and permitting due diligence remains required.';
     body.append(disclaimer);
 
     collapse.addEventListener('click', () => {
