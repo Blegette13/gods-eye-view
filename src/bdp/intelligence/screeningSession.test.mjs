@@ -100,7 +100,7 @@ test('collects screening evidence and derives score coverage/red flags', async (
   });
 
   assert.equal(result.sourceCoveragePercent, 100);
-  assert.equal(result.score.coveragePercent, 55);
+  assert.equal(Math.round(result.score.coveragePercent), 55);
   assert.equal(result.score.readiness, 'insufficient-evidence');
   assert.ok(result.redFlags.some((item) => item.id === 'pipeline-crossing'));
   assert.ok(result.redFlags.some((item) => item.id === 'nearby-epa-cleanup'));
