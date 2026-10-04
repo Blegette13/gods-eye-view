@@ -21,6 +21,10 @@ import {
   buildTceqMswFeaturesSql,
   buildTceqMswParcelSql,
 } from '../../src/bdp/environment/mswContract.js';
+import {
+  buildTceqMswFeaturesSql,
+  buildTceqMswParcelSql,
+} from '../../src/bdp/environment/mswContract.js';
 
 const execFileAsync = promisify(execFile);
 const MAX_BODY_BYTES = 1_000_000;
@@ -159,6 +163,14 @@ export async function screenBdpParcelCleanups(input) {
 }
 
 export async function screenBdpParcelMsw(input) {
+  return queryPostgisJson(buildTceqMswParcelSql(input));
+}
+
+export async function screenBdpMswViewport(input) {
+  return queryPostgisJson(buildTceqMswFeaturesSql(input));
+}
+
+export async function screenBdpParcelMsw(input) {
   return Object.freeze({
     metrics: await queryPostgisJson(buildTceqMswParcelSql(input)),
   });
@@ -283,6 +295,40 @@ async function handleBdpEnvironment(request, response, next) {
         source: 'FEMA National Flood Hazard Layer',
         screeningOnly: true,
         ...result,
+      });
+    }
+
+    if (url.pathname === `${BDP_ENVIRONMENT_API_BASE}/msw/features`) {
+      if (request.method !== 'GET') {
+        response.setHeader('Allow', 'GET');
+        return sendJson(response, 405, { error: 'method_not_allowed' });
+      }
+      const payload = await screenBdpMswViewport({
+        west: url.searchParams.get('west'),
+        south: url.searchParams.get('south'),
+        east: url.searchParams.get('east'),
+        north: url.searchParams.get('north'),
+      });
+      return sendJson(response, 200, payload || {
+        source: 'Texas Commission on Environmental Quality municipal-solid-waste data',
+        screeningOnly: true,
+        boundaryInferred: false,
+        points: { type: 'FeatureCollection', features: [] },
+      });
+    }
+
+    if (url.pathname === `${BDP_ENVIRONMENT_API_BASE}/msw`) {
+      if (request.method !== 'POST') {
+        response.setHeader('Allow', 'POST');
+        return sendJson(response, 405, { error: 'method_not_allowed' });
+      }
+      const input = await readJsonBody(request);
+      const metrics = await screenBdpParcelMsw(input);
+      return sendJson(response, 200, {
+        source: 'Texas Commission on Environmental Quality municipal-solid-waste data',
+        screeningOnly: true,
+        boundaryInferred: false,
+        metrics,
       });
     }
 
