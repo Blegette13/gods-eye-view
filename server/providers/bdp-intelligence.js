@@ -17,6 +17,7 @@ import { screenBdpParcelUtilities } from './bdp-utilities.js';
 import { screenBdpParcelWaterRights } from './bdp-water-rights.js';
 import { screenBdpParcelCemeteries } from './bdp-cultural.js';
 import { screenBdpParcelEntitlement } from './bdp-entitlement.js';
+import { screenBdpParcelGrowth } from './bdp-growth.js';
 
 const MAX_BODY_BYTES = 1_000_000;
 
@@ -56,6 +57,7 @@ function providerStatus(error) {
       'UTILITIES_UPSTREAM_FAILED',
       'THC_CEMETERY_UPSTREAM_FAILED',
       'ENTITLEMENT_UPSTREAM_FAILED',
+      'GROWTH_UPSTREAM_FAILED',
     ].includes(error?.code)
     || ['TimeoutError', 'AbortError'].includes(error?.name)
   ) return 502;
@@ -112,6 +114,9 @@ export async function screenBdpParcelIntelligence(parcelInput) {
     ).metrics),
     entitlementLoader: screened(async (candidate) => (
       await screenBdpParcelEntitlement(parcelGeometryInput(candidate))
+    ).metrics),
+    growthRadarLoader: screened(async (candidate) => (
+      await screenBdpParcelGrowth(parcelGeometryInput(candidate))
     ).metrics),
   });
 }
