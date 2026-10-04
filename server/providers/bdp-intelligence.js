@@ -91,9 +91,9 @@ export async function screenBdpParcelIntelligence(parcelInput) {
     cleanupsLoader: screened(async (candidate) => (
       await screenBdpParcelCleanups(parcelGeometryInput(candidate))
     ).metrics),
-    mswLoader: screened(async (candidate) => (
-      await screenBdpParcelMsw(parcelGeometryInput(candidate))
-    ).metrics),
+    mswLoader: screened((candidate) => (
+      screenBdpParcelMsw(parcelGeometryInput(candidate))
+    )),
     soilsLoader: screened((candidate) => screenBdpParcelSoils(parcelGeometryInput(candidate))),
     terrainLoader: screened((candidate) => screenBdpParcelTerrain(parcelGeometryInput(candidate))),
     transportationLoader: screened(async (candidate) => (
