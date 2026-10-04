@@ -192,20 +192,120 @@ export function scoreEpaCleanupEnvironment(cleanups) {
   });
 }
 
-/** Combine the currently implemented environmental feeds without treating either as complete due diligence. */
-export function scoreEnvironmental({ wetlands, cleanups } = {}) {
-  const wetland = scoreWetlandsEnvironment(wetlands);
-  const cleanup = scoreEpaCleanupEnvironment(cleanups);
-  if (!wetland && !cleanup) return null;
-  if (!wetland) return cleanup;
-  if (!cleanup) return wetland;
+/** Preliminary state/local solid-waste-site component from TCEQ point screening. */
+export function scoreTceqMswEnvironment(msw) {
+  const nearestM = finiteOrNull(msw?.nearest_msw_site_m);
+  const onParcel = finiteOrNull(msw?.msw_points_on_parcel);
+  const active1 = finiteOrNull(msw?.active_landfills_within_1_mi);
+  const active3 = finiteOrNull(msw?.active_landfills_within_3_mi);
+  const closed1 = finiteOrNull(msw?.closed_sites_within_1_mi);
+  const closed3 = finiteOrNull(msw?.closed_sites_within_3_mi);
+  const unauthorized1 = finiteOrNull(msw?.unauthorized_sites_within_1_mi);
+  const unauthorized3 = finiteOrNull(msw?.unauthorized_sites_within_3_mi);
+  const hazardous3 = finiteOrNull(msw?.hazardous_history_sites_within_3_mi);
+  const total5 = finiteOrNull(msw?.all_msw_sites_within_5_mi);
+
+  if (
+    [nearestM, onParcel, active1, active3, closed1, closed3, unauthorized1, unauthorized3, hazardous3, total5]
+      .every((value) => value === null)
+  ) return null;
+
+  let score = 100;
+  const evidence = [];
+
+  if (Number.isFinite(onParcel) && onParcel > 0) {
+    score -= Math.min(65, 40 + Math.max(0, onParcel - 1) * 8);
+    evidence.push(`${Math.round(onParcel)} TCEQ MSW point${onParcel === 1 ? '' : 's'} mapped on parcel`);
+  }
+  if (Number.isFinite(active1) && active1 > 0) {
+    score -= Math.min(35, active1 * 18);
+    evidence.push(`${Math.round(active1)} active landfill${active1 === 1 ? '' : 's'} within 1 mi`);
+  } else if (Number.isFinite(active3) && active3 > 0) {
+    score -= Math.min(20, active3 * 8);
+    evidence.push(`${Math.round(active3)} active landfill${active3 === 1 ? '' : 's'} within 3 mi`);
+  }
+  if (Number.isFinite(unauthorized1) && unauthorized1 > 0) {
+    score -= Math.min(40, unauthorized1 * 20);
+    evidence.push(`${Math.round(unauthorized1)} historical unauthorized/unnumbered site${unauthorized1 === 1 ? '' : 's'} within 1 mi`);
+  } else if (Number.isFinite(unauthorized3) && unauthorized3 > 0) {
+    score -= Math.min(25, unauthorized3 * 10);
+    evidence.push(`${Math.round(unauthorized3)} historical unauthorized/unnumbered site${unauthorized3 === 1 ? '' : 's'} within 3 mi`);
+  }
+  if (Number.isFinite(hazardous3) && hazardous3 > 0) {
+    score -= Math.min(35, hazardous3 * 15);
+    evidence.push(`${Math.round(hazardous3)} historical site${hazardous3 === 1 ? '' : 's'} with confirmed/probable hazardous-waste history within 3 mi`);
+  }
+  if (Number.isFinite(closed1) && closed1 > 0) {
+    score -= Math.min(25, closed1 * 12);
+    evidence.push(`${Math.round(closed1)} closed MSW site${closed1 === 1 ? '' : 's'} within 1 mi`);
+  } else if (Number.isFinite(closed3) && closed3 > 0) {
+    score -= Math.min(12, closed3 * 5);
+    evidence.push(`${Math.round(closed3)} closed MSW site${closed3 === 1 ? '' : 's'} within 3 mi`);
+  }
+  if (Number.isFinite(nearestM)) {
+    evidence.push(`Nearest TCEQ MSW point ${(nearestM / 1609.344).toFixed(2)} mi from tract`);
+  }
+  if (!evidence.length && Number.isFinite(total5)) {
+    evidence.push(`${Math.round(total5)} TCEQ MSW sites within 5 mi`);
+  }
 
   return Object.freeze({
-    score: clamp(wetland.score * 0.4 + cleanup.score * 0.6, 0, 100),
-    confidence: 0.62,
-    source: 'USFWS NWI + US EPA cleanup screening',
-    note: 'Environmental category combines mapped wetlands and EPA cleanup proximity; protected species, state-only cleanup programs and site-specific environmental investigations remain unscored.',
-    evidence: Object.freeze([...wetland.evidence, ...cleanup.evidence]),
+    score: clamp(score, 0, 100),
+    confidence: 0.45,
+    source: 'TCEQ municipal-solid-waste point screening',
+    note: 'TCEQ facility coordinates are screening points and do not establish exact waste boundaries or parcel contamination.',
+    evidence: Object.freeze(evidence),
+  });
+}
+
+/** Combine the currently implemented environmental feeds without treating either as complete due diligence. */
+export function scoreEnvironmental({ wetlands, cleanups, msw } = {}) {
+  const wetland = scoreWetlandsEnvironment(wetlands);
+  const cleanup = scoreEpaCleanupEnvironment(cleanups);
+  const solidWaste = scoreTceqMswEnvironment(msw);
+
+  const available = [wetland, cleanup, solidWaste].filter(Boolean);
+  if (!available.length) return null;
+  if (available.length === 1) return available[0];
+
+  if (wetland && cleanup && !solidWaste) {
+    return Object.freeze({
+      score: clamp(wetland.score * 0.4 + cleanup.score * 0.6, 0, 100),
+      confidence: 0.62,
+      source: 'USFWS NWI + US EPA cleanup screening',
+      note: 'Environmental category combines mapped wetlands and EPA cleanup proximity; protected species, state-only cleanup programs and site-specific environmental investigations remain unscored.',
+      evidence: Object.freeze([...wetland.evidence, ...cleanup.evidence]),
+    });
+  }
+
+  if (wetland && cleanup && solidWaste) {
+    return Object.freeze({
+      score: clamp(
+        wetland.score * 0.25 + cleanup.score * 0.5 + solidWaste.score * 0.25,
+        0,
+        100,
+      ),
+      confidence: 0.72,
+      source: 'USFWS NWI + US EPA cleanup + TCEQ MSW screening',
+      note: 'Environmental category combines mapped wetlands, federal cleanup proximity, and state municipal-solid-waste point screening. These feeds do not replace Phase I/II environmental review, site-boundary verification, protected-species review, or contamination investigation.',
+      evidence: Object.freeze([
+        ...wetland.evidence,
+        ...cleanup.evidence,
+        ...solidWaste.evidence,
+      ]),
+    });
+  }
+
+  const score = available.reduce((sum, component) => sum + component.score, 0)
+    / available.length;
+  const confidence = available.reduce((sum, component) => sum + component.confidence, 0)
+    / available.length;
+  return Object.freeze({
+    score: clamp(score, 0, 100),
+    confidence: clamp(confidence, 0, 1),
+    source: available.map((component) => component.source).join(' + '),
+    note: 'Environmental category is based on currently available screening feeds only.',
+    evidence: Object.freeze(available.flatMap((component) => component.evidence)),
   });
 }
 
@@ -261,9 +361,16 @@ export function scoreTerrainSoil({ terrain, soils } = {}) {
   });
 }
 
-export function buildCurrentScreeningComponents({ flood, wetlands, cleanups, terrain, soils } = {}) {
+export function buildCurrentScreeningComponents({
+  flood,
+  wetlands,
+  cleanups,
+  msw,
+  terrain,
+  soils,
+} = {}) {
   return Object.freeze({
-    environmental: scoreEnvironmental({ wetlands, cleanups }),
+    environmental: scoreEnvironmental({ wetlands, cleanups, msw }),
     floodWater: scoreFemaFloodWater(flood),
     terrainSoil: scoreTerrainSoil({ terrain, soils }),
   });
