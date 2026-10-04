@@ -4,6 +4,8 @@ import {
   THC_CEMETERY_LAYER_URL,
   buildThcCemeteryMetricsSql,
   buildThcCemeteryParcelQueryUrl,
+  buildThcCemeteryViewportQueryUrl,
+  normalizeCemeteryBounds,
   normalizeThcCemeteryFeatureCollection,
 } from './cemeteryContract.js';
 
@@ -67,4 +69,25 @@ test('cemetery metrics calculate overlap/proximity and explicitly withhold restr
   assert.match(sql, /cemetery_overlap_acres/);
   assert.match(sql, /cemeteries_within_5_mi/);
   assert.match(sql, /restricted-location-data-not-screened/);
+});
+
+
+test('cemetery viewport query is bounded and rejects state-scale requests', () => {
+  const bounds = normalizeCemeteryBounds({
+    west: -98.7,
+    south: 29.2,
+    east: -98.3,
+    north: 29.6,
+  });
+  const url = new URL(buildThcCemeteryViewportQueryUrl(bounds));
+  assert.equal(url.searchParams.get('f'), 'geojson');
+  assert.throws(
+    () => buildThcCemeteryViewportQueryUrl({
+      west: -106,
+      south: 25,
+      east: -93,
+      north: 36,
+    }),
+    /viewport/i,
+  );
 });
