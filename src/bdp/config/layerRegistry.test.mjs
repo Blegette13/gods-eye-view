@@ -12,7 +12,7 @@ test('BDP layer registry adds land-intelligence layers with unique identities', 
 
   const registry = extendLayerStateRegistry(upstream);
 
-  assert.equal(registry.length, 10);
+  assert.equal(registry.length, 11);
   assert.deepEqual(registry[0], upstream[0]);
   assert.equal(registry[1].id, 'bdp-bexar-parcels');
   assert.equal(registry[1].token, 'p');
@@ -32,10 +32,12 @@ test('BDP layer registry adds land-intelligence layers with unique identities', 
   assert.equal(registry[8].token, 'v');
   assert.equal(registry[9].id, 'bdp-tceq-water-rights');
   assert.equal(registry[9].token, 'y');
+  assert.equal(registry[10].id, 'bdp-tceq-msw');
+  assert.equal(registry[10].token, 'z');
   assert.ok(BDP_LAYER_STATE_REGISTRY.every((entry) => entry.disposition === 'enabled-only'));
-  assert.equal(BDP_LAYER_STATE_REGISTRY.length, 9);
-  assert.equal(new Set(BDP_LAYER_STATE_REGISTRY.map((entry) => entry.id)).size, 9);
-  assert.equal(new Set(BDP_LAYER_STATE_REGISTRY.map((entry) => entry.token)).size, 9);
+  assert.equal(BDP_LAYER_STATE_REGISTRY.length, 10);
+  assert.equal(new Set(BDP_LAYER_STATE_REGISTRY.map((entry) => entry.id)).size, 10);
+  assert.equal(new Set(BDP_LAYER_STATE_REGISTRY.map((entry) => entry.token)).size, 10);
 });
 
 test('BDP extension does not mutate the upstream registry', () => {
