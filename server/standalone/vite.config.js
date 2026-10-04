@@ -10,6 +10,7 @@ import { bdpTransportationProviderPlugin } from '../providers/bdp-transportation
 import { bdpUtilitiesProviderPlugin } from '../providers/bdp-utilities.js';
 import { bdpWaterRightsProviderPlugin } from '../providers/bdp-water-rights.js';
 import { bdpCulturalProviderPlugin } from '../providers/bdp-cultural.js';
+import { bdpEntitlementProviderPlugin } from '../providers/bdp-entitlement.js';
 import { bdpIntelligenceProviderPlugin } from '../providers/bdp-intelligence.js';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
@@ -35,6 +36,7 @@ export default defineConfig(({ mode }) => {
       bdpUtilitiesProviderPlugin(),
       bdpWaterRightsProviderPlugin(),
       bdpCulturalProviderPlugin(),
+      bdpEntitlementProviderPlugin(),
       bdpIntelligenceProviderPlugin(),
       keySetupPlugin,
     ],
