@@ -97,11 +97,31 @@ test('collects screening evidence and derives score coverage/red flags', async (
       dominant_future_land_use_share_percent: 100,
       legal_entitlement_determined: false,
     }),
+    growthRadarLoader: async () => ({
+      growth_radius_miles: 25,
+      nearest_mtp_m: 900,
+      nearest_mtp_street: 'TEST PARKWAY',
+      mtp_crossing_count: 0,
+      mtp_proposed_or_changed_within_5_mi: 2,
+      preliminary_plats_on_parcel: 0,
+      preliminary_plats_within_5_mi: 3,
+      preliminary_plats_within_10_mi: 7,
+      preliminary_plats_within_25_mi: 16,
+      nearest_preliminary_plat_m: 1400,
+      nearest_preliminary_plat_name: 'TEST PLAT',
+      regional_centers_within_5_mi: 1,
+      regional_centers_within_10_mi: 1,
+      regional_centers_within_25_mi: 2,
+      nearest_regional_center_m: 5000,
+      nearest_regional_center_name: 'TEST CENTER',
+      growth_score_ready: false,
+    }),
   });
 
   assert.equal(result.sourceCoveragePercent, 100);
   assert.equal(Math.round(result.score.coveragePercent), 55);
   assert.equal(result.score.readiness, 'insufficient-evidence');
+  assert.equal(result.score.components.growth.status, 'unknown');
   assert.ok(result.redFlags.some((item) => item.id === 'pipeline-crossing'));
   assert.ok(result.redFlags.some((item) => item.id === 'nearby-epa-cleanup'));
   assert.ok(result.redFlags.some((item) => item.id === 'legal-access-unverified'));
@@ -116,6 +136,8 @@ test('collects screening evidence and derives score coverage/red flags', async (
   assert.ok(result.redFlags.some((item) => item.id === 'thc-cemetery-adjacent'));
   assert.ok(result.redFlags.some((item) => item.id === 'archeology-public-screen-incomplete'));
   assert.ok(result.redFlags.some((item) => item.id === 'legal-entitlement-unverified'));
+  assert.ok(result.redFlags.some((item) => item.id === 'planned-mobility-change-within-5-mi'));
+  assert.ok(result.redFlags.some((item) => item.id === 'preliminary-plat-activity-within-5-mi'));
   assert.match(result.score.components.environmental.source, /TCEQ MSW/);
 });
 
@@ -134,11 +156,12 @@ test('keeps partial evidence when providers fail', async () => {
     waterRightsLoader: async () => { throw unavailable; },
     cemeteriesLoader: async () => { throw unavailable; },
     entitlementLoader: async () => { throw unavailable; },
+    growthRadarLoader: async () => { throw unavailable; },
   });
 
-  assert.equal(result.sourceCoveragePercent, (2 / 12) * 100);
+  assert.equal(result.sourceCoveragePercent, (2 / 13) * 100);
   assert.deepEqual([...result.succeededSources].sort(), ['soils', 'terrain']);
-  assert.deepEqual([...result.failedSources].sort(), ['cemeteries', 'cleanups', 'energy', 'entitlement', 'flood', 'msw', 'transportation', 'utilities', 'waterRights', 'wetlands']);
+  assert.deepEqual([...result.failedSources].sort(), ['cemeteries', 'cleanups', 'energy', 'entitlement', 'flood', 'growthRadar', 'msw', 'transportation', 'utilities', 'waterRights', 'wetlands']);
   assert.equal(result.errors.energy.status, 503);
   assert.equal(result.errors.cleanups.status, 503);
   assert.equal(result.errors.msw.status, 503);
@@ -147,6 +170,7 @@ test('keeps partial evidence when providers fail', async () => {
   assert.equal(result.errors.waterRights.status, 503);
   assert.equal(result.errors.cemeteries.status, 503);
   assert.equal(result.errors.entitlement.status, 503);
+  assert.equal(result.errors.growthRadar.status, 503);
   assert.equal(result.score.coveragePercent, 5);
   assert.equal(result.score.components.environmental.status, 'unknown');
   assert.equal(result.score.components.floodWater.status, 'unknown');
