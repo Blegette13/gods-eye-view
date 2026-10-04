@@ -49,6 +49,11 @@ export const BDP_LAYER_STATE_REGISTRY = Object.freeze([
     token: 'z',
     disposition: 'enabled-only',
   }),
+  Object.freeze({
+    id: 'bdp-thc-cemeteries',
+    token: '1',
+    disposition: 'enabled-only',
+  }),
 ]);
 
 /**
