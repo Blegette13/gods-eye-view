@@ -167,6 +167,17 @@ export const BDP_DATA_SOURCES = Object.freeze({
     cacheTtlMs: 30 * 24 * 60 * 60 * 1000,
     notes: 'Maintain a local Texas spatial copy and replace it on the official annual refresh.',
   }),
+  thcHistoricSitesAtlas: Object.freeze({
+    id: 'thc-historic-sites-atlas',
+    label: 'Texas Historical Commission Historic Sites Atlas',
+    method: BDP_SOURCE_METHOD.GIS_SERVICE,
+    authority: BDP_AUTHORITY.AUTHORITATIVE,
+    refreshClass: BDP_REFRESH_CLASS.MONTHLY,
+    onDemandRefresh: true,
+    cacheTtlMs: 7 * 24 * 60 * 60 * 1000,
+    url: 'https://services7.arcgis.com/2hv9bZMrcgZpr7i9/ArcGIS/rest/services/Historical/FeatureServer',
+    notes: 'Use the public THC Atlas cemetery and public historic-designation layers for screening. Exact archeological site locations are restricted cultural-resource information and must never be exposed or treated as cleared by absence from the public Atlas.',
+  }),
   localOrdinances: Object.freeze({
     id: 'local-ordinances',
     label: 'Local ordinances / comprehensive plans',
