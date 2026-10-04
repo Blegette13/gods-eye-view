@@ -15,6 +15,7 @@ import { screenBdpParcelTerrain } from './bdp-terrain.js';
 import { screenBdpParcelTransportation } from './bdp-transportation.js';
 import { screenBdpParcelUtilities } from './bdp-utilities.js';
 import { screenBdpParcelWaterRights } from './bdp-water-rights.js';
+import { screenBdpParcelCemeteries } from './bdp-cultural.js';
 
 const MAX_BODY_BYTES = 1_000_000;
 
@@ -52,6 +53,7 @@ function providerStatus(error) {
       'USGS_3DEP_FAILED',
       'TXDOT_UPSTREAM_FAILED',
       'UTILITIES_UPSTREAM_FAILED',
+      'THC_CEMETERY_UPSTREAM_FAILED',
     ].includes(error?.code)
     || ['TimeoutError', 'AbortError'].includes(error?.name)
   ) return 502;
@@ -103,6 +105,9 @@ export async function screenBdpParcelIntelligence(parcelInput) {
     waterRightsLoader: screened((candidate) => (
       screenBdpParcelWaterRights(parcelGeometryInput(candidate))
     )),
+    cemeteriesLoader: screened(async (candidate) => (
+      await screenBdpParcelCemeteries(parcelGeometryInput(candidate))
+    ).metrics),
   });
 }
 
