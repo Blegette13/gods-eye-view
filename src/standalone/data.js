@@ -22,6 +22,7 @@ import epaCleanupLayer from '../bdp/overlays/epaCleanupLayer.js';
 import txdotTrafficLayer from '../bdp/overlays/txdotTrafficLayer.js';
 import utilityInfrastructureLayer from '../bdp/overlays/utilityInfrastructureLayer.js';
 import tceqWaterRightsLayer from '../bdp/overlays/tceqWaterRightsLayer.js';
+import tceqMswLayer from '../bdp/overlays/tceqMswLayer.js';
 import { extendLayerStateRegistry } from '../bdp/config/layerRegistry.js';
 
 const BDP_SCREEN_LAYER_IDS = Object.freeze([
@@ -34,6 +35,7 @@ const BDP_SCREEN_LAYER_IDS = Object.freeze([
   'bdp-txdot-traffic',
   'bdp-utilities-infrastructure',
   'bdp-tceq-water-rights',
+  'bdp-tceq-msw',
 ]);
 
 /** Register the standalone layer catalog before allowing state restoration. */
@@ -80,6 +82,7 @@ export function createStandaloneData({
   dataManager.register(txdotTrafficLayer);
   dataManager.register(utilityInfrastructureLayer);
   dataManager.register(tceqWaterRightsLayer);
+  dataManager.register(tceqMswLayer);
 
   dataManager.finalizeRegistrations(
     extendLayerStateRegistry(LAYER_STATE_REGISTRY),
