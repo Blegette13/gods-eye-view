@@ -70,6 +70,17 @@ test('collects screening evidence and derives score coverage/red flags', async (
       water_right_points_within_5_mi: 3,
       distinct_water_rights_within_5_mi: 2,
     }),
+    cemeteriesLoader: async () => ({
+      nearest_cemetery_m: 300,
+      nearest_cemetery_name: 'TEST CEMETERY',
+      cemeteries_intersecting_parcel: 0,
+      cemetery_overlap_acres: 0,
+      cemetery_overlap_percent: 0,
+      cemeteries_within_1_mi: 1,
+      cemeteries_within_3_mi: 1,
+      cemeteries_within_5_mi: 1,
+      archaeology_public_screen_status: 'restricted-location-data-not-screened',
+    }),
   });
 
   assert.equal(result.sourceCoveragePercent, 100);
@@ -85,6 +96,8 @@ test('collects screening evidence and derives score coverage/red flags', async (
   assert.ok(result.redFlags.some((item) => item.id === 'utility-capacity-unverified'));
   assert.ok(result.redFlags.some((item) => item.id === 'tceq-water-right-point-nearby'));
   assert.ok(result.redFlags.some((item) => item.id === 'active-landfill-within-1-mi'));
+  assert.ok(result.redFlags.some((item) => item.id === 'thc-cemetery-adjacent'));
+  assert.ok(result.redFlags.some((item) => item.id === 'archeology-public-screen-incomplete'));
   assert.match(result.score.components.environmental.source, /TCEQ MSW/);
 });
 
@@ -101,17 +114,19 @@ test('keeps partial evidence when providers fail', async () => {
     transportationLoader: async () => { throw unavailable; },
     utilitiesLoader: async () => { throw unavailable; },
     waterRightsLoader: async () => { throw unavailable; },
+    cemeteriesLoader: async () => { throw unavailable; },
   });
 
-  assert.equal(result.sourceCoveragePercent, (2 / 10) * 100);
+  assert.equal(result.sourceCoveragePercent, (2 / 11) * 100);
   assert.deepEqual([...result.succeededSources].sort(), ['soils', 'terrain']);
-  assert.deepEqual([...result.failedSources].sort(), ['cleanups', 'energy', 'flood', 'msw', 'transportation', 'utilities', 'waterRights', 'wetlands']);
+  assert.deepEqual([...result.failedSources].sort(), ['cemeteries', 'cleanups', 'energy', 'flood', 'msw', 'transportation', 'utilities', 'waterRights', 'wetlands']);
   assert.equal(result.errors.energy.status, 503);
   assert.equal(result.errors.cleanups.status, 503);
   assert.equal(result.errors.msw.status, 503);
   assert.equal(result.errors.transportation.status, 503);
   assert.equal(result.errors.utilities.status, 503);
   assert.equal(result.errors.waterRights.status, 503);
+  assert.equal(result.errors.cemeteries.status, 503);
   assert.equal(result.score.coveragePercent, 5);
   assert.equal(result.score.components.environmental.status, 'unknown');
   assert.equal(result.score.components.floodWater.status, 'unknown');
