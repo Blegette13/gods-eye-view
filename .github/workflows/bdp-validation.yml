@@ -93,6 +93,8 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/tceqWaterRightsPostgis.sql
           psql -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/tceqParcelWater.sql
+          psql -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/tceqMswPostgis.sql
+          psql -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/tceqParcelMsw.sql
 
       - name: Verify required spatial objects
         run: |
@@ -102,8 +104,10 @@ jobs:
           SELECT to_regclass('public.bdp_rrc_pipelines') IS NOT NULL;
           SELECT to_regclass('public.bdp_tceq_water_rights') IS NOT NULL;
           SELECT to_regclass('public.bdp_tceq_water_right_points') IS NOT NULL;
+          SELECT to_regclass('public.bdp_tceq_msw_sites') IS NOT NULL;
           SELECT to_regprocedure('bdp_rrc_parcel_energy_metrics(geometry,text)') IS NOT NULL;
           SELECT to_regprocedure('bdp_tceq_parcel_water_metrics(geometry)') IS NOT NULL;
+          SELECT to_regprocedure('bdp_tceq_parcel_msw_metrics(geometry)') IS NOT NULL;
           SQL
 
       - name: Smoke test empty-dataset parcel functions
@@ -114,6 +118,9 @@ jobs:
             '029'
           );
           SELECT * FROM bdp_tceq_parcel_water_metrics(
+            ST_GeomFromText('POLYGON((-98.50 29.40,-98.49 29.40,-98.49 29.41,-98.50 29.41,-98.50 29.40))', 4326)
+          );
+          SELECT * FROM bdp_tceq_parcel_msw_metrics(
             ST_GeomFromText('POLYGON((-98.50 29.40,-98.49 29.40,-98.49 29.41,-98.50 29.41,-98.50 29.40))', 4326)
           );
           SQL
