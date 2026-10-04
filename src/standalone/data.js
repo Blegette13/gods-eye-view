@@ -24,6 +24,7 @@ import utilityInfrastructureLayer from '../bdp/overlays/utilityInfrastructureLay
 import tceqWaterRightsLayer from '../bdp/overlays/tceqWaterRightsLayer.js';
 import tceqMswLayer from '../bdp/overlays/tceqMswLayer.js';
 import thcCemeteryLayer from '../bdp/overlays/thcCemeteryLayer.js';
+import sanAntonioEntitlementLayer from '../bdp/overlays/sanAntonioEntitlementLayer.js';
 import { extendLayerStateRegistry } from '../bdp/config/layerRegistry.js';
 
 const BDP_SCREEN_LAYER_IDS = Object.freeze([
@@ -38,6 +39,7 @@ const BDP_SCREEN_LAYER_IDS = Object.freeze([
   'bdp-tceq-water-rights',
   'bdp-tceq-msw',
   'bdp-thc-cemeteries',
+  'bdp-san-antonio-entitlement',
 ]);
 
 /** Register the standalone layer catalog before allowing state restoration. */
@@ -86,6 +88,7 @@ export function createStandaloneData({
   dataManager.register(tceqWaterRightsLayer);
   dataManager.register(tceqMswLayer);
   dataManager.register(thcCemeteryLayer);
+  dataManager.register(sanAntonioEntitlementLayer);
 
   dataManager.finalizeRegistrations(
     extendLayerStateRegistry(LAYER_STATE_REGISTRY),
