@@ -17,6 +17,10 @@ import {
   buildEpaCleanupParcelQueryUrl,
   normalizeEpaCleanupFeatureCollection,
 } from '../../src/bdp/environment/cleanupContract.js';
+import {
+  buildTceqMswFeaturesSql,
+  buildTceqMswParcelSql,
+} from '../../src/bdp/environment/mswContract.js';
 
 const execFileAsync = promisify(execFile);
 const MAX_BODY_BYTES = 1_000_000;
@@ -154,6 +158,12 @@ export async function screenBdpParcelCleanups(input) {
   });
 }
 
+export async function screenBdpParcelMsw(input) {
+  return Object.freeze({
+    metrics: await queryPostgisJson(buildTceqMswParcelSql(input)),
+  });
+}
+
 function upstreamSource(error) {
   if (error?.code === 'FEMA_UPSTREAM_FAILED') return 'FEMA NFHL';
   if (error?.code === 'EPA_CLEANUPS_UPSTREAM_FAILED') return 'US EPA Cleanups in My Community';
@@ -214,6 +224,40 @@ async function handleBdpEnvironment(request, response, next) {
   if (!url.pathname.startsWith(BDP_ENVIRONMENT_API_BASE)) return next();
 
   try {
+    if (url.pathname === `${BDP_ENVIRONMENT_API_BASE}/msw-features`) {
+      if (request.method !== 'GET') {
+        response.setHeader('Allow', 'GET');
+        return sendJson(response, 405, { error: 'method_not_allowed' });
+      }
+      const payload = await queryPostgisJson(buildTceqMswFeaturesSql({
+        west: url.searchParams.get('west'),
+        south: url.searchParams.get('south'),
+        east: url.searchParams.get('east'),
+        north: url.searchParams.get('north'),
+      }));
+      return sendJson(response, 200, payload || {
+        source: 'Texas Commission on Environmental Quality municipal-solid-waste data',
+        screeningOnly: true,
+        boundaryInferred: false,
+        points: { type: 'FeatureCollection', features: [] },
+      });
+    }
+
+    if (url.pathname === `${BDP_ENVIRONMENT_API_BASE}/msw`) {
+      if (request.method !== 'POST') {
+        response.setHeader('Allow', 'POST');
+        return sendJson(response, 405, { error: 'method_not_allowed' });
+      }
+      const input = await readJsonBody(request);
+      const result = await screenBdpParcelMsw(input);
+      return sendJson(response, 200, {
+        source: 'Texas Commission on Environmental Quality municipal-solid-waste data',
+        screeningOnly: true,
+        boundaryInferred: false,
+        ...result,
+      });
+    }
+
     if (url.pathname === `${BDP_ENVIRONMENT_API_BASE}/wetlands`) {
       if (request.method !== 'POST') {
         response.setHeader('Allow', 'POST');
