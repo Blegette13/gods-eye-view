@@ -29,7 +29,7 @@ test('entitlement contract stays on official San Antonio ArcGIS services', () =>
     SAN_ANTONIO_ZONING_URL,
     SAN_ANTONIO_ETJ_URL,
     SAN_ANTONIO_FUTURE_LAND_USE_URL,
-  ]) assert.match(url, /^https://services.arcgis.com/g1fRTDLeMgspWrYp//);
+  ]) assert.ok(url.startsWith('https://services.arcgis.com/g1fRTDLeMgspWrYp/'));
 });
 
 test('builds bounded zoning, ETJ and future-land-use GeoJSON queries', () => {
