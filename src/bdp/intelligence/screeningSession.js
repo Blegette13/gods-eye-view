@@ -11,6 +11,7 @@ import { fetchBdpParcelTransportation } from '../transportation/client.js';
 import { fetchBdpParcelUtilities } from '../utilities/client.js';
 import { fetchBdpParcelWaterRights } from '../water/client.js';
 import { fetchBdpParcelCemeteries } from '../cultural/client.js';
+import { fetchBdpParcelEntitlement } from '../entitlement/client.js';
 import {
   buildCurrentScreeningComponents,
   calculateBdpScore,
@@ -23,6 +24,8 @@ import { deriveUtilitiesFlags } from './utilitiesFlags.js';
 import { deriveWaterRightsFlags } from './waterRightsFlags.js';
 import { deriveMswFlags } from './mswFlags.js';
 import { deriveCulturalFlags } from './culturalFlags.js';
+import { scoreEntitlementZoning } from './entitlementScore.js';
+import { deriveEntitlementFlags } from './entitlementFlags.js';
 
 export const BDP_SCREENING_SOURCES = Object.freeze([
   'energy',
@@ -36,6 +39,7 @@ export const BDP_SCREENING_SOURCES = Object.freeze([
   'utilities',
   'waterRights',
   'cemeteries',
+  'entitlement',
 ]);
 
 function serializeError(error) {
@@ -68,6 +72,7 @@ export async function runBdpParcelScreening(parcel, {
   utilitiesLoader = fetchBdpParcelUtilities,
   waterRightsLoader = fetchBdpParcelWaterRights,
   cemeteriesLoader = fetchBdpParcelCemeteries,
+  entitlementLoader = fetchBdpParcelEntitlement,
 } = {}) {
   if (!parcel?.property?.geometry) {
     throw new Error('Parcel geometry is required for BDP screening');
@@ -85,6 +90,7 @@ export async function runBdpParcelScreening(parcel, {
     utilities: utilitiesLoader,
     waterRights: waterRightsLoader,
     cemeteries: cemeteriesLoader,
+    entitlement: entitlementLoader,
   });
 
   const settled = await Promise.allSettled(
@@ -111,6 +117,7 @@ export async function runBdpParcelScreening(parcel, {
     }),
     accessTraffic: scoreAccessTraffic(evidence.transportation),
     utilitiesInfrastructure: scoreUtilitiesInfrastructure(evidence.utilities),
+    entitlementZoning: scoreEntitlementZoning(evidence.entitlement),
   };
   const score = calculateBdpScore({ components });
   const redFlags = Object.freeze([
@@ -127,6 +134,7 @@ export async function runBdpParcelScreening(parcel, {
     ...deriveWaterRightsFlags(evidence.waterRights),
     ...deriveMswFlags(evidence.msw),
     ...deriveCulturalFlags(evidence.cemeteries),
+    ...deriveEntitlementFlags(evidence.entitlement),
   ].sort((a, b) => {
     const severityRank = { critical: 4, high: 3, medium: 2, low: 1, info: 0 };
     return (severityRank[b.severity] || 0) - (severityRank[a.severity] || 0)
