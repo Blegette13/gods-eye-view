@@ -21,10 +21,6 @@ import {
   buildTceqMswFeaturesSql,
   buildTceqMswParcelSql,
 } from '../../src/bdp/environment/mswContract.js';
-import {
-  buildTceqMswFeaturesSql,
-  buildTceqMswParcelSql,
-} from '../../src/bdp/environment/mswContract.js';
 
 const execFileAsync = promisify(execFile);
 const MAX_BODY_BYTES = 1_000_000;
