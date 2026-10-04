@@ -10,6 +10,7 @@ import {
   scoreEpaCleanupEnvironment,
   scoreFemaFloodWater,
   scoreTerrainSoil,
+  scoreTceqMswEnvironment,
   scoreWetlandsEnvironment,
 } from './acquisitionScore.js';
 
@@ -124,4 +125,51 @@ test('builds only currently supported screening categories', () => {
   assert.equal(result.coveragePercent, 23);
   assert.equal(result.readiness, 'insufficient-evidence');
   assert.equal(components.environmental.confidence, 0.62);
+});
+
+
+test('TCEQ MSW point screening penalizes on-tract and unauthorized history without claiming contamination', () => {
+  const result = scoreTceqMswEnvironment({
+    nearest_msw_site_m: 0,
+    msw_points_on_parcel: 1,
+    active_landfills_within_1_mi: 1,
+    active_landfills_within_3_mi: 1,
+    closed_sites_within_1_mi: 0,
+    closed_sites_within_3_mi: 0,
+    unauthorized_sites_within_1_mi: 1,
+    unauthorized_sites_within_3_mi: 1,
+    hazardous_history_sites_within_3_mi: 1,
+    all_msw_sites_within_5_mi: 3,
+  });
+  assert.ok(result.score < 50);
+  assert.equal(result.confidence, 0.45);
+  assert.match(result.note, /do not establish exact waste boundaries or parcel contamination/i);
+});
+
+test('environment score gains confidence when TCEQ MSW joins NWI and EPA evidence', () => {
+  const result = scoreEnvironmental({
+    wetlands: { nwi_percent: 0 },
+    cleanups: {
+      nearest_cleanup_m: 9000,
+      cleanup_sites_on_parcel: 0,
+      cleanup_sites_within_5_mi: 0,
+      superfund_within_5_mi: 0,
+      rcra_within_5_mi: 0,
+      brownfields_within_5_mi: 0,
+    },
+    msw: {
+      nearest_msw_site_m: 9000,
+      msw_points_on_parcel: 0,
+      active_landfills_within_1_mi: 0,
+      active_landfills_within_3_mi: 0,
+      closed_sites_within_1_mi: 0,
+      closed_sites_within_3_mi: 0,
+      unauthorized_sites_within_1_mi: 0,
+      unauthorized_sites_within_3_mi: 0,
+      hazardous_history_sites_within_3_mi: 0,
+      all_msw_sites_within_5_mi: 0,
+    },
+  });
+  assert.equal(result.confidence, 0.72);
+  assert.match(result.source, /TCEQ MSW/);
 });
