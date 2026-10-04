@@ -16,6 +16,7 @@ import { screenBdpParcelTransportation } from './bdp-transportation.js';
 import { screenBdpParcelUtilities } from './bdp-utilities.js';
 import { screenBdpParcelWaterRights } from './bdp-water-rights.js';
 import { screenBdpParcelCemeteries } from './bdp-cultural.js';
+import { screenBdpParcelEntitlement } from './bdp-entitlement.js';
 
 const MAX_BODY_BYTES = 1_000_000;
 
@@ -54,6 +55,7 @@ function providerStatus(error) {
       'TXDOT_UPSTREAM_FAILED',
       'UTILITIES_UPSTREAM_FAILED',
       'THC_CEMETERY_UPSTREAM_FAILED',
+      'ENTITLEMENT_UPSTREAM_FAILED',
     ].includes(error?.code)
     || ['TimeoutError', 'AbortError'].includes(error?.name)
   ) return 502;
@@ -107,6 +109,9 @@ export async function screenBdpParcelIntelligence(parcelInput) {
     )),
     cemeteriesLoader: screened(async (candidate) => (
       await screenBdpParcelCemeteries(parcelGeometryInput(candidate))
+    ).metrics),
+    entitlementLoader: screened(async (candidate) => (
+      await screenBdpParcelEntitlement(parcelGeometryInput(candidate))
     ).metrics),
   });
 }
