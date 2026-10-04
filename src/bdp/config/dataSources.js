@@ -69,6 +69,17 @@ export const BDP_DATA_SOURCES = Object.freeze({
     url: 'https://www.tceq.texas.gov/permitting/water_rights/wr-permitting/wrwud',
     notes: 'Check TCEQ structured active/inactive water-right files for changes and use the official Water Rights Viewer for spatial verification/context rather than scraping the viewer UI.',
   }),
+  tceqMunicipalSolidWaste: Object.freeze({
+    id: 'tceq-msw',
+    label: 'TCEQ Municipal Solid Waste Facilities',
+    method: BDP_SOURCE_METHOD.BULK_DOWNLOAD,
+    authority: BDP_AUTHORITY.AUTHORITATIVE,
+    refreshClass: BDP_REFRESH_CLASS.WEEKLY,
+    onDemandRefresh: true,
+    cacheTtlMs: 24 * 60 * 60 * 1000,
+    url: 'https://www.tceq.texas.gov/permitting/waste_permits/msw_permits/msw-data',
+    notes: 'Use the official TCEQ weekly MSW facility spreadsheets for active/inactive/not-constructed, closed, revoked/not-issued, and historical unnumbered/unauthorized-site screening. Coordinates may represent a benchmark, gate, centroid, or other facility point, so point-on-parcel results remain screening evidence rather than proof of site boundaries or contamination.',
+  }),
   epaCleanups: Object.freeze({
     id: 'epa-cleanups',
     label: 'EPA Cleanups in My Community',
