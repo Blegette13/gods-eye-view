@@ -148,6 +148,26 @@ function cleanupRows(metrics) {
   ];
 }
 
+function mswRows(metrics) {
+  if (!metrics) return [row('TCEQ MSW', 'No data returned')];
+
+  return [
+    row('Nearest MSW site', formatMiles(metrics.nearest_msw_site_m)),
+    row('Nearest site', metrics.nearest_site_name || '—'),
+    row('Nearest dataset', metrics.nearest_site_dataset || '—'),
+    row('Nearest type', metrics.nearest_site_type || '—'),
+    row('Nearest status', metrics.nearest_site_status || '—'),
+    row('Points on parcel', String(metrics.msw_points_on_parcel ?? 0)),
+    row('Active landfill ≤ 1 mi', String(metrics.active_landfills_within_1_mi ?? 0)),
+    row('Active landfill ≤ 3 mi', String(metrics.active_landfills_within_3_mi ?? 0)),
+    row('Closed sites ≤ 1 mi', String(metrics.closed_sites_within_1_mi ?? 0)),
+    row('Closed sites ≤ 3 mi', String(metrics.closed_sites_within_3_mi ?? 0)),
+    row('Unauthorized ≤ 1 mi', String(metrics.unauthorized_sites_within_1_mi ?? 0)),
+    row('Unauthorized ≤ 3 mi', String(metrics.unauthorized_sites_within_3_mi ?? 0)),
+    row('Haz. history ≤ 3 mi', String(metrics.hazardous_history_sites_within_3_mi ?? 0)),
+  ];
+}
+
 function transportationRows(metrics) {
   if (!metrics) return [row('TxDOT screening', 'No metrics returned')];
   const roadLabel = [metrics.nearest_road_name, metrics.nearest_road_system]
@@ -298,6 +318,11 @@ function appendScreeningResult(containers, screening) {
       ? cleanupRows(evidence.cleanups)
       : [row('EPA screening', sourceErrorLabel(errors.cleanups, 'EPA cleanups'))]
   ));
+  containers.msw.replaceChildren(...(
+    evidence.msw
+      ? mswRows(evidence.msw)
+      : [row('TCEQ MSW', sourceErrorLabel(errors.msw, 'TCEQ MSW'))]
+  ));
   containers.transportation.replaceChildren(...(
     evidence.transportation
       ? transportationRows(evidence.transportation)
@@ -413,6 +438,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       flood: document.createElement('div'),
       wetlands: document.createElement('div'),
       cleanups: document.createElement('div'),
+      msw: document.createElement('div'),
       transportation: document.createElement('div'),
       utilities: document.createElement('div'),
       waterRights: document.createElement('div'),
@@ -425,6 +451,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     containers.flood.append(row('FEMA screening', 'Loading…'));
     containers.wetlands.append(row('NWI screening', 'Loading…'));
     containers.cleanups.append(row('EPA screening', 'Loading…'));
+    containers.msw.append(row('TCEQ MSW', 'Loading…'));
     containers.transportation.append(row('TxDOT screening', 'Loading…'));
     containers.utilities.append(row('Utilities', 'Loading…'));
     containers.waterRights.append(row('TCEQ water rights', 'Loading…'));
@@ -441,13 +468,14 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       sectionHeading('FLOOD / FEMA'), containers.flood,
       sectionHeading('WETLANDS'), containers.wetlands,
       sectionHeading('ENVIRONMENT / EPA CLEANUPS'), containers.cleanups,
+      sectionHeading('WASTE / TCEQ MSW'), containers.msw,
       sectionHeading('SOIL / SSURGO'), containers.soils,
       sectionHeading('TERRAIN / 3DEP'), containers.terrain,
     );
 
     const disclaimer = document.createElement('p');
     disclaimer.className = 'bdp-property-disclaimer';
-    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. TxDOT roadway proximity does not prove legal access/frontage. Utility service areas/CCNs do not prove capacity, taps, extension cost or electric service; archived transmission mapping does not prove current line/easement conditions. TCEQ water-right points do not prove that a right belongs to the parcel owner, conveys with the tract, or provides available supply. FEMA, RRC, NWI, EPA cleanup, TxDOT, utility GIS, TCEQ water-right GIS, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, utility, water-right, traffic/ROW, engineering and permitting due diligence remains required.';
+    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. TxDOT roadway proximity does not prove legal access/frontage. Utility service areas/CCNs do not prove capacity, taps, extension cost or electric service; archived transmission mapping does not prove current line/easement conditions. TCEQ water-right points do not prove that a right belongs to the parcel owner, conveys with the tract, or provides available supply. TCEQ MSW coordinates may be a gate, benchmark, centroid, or other point and do not prove exact waste boundaries or parcel contamination. FEMA, RRC, NWI, EPA cleanup, TCEQ MSW, TxDOT, utility GIS, TCEQ water-right GIS, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, utility, water-right, traffic/ROW, engineering and permitting due diligence remains required.';
     body.append(disclaimer);
 
     collapse.addEventListener('click', () => {
