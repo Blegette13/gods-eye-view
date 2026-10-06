@@ -68,7 +68,8 @@ export async function importPuctSewerArchive({ filename, manifest }) {
   // GDAL reads the projection and transforms the official TSMS shapefile to WGS84.
   await run('ogr2ogr', ['-f', 'PostgreSQL', pgConnection(), `/vsizip/${archive}/${shape}`,
     '-overwrite', '-nln', 'bdp_puct_sewer_stage', '-nlt', 'PROMOTE_TO_MULTI',
-    '-t_srs', 'EPSG:4326', '-lco', 'GEOMETRY_NAME=geom']);
+    '-t_srs', 'EPSG:4326', '-select', 'CCN_NO,UTILITY,DBA_NAME,COUNTY,STATUS,CCN_TYPE',
+    '-lco', 'GEOMETRY_NAME=geom']);
   const sourceDate = manifest.sourceLastModified && !Number.isNaN(Date.parse(manifest.sourceLastModified))
     ? sqlLiteral(new Date(manifest.sourceLastModified).toISOString()) : 'NULL';
   const sql = `BEGIN;
