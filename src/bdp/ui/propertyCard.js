@@ -433,9 +433,11 @@ function utilityRows(metrics) {
 
   return [
     row('Water capacity', 'UNVERIFIED'),
-    row('Current water svc', formatPercent(metrics.water_service_overlap_percent)),
+    row('Current water svc', metrics.water_service_source_status === 'unavailable'
+      ? 'UNKNOWN · SOURCE UNAVAILABLE' : formatPercent(metrics.water_service_overlap_percent)),
     row('Water provider(s)', serviceNames || '—'),
-    row('Water CCN · 2021 copy', formatPercent(metrics.water_ccn_overlap_percent)),
+    row('Water CCN · 2021 copy', metrics.water_ccn_source_status === 'unavailable'
+      ? 'UNKNOWN · SOURCE UNAVAILABLE' : formatPercent(metrics.water_ccn_overlap_percent)),
     row('CCN utility', ccnUtilities || '—'),
     row('CCN number(s)', ccnNumbers || '—'),
     row('PUCT water CCN', metrics.puct_water_ccn_coverage === 'mapped-snapshot'
@@ -457,7 +459,9 @@ function utilityRows(metrics) {
     row('Transmission on tract', formatMiles(metrics.transmission_length_on_parcel_m)),
     row(
       'Transmission source',
-      metrics.transmission_data_currency === 'archived-2024'
+      metrics.transmission_source_status === 'unavailable'
+        ? 'UNKNOWN · SOURCE UNAVAILABLE'
+        : metrics.transmission_data_currency === 'archived-2024'
         ? 'ARCHIVED 2024 · SCREENING'
         : 'SCREENING ONLY',
     ),

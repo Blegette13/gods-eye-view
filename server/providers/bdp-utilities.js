@@ -98,33 +98,55 @@ async function fetchGeoJson(url, label, normalize) {
   return normalize(JSON.parse(text));
 }
 
-export async function screenBdpParcelUtilities(input) {
+export async function screenBdpParcelUtilities(input, { fetchSource = fetchGeoJson, query = queryPostgisJson } = {}) {
   const urls = buildUtilityParcelQueryUrls(input);
-  const [waterServiceAreas, waterCcn, transmission] = await Promise.all([
-    fetchGeoJson(
+  const results = await Promise.allSettled([
+    fetchSource(
       urls.waterServiceAreas,
       'TWDB current retail water-service boundaries',
       normalizeWaterServiceAreas,
     ),
-    fetchGeoJson(
+    fetchSource(
       urls.waterCcn,
       'PUCT water CCN boundaries',
       normalizeWaterCcn,
     ),
-    fetchGeoJson(
+    fetchSource(
       urls.transmission,
       'U.S. Government archived transmission lines',
       normalizeTransmissionLines,
     ),
   ]);
+  const empty = { type: 'FeatureCollection', features: [] };
+  const [waterServiceAreas, waterCcn, transmission] = results.map((result) => result.status === 'fulfilled'
+    ? result.value : empty);
 
-  const waterAndTransmission = await queryPostgisJson(buildUtilityParcelMetricsSql(input, {
+  const waterAndTransmission = await query(buildUtilityParcelMetricsSql(input, {
     waterServiceAreas,
     waterCcn,
     transmission,
   }));
+  // An unavailable feed is unknown, never a measured zero. Keep the other
+  // sources and the imported PUCT snapshots available to the parcel screen.
+  const missingFields = [
+    ['water_service_area_count', 'water_service_active_count', 'water_service_names',
+      'water_service_overlap_acres', 'water_service_overlap_percent'],
+    ['water_ccn_count', 'water_ccn_utilities', 'water_ccn_numbers', 'water_ccn_overlap_percent'],
+    ['nearest_transmission_m', 'nearest_transmission_owner', 'nearest_transmission_voltage',
+      'transmission_crossing_count', 'transmission_length_on_parcel_m',
+      'transmission_lines_within_1_mi', 'transmission_lines_within_5_mi'],
+  ];
+  const partial = { ...waterAndTransmission };
+  results.forEach((result, index) => {
+    if (result.status === 'rejected') missingFields[index].forEach((field) => { partial[field] = null; });
+  });
+  partial.water_service_source_status = results[0].status === 'fulfilled' ? 'mapped' : 'unavailable';
+  partial.water_ccn_source_status = results[1].status === 'fulfilled' ? 'archived-2021' : 'unavailable';
+  partial.transmission_source_status = results[2].status === 'fulfilled' ? 'archived-2024' : 'unavailable';
+  if (results[1].status === 'rejected') partial.water_ccn_source_currency = null;
+  if (results[2].status === 'rejected') partial.transmission_data_currency = null;
   const readCcn = async (kind, sql) => {
-    try { return await queryPostgisJson(sql); }
+    try { return await query(sql); }
     catch (error) {
       if (!String(error?.stderr || error?.message).includes(`function bdp_puct_${kind}_ccn_metrics(geometry) does not exist`)) throw error;
       const prefix = kind === 'water' ? 'puct_water_ccn' : 'sewer_ccn';
@@ -136,13 +158,13 @@ export async function screenBdpParcelUtilities(input) {
     readCcn('sewer', buildPuctSewerMetricsSql(input)),
     readCcn('water', buildPuctWaterMetricsSql(input)),
   ]);
-  const metrics = { ...waterAndTransmission, ...sewer, ...currentWater };
+  const metrics = { ...partial, ...sewer, ...currentWater };
 
   return Object.freeze({
     sourceFeatureCounts: Object.freeze({
-      waterServiceAreas: waterServiceAreas.features.length,
-      waterCcn: waterCcn.features.length,
-      transmission: transmission.features.length,
+      waterServiceAreas: results[0].status === 'fulfilled' ? waterServiceAreas.features.length : null,
+      waterCcn: results[1].status === 'fulfilled' ? waterCcn.features.length : null,
+      transmission: results[2].status === 'fulfilled' ? transmission.features.length : null,
     }),
     metrics,
   });

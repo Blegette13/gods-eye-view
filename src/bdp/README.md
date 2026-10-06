@@ -92,6 +92,11 @@ and close-zoom God’s Eye map outline. Run it with the same database and GDAL
 requirements as the sewer importer. Missing or older-than-180-day snapshots
 display as unknown. Even a current CCN does not prove an actual main, available
 capacity, a tap, or a will-serve commitment and does not grant score points.
+The three remote service, archived CCN, and transmission screens fail
+independently: an unavailable source yields null metrics and an unavailable
+status for that source, while the other remote results and imported PUCT
+snapshots remain in the unified parcel response. A failed feed never becomes
+a measured zero overlap or zero crossings.
 
 ## Acquisition economics scenarios
 
