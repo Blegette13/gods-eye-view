@@ -38,6 +38,29 @@ scenario results do not fill the model's 12-point acquisition-economics category
 Verified sale comparables, cost evidence and market underwriting remain future
 work. The ten score weights are unchanged.
 
+## Ownership / title review
+
+The unified evidence package includes `evidence.ownershipTitle`, a deterministic
+document-review plan shown in the original property panel. CAD owner and legal
+description remain observations. Deed vesting, seller authority, commitment
+exceptions/requirements, survey/easements, legal access, liens/releases, taxes,
+and mineral/water interests remain unknown until a verified document workflow
+is implemented. Caller assertions and CAD record currency cannot clear title.
+The eight-point Ownership/Title component stays unscored.
+
+Pipeline, archived transmission and planning-road intersections prioritize
+survey/easement review. Nearby wells and on-parcel TCEQ points prioritize rights
+review. These are document-request triggers, not findings of encumbrances or
+ownership. Missing or zero map metrics never remove baseline review tasks.
+This derived plan is not an additional feed and does not increase source coverage.
+
+Bexar parcels link to the county's official land-record information page;
+unsupported or conflicting county identifiers receive no substitute county link.
+All parcels link to Texas Department of Insurance title guidance. Opening either
+link is a manual lookup, not a completed record search. References:
+https://www.bexar.org/2950/Real-PropertyLand-Records and
+https://www.tdi.texas.gov/title/titlefaqs.html (checked October 6, 2026).
+
 ## Development constraint footprint
 
 Unified intelligence now includes `evidence.developmentConstraints` and a separate

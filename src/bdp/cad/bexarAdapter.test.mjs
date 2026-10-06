@@ -8,6 +8,17 @@ import {
   normalizeBexarFeature,
 } from './bexarAdapter.js';
 
+test('missing CAD numeric fields remain unknown and legal acreage can fill a missing GIS acreage', () => {
+  for (const value of [null, undefined, '', ' ', false]) {
+    const parcel = normalizeBexarFeature({ properties: { PropID: 123, Acres: value, LglAcres: 12, TotVal: value, LandVal: value } });
+    assert.equal(parcel.property.acres, 12);
+    assert.equal(parcel.valuation.marketValue, null);
+    assert.equal(parcel.valuation.landValue, null);
+    assert.equal(parcel.acquisition.pricePerAcre, null);
+  }
+  assert.equal(normalizeBexarFeature({ properties: { PropID: 123, Acres: 0, TotVal: 0 } }).property.acres, 0);
+});
+
 test('normalizeBexarFeature maps BCAD fields into the BDP parcel contract', () => {
   const parcel = normalizeBexarFeature({
     type: 'Feature',

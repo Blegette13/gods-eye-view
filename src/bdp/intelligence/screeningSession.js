@@ -1,4 +1,5 @@
 import { evaluateAcquisitionEconomics } from '../economics/acquisitionEconomics.js';
+import { buildOwnershipTitleReview } from '../title/ownershipReview.js';
 import { fetchBdpParcelEnergy } from '../rrc/client.js';
 import {
   fetchBdpParcelCleanups,
@@ -120,6 +121,7 @@ export async function runBdpParcelScreening(parcel, {
   evidence.developmentConstraints = settledValue(derived);
   errors.developmentConstraints = derived.status === 'rejected' ? serializeError(derived.reason) : null;
   evidence.acquisitionEconomics = evaluateAcquisitionEconomics(parcel);
+  evidence.ownershipTitle = buildOwnershipTitleReview(parcel, evidence);
 
   const components = {
     ...buildCurrentScreeningComponents({

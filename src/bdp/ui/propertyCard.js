@@ -1,5 +1,6 @@
 import { ACQUISITION_COST_FIELDS, evaluateAcquisitionEconomics } from '../economics/acquisitionEconomics.js';
 import { fetchBdpParcelIntelligence } from '../intelligence/client.js';
+import { buildOwnershipTitleReview, TITLE_REVIEW_REFERENCES } from '../title/ownershipReview.js';
 
 function formatMoney(value) {
   if (value === null || value === undefined || value === '' || typeof value === 'boolean') return '—';
@@ -105,6 +106,36 @@ function sourceQualityRows(parcel) {
   const rows = [currencyRow];
   if (parcel.source?.sourceNotice) rows.push(row('Source note', parcel.source.sourceNotice));
   return rows;
+}
+
+function titleReferenceRow(label, url, text) {
+  if (!Object.values(TITLE_REVIEW_REFERENCES).includes(url)) return row(label, 'Lookup not configured for this county');
+  const element = row(label, '');
+  const link = document.createElement('a');
+  link.textContent = text;
+  link.href = url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  element.children[1].replaceChildren(link);
+  return element;
+}
+
+function ownershipTitleRows(review) {
+  return [
+    row('Title review', 'DOCUMENTS REQUIRED · FINDINGS UNKNOWN'),
+    row('Ownership / Title score', 'WITHHELD'),
+    row('CAD-listed owner', review.observed_cad_owner || 'UNKNOWN'),
+    row('Verified vesting', 'UNKNOWN'),
+    row('Title clearance', 'UNKNOWN'),
+    row('Verified legal access', 'UNKNOWN'),
+    titleReferenceRow('Recorded instruments', review.recordLookup?.url, 'Open county land records'),
+    titleReferenceRow('Texas title guidance', review.guidanceUrl, 'Open TDI guidance'),
+    ...(review.tasks || []).map((task) => row(
+      `${task.triggers.length ? 'PRIORITY · ' : ''}${task.label}`,
+      `UNKNOWN · ${task.action}${task.triggers.map((item) => ` ${item.source}: ${item.detail}`).join('')}`,
+    )),
+    row('Title evidence note', review.notice),
+  ];
 }
 
 function energyRows(metrics) {
@@ -462,6 +493,7 @@ function redFlagElements(flags) {
 
 function appendScreeningResult(containers, screening) {
   const { evidence, errors } = screening;
+  if (evidence.ownershipTitle) containers.ownershipTitle.replaceChildren(...ownershipTitleRows(evidence.ownershipTitle));
   if (containers.economics.dataset.scenarioEdited !== 'true') {
     containers.economics.replaceChildren(...economicsRows(evidence.acquisitionEconomics));
   }
@@ -618,6 +650,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     );
 
     const containers = {
+      ownershipTitle: document.createElement('div'),
       developmentConstraints: document.createElement('div'),
       economics: document.createElement('div'),
       growthRadar: document.createElement('div'),
@@ -636,6 +669,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       soils: document.createElement('div'),
       terrain: document.createElement('div'),
     };
+    containers.ownershipTitle.append(...ownershipTitleRows(buildOwnershipTitleReview(parcel)));
     containers.developmentConstraints.append(row('Constraint footprint', 'Loading…'));
     containers.economics.append(...economicsRows(evaluateAcquisitionEconomics(parcel)));
     containers.growthRadar.append(row('Growth Radar', 'Loading…'));
@@ -657,6 +691,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     body.append(
       sectionHeading('BDP INTELLIGENCE'), containers.intelligence,
       sectionHeading('RED FLAGS'), containers.flags,
+      sectionHeading('OWNERSHIP / TITLE REVIEW'), containers.ownershipTitle,
       sectionHeading('ACQUISITION ECONOMICS'), containers.economics, economicsForm(parcel, containers.economics),
       sectionHeading('GROWTH RADAR'), containers.growthRadar,
       sectionHeading('DEVELOPMENT / MAPPED CONSTRAINTS'), containers.developmentConstraints,

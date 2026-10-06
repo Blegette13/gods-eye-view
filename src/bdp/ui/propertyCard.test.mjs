@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createBdpPropertyCard } from './propertyCard.js';
 import { evaluateAcquisitionEconomics } from '../economics/acquisitionEconomics.js';
+import { buildOwnershipTitleReview } from '../title/ownershipReview.js';
 
 // Minimal DOM for interaction tests without changing production dependencies.
 class Element {
@@ -37,6 +38,11 @@ test('native property panel keeps nulls unknown, shows Growth Radar and calculat
     const rows = () => find(card.root, (el) => el.className === 'bdp-property-row');
     const valueFor = (key) => rows().find((el) => el.children[0].textContent === key)?.children[1].textContent;
     assert.equal(valueFor('Total value'), '—');
+    assert.equal(valueFor('Verified vesting'), 'UNKNOWN');
+    assert.equal(valueFor('Title clearance'), 'UNKNOWN');
+    const lookup = find(card.root, (el) => el.tagName === 'a' && el.textContent === 'Open county land records')[0];
+    assert.equal(lookup.href, 'https://www.bexar.org/2950/Real-PropertyLand-Records');
+    assert.equal(lookup.rel, 'noopener noreferrer');
     assert.equal(valueFor('Asking price'), '—');
     assert.equal(valueFor('All-in basis'), '—');
     const input = (name) => find(card.root, (el) => el.tagName === 'input' && el.name === name)[0];
@@ -50,10 +56,14 @@ test('native property panel keeps nulls unknown, shows Growth Radar and calculat
     assert.equal(valueFor('Scenario profit'), '$25,000');
     assert.equal(valueFor('Residual max offer'), '$100,000');
     await tick();
-    resolveScreening(response(parcel));
+    const screened = response(parcel);
+    screened.evidence.ownershipTitle = buildOwnershipTitleReview(parcel, { energy: { pipeline_crossing_count: 1 } });
+    resolveScreening(screened);
     await tick();
     // Late provider responses must not overwrite an edited scenario.
     assert.equal(valueFor('All-in basis'), '$100,000');
+    assert.match(valueFor('PRIORITY · Survey / easements'), /Mapped pipeline/);
+    assert.equal(valueFor('Verified legal access'), 'UNKNOWN');
     assert.equal(valueFor('Nearest MSW ≤ 5 mi'), '—');
     assert.equal(valueFor('Points on parcel'), '—');
     assert.match(valueFor('MSW coverage'), /UNKNOWN/);
@@ -66,6 +76,7 @@ test('native property panel keeps nulls unknown, shows Growth Radar and calculat
     form.listeners.submit({ preventDefault() {} });
     assert.equal(valueFor('All-in basis'), '—');
     card.show({ ...parcel, parcelId: '456' });
+    assert.equal(valueFor('PRIORITY · Survey / easements'), undefined);
     assert.equal(input('askingPrice').value, '');
     assert.equal(valueFor('All-in basis'), '—');
     card.hide();

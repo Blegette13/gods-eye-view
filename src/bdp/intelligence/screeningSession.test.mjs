@@ -121,6 +121,9 @@ test('collects screening evidence and derives score coverage/red flags', async (
   });
 
   assert.equal(result.sourceCoveragePercent, 100);
+  assert.equal(result.score.components.ownershipTitle.status, 'unknown');
+  assert.equal(result.evidence.ownershipTitle.title_clear, null);
+  assert.equal(result.evidence.ownershipTitle.tasks[0].id, 'survey-easements');
   assert.equal(result.evidence.developmentConstraints.combined_mapped_constraint_acres, 15);
   assert.equal(result.score.components.developmentPotential.status, 'unknown');
   assert.equal(Math.round(result.score.coveragePercent), 55);
@@ -165,6 +168,9 @@ test('keeps partial evidence when providers fail', async () => {
   });
 
   assert.equal(result.sourceCoveragePercent, (2 / 13) * 100);
+  assert.equal(result.evidence.ownershipTitle.status, 'documents-required');
+  assert.ok(result.evidence.ownershipTitle.tasks.every((task) => task.status === 'unknown'));
+  assert.equal(result.score.components.ownershipTitle.status, 'unknown');
   assert.deepEqual([...result.succeededSources].sort(), ['soils', 'terrain']);
   assert.deepEqual([...result.failedSources].sort(), ['cemeteries', 'cleanups', 'energy', 'entitlement', 'flood', 'growthRadar', 'msw', 'transportation', 'utilities', 'waterRights', 'wetlands']);
   assert.equal(result.errors.energy.status, 503);
