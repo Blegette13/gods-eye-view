@@ -35,11 +35,9 @@ export function deriveUtilitiesFlags(utilities) {
   if (Number.isFinite(serviceOverlap) && serviceOverlap === 0) {
     flags.push(flag({
       id: 'no-current-water-service-boundary-overlap',
-      severity: Number.isFinite(ccnOverlap) && ccnOverlap > 0 ? 'medium' : 'high',
+      severity: 'high',
       title: 'No mapped current water-service boundary overlap',
-      detail: Number.isFinite(ccnOverlap) && ccnOverlap > 0
-        ? 'The parcel intersects a mapped water CCN but not TWDB’s current retail water-service boundary. Confirm whether extension/service is feasible and who would serve the tract.'
-        : 'The parcel does not intersect the mapped current retail water-service boundary in this screen. Confirm nearby providers, wells, extensions and other lawful water-supply options before assuming development service.',
+      detail: 'The parcel does not intersect the mapped current retail water-service boundary in this screen. The TWDB-hosted water CCN copy was last updated in 2021 and cannot lower this review priority. Confirm nearby providers, wells, extensions and other lawful water-supply options before assuming development service.',
       evidence: {
         waterServiceOverlapPercent: serviceOverlap,
         waterCcnOverlapPercent: ccnOverlap,

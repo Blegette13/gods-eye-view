@@ -435,7 +435,7 @@ function utilityRows(metrics) {
     row('Water capacity', 'UNVERIFIED'),
     row('Current water svc', formatPercent(metrics.water_service_overlap_percent)),
     row('Water provider(s)', serviceNames || '—'),
-    row('Water CCN', formatPercent(metrics.water_ccn_overlap_percent)),
+    row('Water CCN · 2021 copy', formatPercent(metrics.water_ccn_overlap_percent)),
     row('CCN utility', ccnUtilities || '—'),
     row('CCN number(s)', ccnNumbers || '—'),
     row('Sewer capacity', 'UNVERIFIED'),

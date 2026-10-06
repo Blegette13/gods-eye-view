@@ -11,9 +11,10 @@ function clamp(value, min, max) {
 /**
  * Preliminary Utilities / Infrastructure component.
  *
- * A mapped water-service boundary or CCN is useful screening evidence, but it
- * does not establish available capacity, tap rights, meter availability,
- * extension cost, wastewater service, electric distribution capacity, or a
+ * A mapped water-service boundary is preliminary screening evidence. The old
+ * water CCN and transmission copies supply context/risk triggers, not favorable
+ * score points. None of these layers establishes available capacity, tap rights,
+ * meter availability, extension cost, wastewater service, electric distribution capacity, or a
  * utility's willingness/obligation to serve a particular development program.
  */
 export function scoreUtilitiesInfrastructure(utilities) {
@@ -24,8 +25,7 @@ export function scoreUtilitiesInfrastructure(utilities) {
   const nearestTransmissionM = finiteOrNull(utilities.nearest_transmission_m);
   const transmissionCrossings = finiteOrNull(utilities.transmission_crossing_count);
 
-  if ([serviceOverlap, ccnOverlap, nearestTransmissionM, transmissionCrossings]
-    .every((value) => value === null)) return null;
+  if (!Number.isFinite(serviceOverlap)) return null;
 
   let score = 45;
   const evidence = [];
@@ -39,17 +39,14 @@ export function scoreUtilitiesInfrastructure(utilities) {
   }
 
   if (Number.isFinite(ccnOverlap)) {
-    if (ccnOverlap >= 90) score += 15;
-    else if (ccnOverlap > 0) score += 8;
-    else score -= 5;
-    evidence.push(`Mapped water CCN overlap ${ccnOverlap.toFixed(1)}%`);
+    // The TWDB-hosted PUCT water CCN copy was last updated in 2021. Its
+    // presence or absence cannot improve or penalize a current acquisition score.
+    evidence.push(`Archived TWDB water CCN overlap ${ccnOverlap.toFixed(1)}% (2021 source; no score effect)`);
   }
 
   if (Number.isFinite(nearestTransmissionM)) {
     const miles = nearestTransmissionM / 1609.344;
     evidence.push(`Archived high-voltage transmission screening line ${miles.toFixed(2)} mi from parcel`);
-    if (miles <= 1) score += 4;
-    else if (miles > 5) score -= 2;
   }
 
   if (Number.isFinite(transmissionCrossings) && transmissionCrossings > 0) {
@@ -60,7 +57,7 @@ export function scoreUtilitiesInfrastructure(utilities) {
   return Object.freeze({
     score: clamp(score, 0, 100),
     confidence: 0.38,
-    source: 'TWDB public-water service boundaries + PUCT water CCN + archived U.S. Government transmission screening',
+    source: 'TWDB public-water service boundaries + archived TWDB water CCN + archived U.S. Government transmission screening',
     note: 'This is utility screening only. Confirm water/wastewater capacity, taps, extension cost, electric distribution service/capacity, easements and provider commitments directly with the responsible utilities.',
     evidence: Object.freeze(evidence),
   });

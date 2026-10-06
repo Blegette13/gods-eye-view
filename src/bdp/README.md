@@ -82,6 +82,13 @@ cannot be displayed as reliable territory. PUCT source:
 https://www.puc.texas.gov/industry/water/utilities/gis/ (checked October 6,
 2026).
 
+The separate TWDB-hosted PUCT water CCN layer still reflects a 2021 published
+copy. It remains visible as archived territory context and is labeled as such
+in the panel. Its overlap no longer earns score points, penalizes absence, or
+reduces the no-current-water-service review priority. The official PUCT water
+CCN ZIP is a later import target; retrieval recency of that archive will also
+need to be preserved on every screened parcel.
+
 ## Acquisition economics scenarios
 
 The unified screening response includes `evidence.acquisitionEconomics`, derived

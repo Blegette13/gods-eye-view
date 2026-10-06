@@ -9,7 +9,7 @@ test('utilities score rewards mapped water service but stays preliminary', () =>
     nearest_transmission_m: 1200,
     transmission_crossing_count: 0,
   });
-  assert.ok(result.score > 70);
+  assert.ok(result.score >= 70);
   assert.ok(result.confidence < 0.5);
   assert.match(result.note, /capacity/i);
 });
@@ -22,4 +22,14 @@ test('utilities score penalizes no mapped water service and transmission crossin
     transmission_crossing_count: 2,
   });
   assert.ok(result.score < 50);
+});
+
+test('2021 water CCN copy cannot award favorable points or soften a negative screen', () => {
+  const base = { water_service_overlap_percent: 0, nearest_transmission_m: null,
+    transmission_crossing_count: 0 };
+  const covered = scoreUtilitiesInfrastructure({ ...base, water_ccn_overlap_percent: 100 });
+  const uncovered = scoreUtilitiesInfrastructure({ ...base, water_ccn_overlap_percent: 0 });
+  assert.equal(covered.score, uncovered.score);
+  assert.match(covered.evidence.join(' '), /2021 source; no score effect/);
+  assert.equal(scoreUtilitiesInfrastructure({ water_ccn_overlap_percent: 100 }), null);
 });

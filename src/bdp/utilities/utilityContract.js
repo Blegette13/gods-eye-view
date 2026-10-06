@@ -266,6 +266,7 @@ SELECT jsonb_build_object(
   'water_ccn_utilities', cs.utilities,
   'water_ccn_numbers', cs.numbers,
   'water_ccn_overlap_percent', cs.overlap_percent,
+  'water_ccn_source_currency', 'twdb-2021',
   'nearest_transmission_m', nl.distance_m,
   'nearest_transmission_owner', nl.owner,
   'nearest_transmission_voltage', nl.voltage,

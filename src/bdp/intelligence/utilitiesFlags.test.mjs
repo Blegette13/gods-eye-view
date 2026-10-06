@@ -18,6 +18,6 @@ test('utilities flags warn on absent current service and archived line crossing'
     transmission_crossing_count: 1,
     transmission_length_on_parcel_m: 400,
   });
-  assert.ok(flags.some((item) => item.id === 'no-current-water-service-boundary-overlap'));
+  assert.equal(flags.find((item) => item.id === 'no-current-water-service-boundary-overlap')?.severity, 'high');
   assert.ok(flags.some((item) => item.id === 'archived-transmission-line-crossing'));
 });
