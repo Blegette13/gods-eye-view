@@ -8,6 +8,7 @@ export { BDP_ENVIRONMENT_API_BASE };
 export const FEMA_NFHL_FLOOD_HAZARD_URL =
   'https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28/query';
 export const FEMA_MAX_PARCEL_FEATURES = 5_000;
+export const FEMA_EVALUATED_ZONE_PATTERN = '^(A|AE|AH|AO|A99|AR|AR/(A|AE|AH|AO|A1-30)|A([1-9]|[12][0-9]|30)|V|VE|V([1-9]|[12][0-9]|30)|X)$';
 
 function sqlTextLiteral(value) {
   return `'${String(value ?? '').replaceAll("'", "''")}'`;
@@ -46,9 +47,15 @@ export function normalizeFemaFeatureCollection(input) {
   if (!input || input.type !== 'FeatureCollection' || !Array.isArray(input.features)) {
     throw new Error('FEMA NFHL returned malformed GeoJSON');
   }
-  if (input.features.length > FEMA_MAX_PARCEL_FEATURES) {
-    throw new Error('FEMA NFHL returned too many features for one parcel screening request');
+  if (input.exceededTransferLimit === true || input.properties?.exceededTransferLimit === true
+    || input.features.length >= FEMA_MAX_PARCEL_FEATURES) {
+    throw new Error('FEMA NFHL result is capped or truncated; incomplete evidence cannot be treated as clear');
   }
+
+  if (input.features.some((feature) => !['Polygon', 'MultiPolygon'].includes(feature?.geometry?.type))) {
+    throw new Error('FEMA NFHL returned a feature with missing or invalid polygon geometry');
+  }
+
   const features = input.features
     .filter((feature) => feature?.geometry && ['Polygon', 'MultiPolygon'].includes(feature.geometry.type))
     .map((feature) => ({
@@ -87,7 +94,8 @@ fema_source AS (
       ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON(feature -> 'geometry'), 4326)),
       3
     ) AS geom,
-    feature -> 'properties' ->> 'bdp_class' AS hazard_class
+    feature -> 'properties' ->> 'bdp_class' AS hazard_class,
+    UPPER(BTRIM(COALESCE(feature -> 'properties' ->> 'FLD_ZONE', ''))) AS zone
   FROM jsonb_array_elements(${sqlTextLiteral(femaJson)}::jsonb -> 'features') AS feature
 ),
 intersecting AS (
@@ -106,9 +114,14 @@ unions AS (
     ST_UnaryUnion(ST_Collect(geom)) AS mapped_geom
   FROM intersecting
 ),
+evaluated AS (
+  SELECT COALESCE(ST_UnaryUnion(ST_Collect(geom)), ST_GeomFromText('POLYGON EMPTY', 4326)) AS geom
+  FROM fema_source WHERE zone ~ '${FEMA_EVALUATED_ZONE_PATTERN}'
+),
 metrics AS (
   SELECT
     ST_Area(p.geom::geography) AS parcel_area_m2,
+    ST_Area(ST_CollectionExtract(ST_Intersection(p.geom, e.geom), 3)::geography) AS evaluated_m2,
     ST_Area(ST_Intersection(p.geom, COALESCE(u.floodway_geom, ST_GeomFromText('POLYGON EMPTY', 4326)))::geography) AS floodway_m2,
     ST_Area(ST_Intersection(p.geom, COALESCE(u.sfha_geom, ST_GeomFromText('POLYGON EMPTY', 4326)))::geography) AS sfha_m2,
     ST_Area(ST_Intersection(p.geom, COALESCE(u.moderate_geom, ST_GeomFromText('POLYGON EMPTY', 4326)))::geography) AS moderate_m2,
@@ -116,15 +129,18 @@ metrics AS (
     (SELECT COUNT(*) FROM intersecting) AS feature_count
   FROM parcel p
   CROSS JOIN unions u
+  CROSS JOIN evaluated e
 )
 SELECT jsonb_build_object(
+  'coverage_complete', parcel_area_m2 > 0 AND evaluated_m2 / NULLIF(parcel_area_m2, 0) >= 0.995,
+  'fema_evaluated_coverage_percent', CASE WHEN parcel_area_m2 > 0 THEN 100 * evaluated_m2 / parcel_area_m2 ELSE NULL END,
   'parcel_acres', ROUND((parcel_area_m2 / 4046.8564224)::numeric, 2),
   'floodway_acres', ROUND((floodway_m2 / 4046.8564224)::numeric, 2),
   'sfha_acres', ROUND((sfha_m2 / 4046.8564224)::numeric, 2),
   'moderate_acres', ROUND((moderate_m2 / 4046.8564224)::numeric, 2),
   'mapped_flood_acres', ROUND((mapped_m2 / 4046.8564224)::numeric, 2),
   'mapped_flood_percent', ROUND((CASE WHEN parcel_area_m2 > 0 THEN 100 * mapped_m2 / parcel_area_m2 ELSE 0 END)::numeric, 2),
-  'preliminary_non_mapped_flood_acres', ROUND((GREATEST(parcel_area_m2 - mapped_m2, 0) / 4046.8564224)::numeric, 2),
+  'preliminary_non_mapped_flood_acres', CASE WHEN parcel_area_m2 > 0 AND evaluated_m2 / parcel_area_m2 >= 0.995 THEN ROUND((GREATEST(parcel_area_m2 - mapped_m2, 0) / 4046.8564224)::numeric, 2) ELSE NULL END,
   'flood_feature_count', feature_count
 )::text
 FROM metrics;

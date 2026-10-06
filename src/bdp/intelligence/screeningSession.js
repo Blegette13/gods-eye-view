@@ -65,6 +65,7 @@ function settledValue(result) {
  * the remaining evidence or turn missing data into a favorable score.
  */
 export async function runBdpParcelScreening(parcel, {
+  developmentConstraintsLoader = null,
   energyLoader = fetchBdpParcelEnergy,
   floodLoader = fetchBdpParcelFlood,
   wetlandsLoader = fetchBdpParcelWetlands,
@@ -100,7 +101,10 @@ export async function runBdpParcelScreening(parcel, {
   });
 
   const settled = await Promise.allSettled(
-    BDP_SCREENING_SOURCES.map((source) => Promise.resolve().then(() => loaders[source](parcel))),
+    [
+      ...BDP_SCREENING_SOURCES.map((source) => Promise.resolve().then(() => loaders[source](parcel))),
+      Promise.resolve().then(() => developmentConstraintsLoader ? developmentConstraintsLoader(parcel) : null),
+    ],
   );
 
   const evidence = {};
@@ -112,6 +116,9 @@ export async function runBdpParcelScreening(parcel, {
       : null;
   });
 
+  const derived = settled[BDP_SCREENING_SOURCES.length];
+  evidence.developmentConstraints = settledValue(derived);
+  errors.developmentConstraints = derived.status === 'rejected' ? serializeError(derived.reason) : null;
   evidence.acquisitionEconomics = evaluateAcquisitionEconomics(parcel);
 
   const components = {
@@ -152,7 +159,8 @@ export async function runBdpParcelScreening(parcel, {
   const redFlagSummary = summarizeBdpRedFlags(redFlags);
 
   const succeededSources = BDP_SCREENING_SOURCES.filter((source) => evidence[source] != null
-    && (source !== 'msw' || evidence.msw.coverage_complete === true));
+    && (source !== 'msw' || evidence.msw.coverage_complete === true)
+    && (source !== 'flood' || evidence.flood.coverage_complete === true));
   const failedSources = BDP_SCREENING_SOURCES.filter((source) => errors[source] !== null);
 
   return Object.freeze({

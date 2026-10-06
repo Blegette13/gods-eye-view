@@ -310,6 +310,7 @@ export function scoreEnvironmental({ wetlands, cleanups, msw } = {}) {
 
 /** Preliminary flood/water component from FEMA mapped flood overlap only. */
 export function scoreFemaFloodWater(flood) {
+  if (flood?.coverage_complete !== true) return null;
   const mappedPercent = finiteOrNull(flood?.mapped_flood_percent);
   const floodwayAcres = finiteOrNull(flood?.floodway_acres);
   if (mappedPercent === null) return null;

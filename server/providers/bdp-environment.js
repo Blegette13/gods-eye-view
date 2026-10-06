@@ -1,5 +1,4 @@
 import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import {
   BDP_ENVIRONMENT_API_BASE,
   buildNwiOverlapSql,
@@ -22,7 +21,7 @@ import {
   buildTceqMswParcelSql,
 } from '../../src/bdp/environment/mswContract.js';
 
-const execFileAsync = promisify(execFile);
+import { buildDevelopmentConstraintSql } from '../../src/bdp/development/constraintFootprint.js';
 const MAX_BODY_BYTES = 1_000_000;
 const MAX_SOURCE_RESPONSE_BYTES = 16 * 1024 * 1024;
 const QUERY_TIMEOUT_MS = 20_000;
@@ -63,20 +62,20 @@ async function queryPostgisJson(sql) {
     throw error;
   }
 
-  const { stdout } = await execFileAsync('psql', [
-    `service=${service}`,
-    '-v',
-    'ON_ERROR_STOP=1',
-    '--tuples-only',
-    '--no-align',
-    '--command',
-    sql,
-  ], {
-    cwd: process.cwd(),
-    env: process.env,
-    encoding: 'utf8',
-    maxBuffer: MAX_SOURCE_RESPONSE_BYTES,
-    timeout: QUERY_TIMEOUT_MS,
+  const { stdout } = await new Promise((resolve, reject) => {
+    const child = execFile('psql', [
+      `service=${service}`,
+      '-v', 'ON_ERROR_STOP=1',
+      '--tuples-only', '--no-align', '--file', '-',
+    ], {
+      cwd: process.cwd(),
+      env: process.env,
+      encoding: 'utf8',
+      maxBuffer: MAX_SOURCE_RESPONSE_BYTES,
+      timeout: QUERY_TIMEOUT_MS,
+    }, (error, stdout) => error ? reject(error) : resolve({ stdout }));
+    child.stdin.on('error', (error) => { if (error.code !== 'EPIPE') reject(error); });
+    child.stdin.end(sql);
   });
 
   const text = String(stdout || '').trim();
@@ -101,7 +100,12 @@ async function fetchBoundedGeoJson(url, { sourceLabel, errorCode, normalize }) {
   if (Buffer.byteLength(text) > MAX_SOURCE_RESPONSE_BYTES) {
     throw new Error(`${sourceLabel} response is too large`);
   }
-  return normalize(JSON.parse(text));
+  try {
+    return normalize(JSON.parse(text));
+  } catch (error) {
+    error.code = errorCode;
+    throw error;
+  }
 }
 
 async function fetchNwiParcelFeatures(parcelInput) {
@@ -131,22 +135,38 @@ async function fetchEpaCleanupParcelFeatures(parcelInput) {
   });
 }
 
-export async function screenBdpParcelWetlands(input) {
-  const sourceFeatures = await fetchNwiParcelFeatures(input);
-  const metrics = await queryPostgisJson(buildNwiOverlapSql(input, sourceFeatures));
+/** One request-local cache: flood/NWI metrics and their combined footprint share source snapshots. */
+export function createBdpEnvironmentSession(input, {
+  floodFeaturesLoader = fetchFemaParcelFeatures,
+  wetlandsFeaturesLoader = fetchNwiParcelFeatures,
+  query = queryPostgisJson,
+} = {}) {
+  let floodPromise;
+  let wetlandsPromise;
+  const flood = () => floodPromise ||= Promise.resolve().then(() => floodFeaturesLoader(input));
+  const wetlands = () => wetlandsPromise ||= Promise.resolve().then(() => wetlandsFeaturesLoader(input));
   return Object.freeze({
-    sourceFeatureCount: sourceFeatures.features.length,
-    metrics,
+    async screenFlood() {
+      const sourceFeatures = await flood();
+      return Object.freeze({ sourceFeatureCount: sourceFeatures.features.length, metrics: await query(buildFemaOverlapSql(input, sourceFeatures)) });
+    },
+    async screenWetlands() {
+      const sourceFeatures = await wetlands();
+      return Object.freeze({ sourceFeatureCount: sourceFeatures.features.length, metrics: await query(buildNwiOverlapSql(input, sourceFeatures)) });
+    },
+    async screenDevelopmentConstraints() {
+      const [floodFeatures, wetlandsFeatures] = await Promise.all([flood(), wetlands()]);
+      return Object.freeze({ metrics: await query(buildDevelopmentConstraintSql(input, { flood: floodFeatures, wetlands: wetlandsFeatures })) });
+    },
   });
 }
 
+export async function screenBdpParcelWetlands(input) {
+  return createBdpEnvironmentSession(input).screenWetlands();
+}
+
 export async function screenBdpParcelFlood(input) {
-  const sourceFeatures = await fetchFemaParcelFeatures(input);
-  const metrics = await queryPostgisJson(buildFemaOverlapSql(input, sourceFeatures));
-  return Object.freeze({
-    sourceFeatureCount: sourceFeatures.features.length,
-    metrics,
-  });
+  return createBdpEnvironmentSession(input).screenFlood();
 }
 
 export async function screenBdpParcelCleanups(input) {

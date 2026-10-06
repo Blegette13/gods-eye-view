@@ -76,6 +76,15 @@ export function deriveBdpRedFlags({ parcel, energy, flood, wetlands, cleanups, t
     }));
   }
 
+  if (flood?.coverage_complete === false) {
+    flags.push(flag({
+      id: 'fema-coverage-incomplete', severity: 'info',
+      title: 'FEMA evaluated mapping is incomplete',
+      detail: 'Missing, partial or undetermined flood mapping withholds the flood score and outside-footprint acreage. Known mapped hazards remain review triggers; zero hazard counts do not provide clearance.',
+      source: 'FEMA National Flood Hazard Layer',
+      evidence: { evaluatedCoveragePercent: flood.fema_evaluated_coverage_percent ?? null },
+    }));
+  }
   const floodwayAcres = finiteOrNull(flood?.floodway_acres);
   const sfhaAcres = finiteOrNull(flood?.sfha_acres);
   const mappedFloodPercent = finiteOrNull(flood?.mapped_flood_percent);

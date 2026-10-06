@@ -22,7 +22,7 @@ function find(root, predicate) {
 const parcel = { parcelId: '123', county: 'Bexar', property: { acres: null, geometry: { type: 'Polygon' } }, valuation: { marketValue: null }, source: { recordCurrency: 'unknown' } };
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 function response(candidate) {
-  return { evidence: { acquisitionEconomics: evaluateAcquisitionEconomics(candidate), msw: { coverage_complete: false, nearest_msw_site_m: null }, growthRadar: { preliminary_plats_within_25_mi: 4 } }, errors: {},
+  return { evidence: { developmentConstraints: { status: 'incomplete-fema-coverage', combined_mapped_constraint_acres: 10, outside_mapped_footprint_acres: null }, acquisitionEconomics: evaluateAcquisitionEconomics(candidate), msw: { coverage_complete: false, nearest_msw_site_m: null }, growthRadar: { preliminary_plats_within_25_mi: 4 } }, errors: {},
     score: { readiness: 'insufficient-evidence', coveragePercent: 0, confidenceAdjustedCoveragePercent: 0 }, redFlags: [], redFlagSummary: { critical: 0, high: 0, medium: 0 }, sourceCoveragePercent: 0 };
 }
 
@@ -58,6 +58,9 @@ test('native property panel keeps nulls unknown, shows Growth Radar and calculat
     assert.equal(valueFor('Points on parcel'), '—');
     assert.match(valueFor('MSW coverage'), /UNKNOWN/);
     assert.equal(valueFor('Preliminary plats ≤ 25 mi'), '4');
+    assert.equal(valueFor('Combined footprint'), '10 ac');
+    assert.equal(valueFor('Outside mapped footprint'), '—');
+    assert.equal(valueFor('Verified buildable acres'), 'UNKNOWN');
     assert.match(valueFor('Economics score'), /WITHHELD/);
     input('siteWorkCosts').value = '';
     form.listeners.submit({ preventDefault() {} });

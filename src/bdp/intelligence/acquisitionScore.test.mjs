@@ -76,7 +76,7 @@ test('screening helpers remain explicitly preliminary', () => {
       brownfields_within_5_mi: 1,
     },
   });
-  const flood = scoreFemaFloodWater({ mapped_flood_percent: 20, floodway_acres: 2 });
+  const flood = scoreFemaFloodWater({ coverage_complete: true, mapped_flood_percent: 20, floodway_acres: 2 });
   const terrainSoil = scoreTerrainSoil({
     terrain: { slope: { meanDegrees: 6 } },
     soils: { dominant: { mappedSharePercent: 70, farmlandClass: 'Prime farmland' } },
@@ -116,7 +116,7 @@ test('builds only currently supported screening categories', () => {
       rcra_within_5_mi: 0,
       brownfields_within_5_mi: 0,
     },
-    flood: { mapped_flood_percent: 0, floodway_acres: 0 },
+    flood: { coverage_complete: true, mapped_flood_percent: 0, floodway_acres: 0 },
     terrain: { slope: { meanDegrees: 2 } },
     soils: { dominant: { mappedSharePercent: 80, farmlandClass: '' } },
   });
@@ -181,4 +181,10 @@ test('MSW empty, partial and stale imports cannot earn favorable environmental s
     assert.equal(scoreTceqMswEnvironment({ coverage_complete, all_msw_sites_within_5_mi: 0 }), null);
   }
   assert.equal(scoreTceqMswEnvironment({ coverage_complete: true, all_msw_sites_within_5_mi: 0 }), null);
+});
+
+test('missing or incomplete FEMA coverage cannot earn a favorable flood score', () => {
+  for (const coverage_complete of [undefined, false]) {
+    assert.equal(scoreFemaFloodWater({ coverage_complete, mapped_flood_percent: 0 }), null);
+  }
 });

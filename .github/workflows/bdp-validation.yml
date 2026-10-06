@@ -132,3 +132,6 @@ jobs:
         env:
           BDP_VALIDATE_GDAL: '1'
         run: node scripts/bdp/validate-msw-postgis.mjs
+
+      - name: Validate development constraint unions and incomplete coverage
+        run: node scripts/bdp/validate-development-postgis.mjs

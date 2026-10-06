@@ -23,8 +23,6 @@ services:
       - ./src/bdp/ingestion/sql/tceqParcelWater.sql:/docker-entrypoint-initdb.d/31-tceq-parcel-water.sql:ro
       - ./src/bdp/ingestion/sql/tceqMswPostgis.sql:/docker-entrypoint-initdb.d/32-tceq-msw.sql:ro
       - ./src/bdp/ingestion/sql/tceqParcelMsw.sql:/docker-entrypoint-initdb.d/33-tceq-parcel-msw.sql:ro
-      - ./src/bdp/ingestion/sql/tceqMswPostgis.sql:/docker-entrypoint-initdb.d/40-tceq-msw.sql:ro
-      - ./src/bdp/ingestion/sql/tceqParcelMsw.sql:/docker-entrypoint-initdb.d/41-tceq-parcel-msw.sql:ro
 
 volumes:
   bdp_postgis_data:

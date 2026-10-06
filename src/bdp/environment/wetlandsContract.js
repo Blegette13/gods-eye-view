@@ -106,8 +106,14 @@ export function normalizeNwiFeatureCollection(input) {
   if (!input || input.type !== 'FeatureCollection' || !Array.isArray(input.features)) {
     throw new Error('USFWS NWI returned malformed GeoJSON');
   }
-  if (input.features.length > NWI_MAX_SOURCE_FEATURES) {
-    throw new Error('USFWS NWI returned too many wetlands for one parcel screening request');
+  if (input.exceededTransferLimit === true || input.properties?.exceededTransferLimit === true
+    || input.features.length >= NWI_MAX_SOURCE_FEATURES) {
+    throw new Error('USFWS NWI result is capped or truncated; incomplete evidence cannot be treated as clear');
+  }
+
+
+  if (input.features.some((feature) => !['Polygon', 'MultiPolygon'].includes(feature?.geometry?.type))) {
+    throw new Error('USFWS NWI returned a feature with missing or invalid polygon geometry');
   }
 
   const features = input.features

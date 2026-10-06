@@ -35,7 +35,7 @@ test('normalizes parcel geometry and derives a bounded NWI query envelope', () =
   assert.match(url.searchParams.get('outFields'), /WETLAND_TYPE/);
 });
 
-test('keeps only polygon wetland features and the fields used by screening', () => {
+test('preserves polygon wetland features and only fields used by screening', () => {
   const normalized = normalizeNwiFeatureCollection({
     type: 'FeatureCollection',
     features: [
@@ -43,11 +43,6 @@ test('keeps only polygon wetland features and the fields used by screening', () 
         type: 'Feature',
         geometry: { type: 'Polygon', coordinates: parcel.geometry.coordinates },
         properties: { ATTRIBUTE: 'PFO1A', WETLAND_TYPE: 'Freshwater Forested/Shrub Wetland', ACRES: 12.5, EXTRA: 'drop' },
-      },
-      {
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [-98.5, 29.4] },
-        properties: { ATTRIBUTE: 'not-used' },
       },
     ],
   });

@@ -22,8 +22,9 @@ const parcel = {
 
 test('collects screening evidence and derives score coverage/red flags', async () => {
   const result = await runBdpParcelScreening(parcel, {
+    developmentConstraintsLoader: async () => ({ combined_mapped_constraint_acres: 15, development_score_ready: false }),
     energyLoader: async () => ({ pipeline_crossing_count: 1, nearest_well_m: 2000 }),
-    floodLoader: async () => ({ mapped_flood_percent: 10, floodway_acres: 0, sfha_acres: 10 }),
+    floodLoader: async () => ({ coverage_complete: true, mapped_flood_percent: 10, floodway_acres: 0, sfha_acres: 10 }),
     wetlandsLoader: async () => ({ nwi_percent: 5, nwi_mapped_acres: 5 }),
     cleanupsLoader: async () => ({
       nearest_cleanup_m: 1000,
@@ -120,6 +121,8 @@ test('collects screening evidence and derives score coverage/red flags', async (
   });
 
   assert.equal(result.sourceCoveragePercent, 100);
+  assert.equal(result.evidence.developmentConstraints.combined_mapped_constraint_acres, 15);
+  assert.equal(result.score.components.developmentPotential.status, 'unknown');
   assert.equal(Math.round(result.score.coveragePercent), 55);
   assert.equal(result.score.readiness, 'insufficient-evidence');
   assert.equal(result.score.components.growth.status, 'unknown');
@@ -145,6 +148,7 @@ test('collects screening evidence and derives score coverage/red flags', async (
 test('keeps partial evidence when providers fail', async () => {
   const unavailable = Object.assign(new Error('PostGIS not configured'), { status: 503 });
   const result = await runBdpParcelScreening(parcel, {
+    developmentConstraintsLoader: async () => { throw unavailable; },
     energyLoader: async () => { throw unavailable; },
     floodLoader: async () => { throw unavailable; },
     wetlandsLoader: async () => { throw unavailable; },
@@ -172,6 +176,8 @@ test('keeps partial evidence when providers fail', async () => {
   assert.equal(result.errors.cemeteries.status, 503);
   assert.equal(result.errors.entitlement.status, 503);
   assert.equal(result.errors.growthRadar.status, 503);
+  assert.equal(result.errors.developmentConstraints.status, 503);
+  assert.equal(result.evidence.developmentConstraints, null);
   assert.equal(result.score.coveragePercent, 5);
   assert.equal(result.score.components.environmental.status, 'unknown');
   assert.equal(result.score.components.floodWater.status, 'unknown');

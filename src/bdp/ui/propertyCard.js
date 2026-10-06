@@ -123,6 +123,7 @@ function energyRows(metrics) {
 function floodRows(metrics) {
   if (!metrics) return [row('FEMA screening', 'No metrics returned')];
   return [
+    row('FEMA coverage', metrics.coverage_complete === true ? 'EVALUATED MAPPING · PRELIMINARY' : 'INCOMPLETE / UNDETERMINED · UNKNOWN'),
     row('Mapped flood', formatAcres(metrics.mapped_flood_acres)),
     row('Flood share', formatPercent(metrics.mapped_flood_percent)),
     row('SFHA', formatAcres(metrics.sfha_acres)),
@@ -177,6 +178,25 @@ function mswRows(metrics) {
     row('Unauthorized ≤ 1 mi', String(metrics.unauthorized_sites_within_1_mi ?? '—')),
     row('Unauthorized ≤ 3 mi', String(metrics.unauthorized_sites_within_3_mi ?? '—')),
     row('Haz. history ≤ 3 mi', String(metrics.hazardous_history_sites_within_3_mi ?? '—')),
+  ];
+}
+
+function developmentConstraintRows(metrics) {
+  if (!metrics) return [row('Constraint footprint', 'Unknown')];
+  return [
+    row('Footprint status', String(metrics.status || 'unknown').replaceAll('-', ' ').toUpperCase()),
+    row('Development score', 'WITHHELD · BUILDABILITY UNVERIFIED'),
+    row('GIS parcel area', formatAcres(metrics.parcel_acres)),
+    row('FEMA mapped hazard', formatAcres(metrics.mapped_flood_acres)),
+    row('NWI mapped area', formatAcres(metrics.mapped_nwi_acres)),
+    row('Shared flood / NWI', formatAcres(metrics.shared_flood_nwi_acres)),
+    row('Combined footprint', formatAcres(metrics.combined_mapped_constraint_acres)),
+    row('Combined share', formatPercent(metrics.combined_mapped_constraint_percent)),
+    row('FEMA evaluated cover', formatPercent(metrics.fema_evaluated_coverage_percent)),
+    row('Outside mapped footprint', formatAcres(metrics.outside_mapped_footprint_acres)),
+    row('Verified buildable acres', 'UNKNOWN'),
+    row('Footprint source', metrics.source || 'FEMA NFHL + USFWS NWI / PostGIS'),
+    row('Footprint note', metrics.notice || 'Outside mapped constraints does not establish buildability.'),
   ];
 }
 
@@ -445,6 +465,9 @@ function appendScreeningResult(containers, screening) {
   if (containers.economics.dataset.scenarioEdited !== 'true') {
     containers.economics.replaceChildren(...economicsRows(evidence.acquisitionEconomics));
   }
+  containers.developmentConstraints.replaceChildren(...(evidence.developmentConstraints
+    ? developmentConstraintRows(evidence.developmentConstraints)
+    : [row('Constraint footprint', sourceErrorLabel(errors.developmentConstraints, 'FEMA / NWI'))]));
   containers.growthRadar.replaceChildren(...(evidence.growthRadar
     ? growthRows(evidence.growthRadar)
     : [row('Growth Radar', sourceErrorLabel(errors.growthRadar, 'San Antonio Growth Radar'))]));
@@ -595,6 +618,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     );
 
     const containers = {
+      developmentConstraints: document.createElement('div'),
       economics: document.createElement('div'),
       growthRadar: document.createElement('div'),
       intelligence: document.createElement('div'),
@@ -612,6 +636,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       soils: document.createElement('div'),
       terrain: document.createElement('div'),
     };
+    containers.developmentConstraints.append(row('Constraint footprint', 'Loading…'));
     containers.economics.append(...economicsRows(evaluateAcquisitionEconomics(parcel)));
     containers.growthRadar.append(row('Growth Radar', 'Loading…'));
     containers.intelligence.append(row('BDP screening', 'Loading evidence…'));
@@ -634,6 +659,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       sectionHeading('RED FLAGS'), containers.flags,
       sectionHeading('ACQUISITION ECONOMICS'), containers.economics, economicsForm(parcel, containers.economics),
       sectionHeading('GROWTH RADAR'), containers.growthRadar,
+      sectionHeading('DEVELOPMENT / MAPPED CONSTRAINTS'), containers.developmentConstraints,
       sectionHeading('ENTITLEMENT / ZONING'), containers.entitlement,
       sectionHeading('ACCESS / TXDOT TRAFFIC'), containers.transportation,
       sectionHeading('UTILITIES / INFRASTRUCTURE'), containers.utilities,

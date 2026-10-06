@@ -6,9 +6,8 @@ import {
 import { screenBdpParcelEnergy } from './bdp-rrc.js';
 import {
   screenBdpParcelCleanups,
-  screenBdpParcelFlood,
+  createBdpEnvironmentSession,
   screenBdpParcelMsw,
-  screenBdpParcelWetlands,
 } from './bdp-environment.js';
 import { screenBdpParcelSoils } from './bdp-soil.js';
 import { screenBdpParcelTerrain } from './bdp-terrain.js';
@@ -81,16 +80,20 @@ function parcelGeometryInput(parcel) {
 
 export async function screenBdpParcelIntelligence(parcelInput) {
   const { parcel } = normalizeBdpIntelligenceRequest(parcelInput);
+  const environment = createBdpEnvironmentSession(parcelGeometryInput(parcel));
   return runBdpParcelScreening(parcel, {
+    developmentConstraintsLoader: screened(async () => (
+      await environment.screenDevelopmentConstraints()
+    ).metrics),
     energyLoader: screened((candidate) => screenBdpParcelEnergy({
       countyFips: candidate.countyFips || null,
       geometry: candidate.property.geometry,
     })),
     floodLoader: screened(async (candidate) => (
-      await screenBdpParcelFlood(parcelGeometryInput(candidate))
+      await environment.screenFlood()
     ).metrics),
     wetlandsLoader: screened(async (candidate) => (
-      await screenBdpParcelWetlands(parcelGeometryInput(candidate))
+      await environment.screenWetlands()
     ).metrics),
     cleanupsLoader: screened(async (candidate) => (
       await screenBdpParcelCleanups(parcelGeometryInput(candidate))
