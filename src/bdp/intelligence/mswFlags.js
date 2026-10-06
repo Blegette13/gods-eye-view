@@ -58,7 +58,7 @@ export function deriveMswFlags(msw) {
       id: 'active-landfill-within-1-mi',
       severity: 'high',
       title: 'Active TCEQ landfill within 1 mile',
-      detail: `${Math.round(active1)} active TCEQ landfill${active1 === 1 ? '' : 's'} map within 1 mile. Review traffic, odor, vectors, compatibility, groundwater/surface-water pathways, operating records and site-specific separation before acquisition conclusions.`,
+      detail: `${Math.round(active1)} active TCEQ landfill record${active1 === 1 ? '' : 's'} map within 1 mile. Records may share a facility. Review traffic, odor, vectors, compatibility, groundwater/surface-water pathways, operating records and site-specific separation before acquisition conclusions.`,
       evidence: { activeLandfillsWithin1Mile: active1, nearestSiteMeters: nearestM },
     }));
   } else if (Number.isFinite(active3) && active3 > 0) {
@@ -66,7 +66,7 @@ export function deriveMswFlags(msw) {
       id: 'active-landfill-within-3-mi',
       severity: 'medium',
       title: 'Active TCEQ landfill within 3 miles',
-      detail: `${Math.round(active3)} active TCEQ landfill${active3 === 1 ? '' : 's'} map within 3 miles. Proximity does not establish parcel contamination but can affect land-use compatibility and due diligence.`,
+      detail: `${Math.round(active3)} active TCEQ landfill record${active3 === 1 ? '' : 's'} map within 3 miles. Records may share a facility. Proximity does not establish parcel contamination but can affect land-use compatibility and due diligence.`,
       evidence: { activeLandfillsWithin3Miles: active3, nearestSiteMeters: nearestM },
     }));
   }
@@ -104,7 +104,7 @@ export function deriveMswFlags(msw) {
       id: 'closed-msw-site-within-1-mi',
       severity: 'medium',
       title: 'Closed TCEQ MSW site within 1 mile',
-      detail: `${Math.round(closed1)} closed/post-closure TCEQ MSW site${closed1 === 1 ? '' : 's'} map within 1 mile. Review closure/post-closure records and exact site boundary before development conclusions.`,
+      detail: `${Math.round(closed1)} closed/post-closure TCEQ MSW record${closed1 === 1 ? '' : 's'} map within 1 mile. Review closure/post-closure records and exact site boundary before development conclusions.`,
       evidence: { closedSitesWithin1Mile: closed1 },
     }));
   } else if (Number.isFinite(closed3) && closed3 > 0) {
@@ -112,7 +112,7 @@ export function deriveMswFlags(msw) {
       id: 'closed-msw-site-within-3-mi',
       severity: 'low',
       title: 'Closed TCEQ MSW site within 3 miles',
-      detail: `${Math.round(closed3)} closed/post-closure TCEQ MSW site${closed3 === 1 ? '' : 's'} map within 3 miles. Review if site location or environmental pathways make it relevant to the tract.`,
+      detail: `${Math.round(closed3)} closed/post-closure TCEQ MSW record${closed3 === 1 ? '' : 's'} map within 3 miles. Review if site location or environmental pathways make it relevant to the tract.`,
       evidence: { closedSitesWithin3Miles: closed3 },
     }));
   }

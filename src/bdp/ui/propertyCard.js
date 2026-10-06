@@ -162,6 +162,7 @@ function mswRows(metrics) {
   if (!metrics) return [row('TCEQ MSW', 'No data returned')];
 
   return [
+    row('MSW count basis', 'POINT RECORDS · MULTIPLE AUTHORIZATIONS MAY SHARE A FACILITY'),
     row('MSW coverage', metrics.coverage_complete === true ? 'IMPORTED · CURRENT' : 'INCOMPLETE / STALE · UNKNOWN'),
     row('Nearest MSW ≤ 5 mi', formatMiles(metrics.nearest_msw_site_m)),
     row('Nearest site', metrics.nearest_site_name || '—'),

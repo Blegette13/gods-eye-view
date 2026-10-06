@@ -113,3 +113,7 @@ collection/transfer/construction-over-closed-site codes are not active landfills
 With `BDP_VALIDATE_GDAL=1`, spatial validation also writes a fixture XLSX via GDAL,
 imports its notice/header/data rows through the real XLSX-to-PostgreSQL driver,
 and checks the normalized results. The CI job installs `gdal-bin` for this path.
+
+Proximity counters are published point-record counts, not deduplicated facility
+counts: multiple authorizations may share an RN/location. The panel and flags
+label this explicitly; no distinct-facility or waste-boundary inference is made.
