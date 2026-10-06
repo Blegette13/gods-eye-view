@@ -42,4 +42,7 @@ test('historical unnumbered normalize SQL preserves unauthorized and hazardous-h
   assert.match(sql, /haz_cert/);
   assert.match(sql, /haz_prob/);
   assert.match(sql, /size_acres/);
+  assert.match(sql, /normalized_rows/);
+  assert.match(sql, /jsonb_object_agg/);
+  assert.match(sql, /pg_input_is_valid/);
 });

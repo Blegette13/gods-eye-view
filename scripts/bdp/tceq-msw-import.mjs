@@ -135,6 +135,10 @@ function importStage({ service, dataset, sourcePath }) {
     `PG:service=${service}`,
     sourcePath,
     layer,
+    ...(dataset === 'unnumbered' ? [
+      '--config', 'OGR_XLSX_HEADERS', 'DISABLE',
+      '--config', 'OGR_XLSX_FIELD_TYPES', 'STRING',
+    ] : []),
     '-nln',
     table,
     '-overwrite',
@@ -240,10 +244,27 @@ export function buildNormalizeSql({ dataset, table, manifest }) {
     ? `${sqlLiteral(manifest.lastModified)}::timestamptz`
     : 'NULL';
 
-  return `
+  const headerCte = dataset === 'unnumbered' ? `
+    WITH header AS (
+      SELECT to_jsonb(h) AS fields FROM ${table} h
+      WHERE EXISTS (SELECT 1 FROM jsonb_each_text(to_jsonb(h)) WHERE UPPER(BTRIM(value)) = 'SITE_NAME1')
+        AND EXISTS (SELECT 1 FROM jsonb_each_text(to_jsonb(h)) WHERE UPPER(BTRIM(value)) = 'LATIT_DD')
+      LIMIT 1
+    ), normalized_rows AS (
+      SELECT (
+        SELECT jsonb_object_agg(LOWER(BTRIM(hf.value)), rf.value)
+        FROM jsonb_each_text(h.fields) hf
+        JOIN jsonb_each(to_jsonb(r)) rf ON rf.key = hf.key
+        WHERE hf.key <> 'ogc_fid' AND NULLIF(BTRIM(hf.value), '') IS NOT NULL
+      ) AS source_fields
+      FROM ${table} r CROSS JOIN header h
+    )
+  ` : '';
+  const sql = `
     BEGIN;
     DELETE FROM bdp_tceq_msw_sites WHERE source_dataset = ${sqlLiteral(dataset)};
 
+    ${headerCte}
     INSERT INTO bdp_tceq_msw_sites (
       source_dataset, source_filename, source_url, source_last_modified,
       source_record, site_name, alternate_name, authorization_number, rn,
@@ -288,7 +309,8 @@ export function buildNormalizeSql({ dataset, table, manifest }) {
         ELSE NULL
       END
     FROM ${table} s
-    WHERE COALESCE(${fields.siteName}, ${fields.authorizationNumber}) IS NOT NULL;
+    WHERE COALESCE(${fields.siteName}, ${fields.authorizationNumber}) IS NOT NULL
+      ${dataset === 'unnumbered' ? `AND ${fields.authorizationNumber} ~ '^[0-9]+$'` : ''};
 
     DO $guard$
     BEGIN
@@ -315,6 +337,9 @@ export function buildNormalizeSql({ dataset, table, manifest }) {
     DROP TABLE ${table};
     COMMIT;
   `;
+  return dataset === 'unnumbered'
+    ? sql.replaceAll('to_jsonb(s)', 's.source_fields').replace(`FROM ${table} s`, 'FROM normalized_rows s')
+    : sql;
 }
 
 export async function validateMswCache({ spec, sourcePath, manifest, now = Date.now() }) {

@@ -44,7 +44,7 @@ nearby AS (
       AND LOWER(COALESCE(s.physical_status, '')) = 'active'
       AND (
         LOWER(BTRIM(COALESCE(s.facility_type, ''))) ~ '^(landfill|type (1|1ae|2|3|4|4ae|i|iae|ii|iii|iv|ivae)( landfill)?)$'
-        OR LOWER(BTRIM(COALESCE(s.facility_type, ''))) IN ('1', '1ae', '2', '3', '4', '4ae')
+        OR LOWER(REPLACE(COALESCE(s.facility_type, ''), ' ', '')) IN ('1', '1ae', '2', '3', '4', '4ae', '1ae&4ae', 'monofill')
       )
     ) AS is_active_landfill,
     (s.source_dataset = 'closed' OR LOWER(COALESCE(s.physical_status, '')) IN ('closed', 'post closure')) AS is_closed,

@@ -6,6 +6,7 @@ const manifest = { filename: 'fixture.xls', url: 'https://example.test/fixture',
 const normalize = buildNormalizeSql({ dataset: 'facilities', table: 'msw_validation_stage', manifest }).replace('BEGIN;', '').replace('COMMIT;', '');
 const previousChecksumQuery = buildMswAlreadyImportedSql({ dataset: 'facilities', checksumSha256: 'a'.repeat(64) });
 const latestChecksumQuery = buildMswAlreadyImportedSql({ dataset: 'facilities', checksumSha256: 'b'.repeat(64) });
+const historicalNormalize = buildNormalizeSql({ dataset: 'unnumbered', table: 'msw_historical_stage', manifest: { ...manifest, filename: 'fixture.xlsx' } }).replace('BEGIN;', '').replace('COMMIT;', '');
 const sql = `
 BEGIN;
 TRUNCATE bdp_tceq_msw_sites, bdp_ingestion_runs;
@@ -17,16 +18,24 @@ CREATE TEMP TABLE msw_validation_stage(site_name text, physical_type text, physi
 INSERT INTO msw_validation_stage VALUES
  ('Fixture landfill','1AE','Active','29.405','-98.495'),
  ('Fixture transfer','5CC','Active','29.405','-98.495'),
- ('Fixture construction','CP','Active','29.405','-98.495');
+ ('Fixture construction','CP','Active','29.405','-98.495'),
+ ('Fixture mixed landfill','1 AE & 4 AE','Active','29.405','-98.495'),
+ ('Fixture monofill','MONOFILL','Active','29.405','-98.495');
 ${normalize}
 INSERT INTO bdp_tceq_msw_sites(source_dataset,source_filename,source_url,site_name,physical_status,geom,unauthorized,hazardous_waste_confirmed)
 VALUES
  ('closed','fixture','fixture','Closed fixture','Closed',ST_SetSRID(ST_Point(-98.495,29.405),4326),NULL,NULL),
  ('revoked','fixture','fixture','Revoked fixture','Not Constructed',ST_SetSRID(ST_Point(-98.495,29.405),4326),NULL,NULL),
- ('unnumbered','fixture','fixture','Historical fixture','Historical',ST_SetSRID(ST_Point(-98.495,29.405),4326),true,true);
+ ('unnumbered','fixture','fixture','Temporary history','Historical',ST_SetSRID(ST_Point(-98.495,29.405),4326),true,true);
+CREATE TEMP TABLE msw_historical_stage(ogc_fid integer, field1 text, field2 text, field3 text, field4 text, field5 text, field6 text, field7 text);
+INSERT INTO msw_historical_stage VALUES
+ (1,'Historical inventory notice',NULL,NULL,NULL,NULL,NULL,NULL),
+ (2,'UNUM','SITE_NAME1','LATIT_DD','LONGI_DD','UNAUTHOR','HAZ_CERT','DATE_CLOSE'),
+ (3,'42','Historical fixture','29.405','-98.495','Y','Y','02/30/1990');
+${historicalNormalize}
 DO $$ DECLARE m record; BEGIN
  SELECT * INTO m FROM bdp_tceq_parcel_msw_metrics(ST_GeomFromText('POLYGON((-98.5 29.4,-98.49 29.4,-98.49 29.41,-98.5 29.41,-98.5 29.4))',4326));
- IF m.msw_points_on_parcel <> 6 OR m.active_landfills_within_1_mi <> 1
+ IF m.msw_points_on_parcel <> 8 OR m.active_landfills_within_1_mi <> 3
    OR m.closed_sites_within_1_mi <> 1 OR m.unauthorized_sites_within_1_mi <> 1
    OR m.hazardous_history_sites_within_3_mi <> 1 OR m.nearest_msw_site_m <> 0 THEN
    RAISE EXCEPTION 'MSW populated parcel metrics mismatch: %', row_to_json(m); END IF;
@@ -41,7 +50,7 @@ DO $$ BEGIN
    RAISE EXCEPTION 'Fresh full fixtures should provide coverage'; END IF;
 END $$;
 INSERT INTO bdp_ingestion_runs(source_id,dataset,status,completed_at,row_count,checksum_sha256)
-VALUES ('tceq-msw','facilities','succeeded',NOW() + INTERVAL '1 second',3,repeat('b',64));
+VALUES ('tceq-msw','facilities','succeeded',NOW() + INTERVAL '1 second',5,repeat('b',64));
 DO $$ BEGIN
  IF (${previousChecksumQuery}) THEN
    RAISE EXCEPTION 'A-B-A checksum recurrence must reimport, not skip historical snapshot'; END IF;

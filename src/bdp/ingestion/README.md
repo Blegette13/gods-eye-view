@@ -103,3 +103,9 @@ coverage is incomplete; zero counts cannot establish environmental clearance.
 BDP Validation runs `node scripts/bdp/validate-msw-postgis.mjs` using its PG*
 connection. Transactional fixtures exercise the actual importer, type codes,
 on-parcel counts and missing/stale/unlocated coverage states, then roll back.
+
+The historical XLSX starts with a notice row before the actual headers. Import
+uses positional string fields, detects the `SITE_NAME1` / `LATIT_DD` header row,
+and maps columns by those header values; preamble and header rows are excluded.
+Combined `1 AE & 4 AE` and `MONOFILL` types are included in landfill screening;
+collection/transfer/construction-over-closed-site codes are not active landfills.
