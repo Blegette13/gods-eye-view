@@ -73,6 +73,15 @@ test('normalizes utility source geometry and rejects capped results', () => {
     }],
   });
   assert.equal(lines.features.length, 1);
+
+  assert.throws(() => normalizeWaterServiceAreas({ type: 'FeatureCollection',
+    exceededTransferLimit: true, features: [] }), /capped/);
+  assert.throws(() => normalizeWaterServiceAreas({ type: 'FeatureCollection', features: [{
+    type: 'Feature', geometry: null, properties: { PWSName: 'Unlocated' },
+  }] }), /missing or unsupported/);
+  assert.throws(() => normalizeTransmissionLines({ type: 'FeatureCollection', features: [{
+    type: 'Feature', geometry: parcel.geometry, properties: { OWNER: 'Wrong geometry' },
+  }] }), /missing or unsupported/);
 });
 
 test('utility metric SQL keeps service territory separate from transmission proximity', () => {

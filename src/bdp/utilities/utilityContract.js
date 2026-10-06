@@ -87,12 +87,14 @@ function normalizeCollection(input, { label, geometryTypes, fields = null }) {
   if (!input || input.type !== 'FeatureCollection' || !Array.isArray(input.features)) {
     throw new Error(`${label} returned malformed GeoJSON`);
   }
-  if (input.features.length >= SOURCE_MAX_FEATURES) {
+  if (input.exceededTransferLimit === true || input.features.length >= SOURCE_MAX_FEATURES) {
     throw new Error(`${label} screening result is capped; narrow the parcel vicinity before relying on utility metrics`);
+  }
+  if (input.features.some((feature) => !geometryTypes.includes(feature?.geometry?.type))) {
+    throw new Error(`${label} returned missing or unsupported feature geometry`);
   }
 
   const features = input.features
-    .filter((feature) => geometryTypes.includes(feature?.geometry?.type))
     .map((feature) => ({
       type: 'Feature',
       geometry: feature.geometry,
