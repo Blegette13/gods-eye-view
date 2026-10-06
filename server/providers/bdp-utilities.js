@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import {
   buildUtilityParcelMetricsSql,
   buildPuctSewerMetricsSql,
+  buildPuctSewerMapSql,
   buildUtilityParcelQueryUrls,
   normalizeTransmissionLines,
   normalizeWaterCcn,
@@ -200,6 +201,18 @@ async function handleUtilities(request, response, next) {
   if (!url.pathname.startsWith(API_BASE)) return next();
 
   try {
+    if (url.pathname === `${API_BASE}/sewer-ccn-map`) {
+      if (request.method !== 'GET') {
+        response.setHeader('Allow', 'GET');
+        return sendJson(response, 405, { error: 'method_not_allowed' });
+      }
+      const bounds = Object.fromEntries(['west','south','east','north'].map((key) => [key, url.searchParams.get(key)]));
+      if (Object.values(bounds).some((value) => value === null || value === '')) {
+        return sendJson(response, 400, { error: 'invalid_request', message: 'A bounded Texas WGS84 viewport is required' });
+      }
+      const data = await queryPostgisJson(buildPuctSewerMapSql(bounds));
+      return sendJson(response, 200, data);
+    }
     if (url.pathname !== `${API_BASE}/screen`) {
       return sendJson(response, 404, { error: 'not_found' });
     }

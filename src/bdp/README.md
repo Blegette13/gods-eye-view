@@ -75,7 +75,10 @@ sewer CCN overlap, utility and CCN numbers with source Last-Modified. No import
 or a source timestamp older than 180 days displays as unknown. A CCN is a
 mapped certificated service area; it does not prove a current sewer main,
 connection, capacity, extension cost, or provider commitment. Sewer CCN does
-not increase the preliminary Utilities score. PUCT source:
+not increase the preliminary Utilities score. The existing God's Eye Utilities /
+Infrastructure map layer shows imported territory at a close zoom with a purple
+outline. PostGIS clips bounded map requests; missing, stale or capped results
+cannot be displayed as reliable territory. PUCT source:
 https://www.puc.texas.gov/industry/water/utilities/gis/ (checked October 6,
 2026).
 

@@ -13,13 +13,17 @@ const bounds = {
 };
 
 test('utility map queries stay bounded and request GeoJSON', () => {
-  for (const source of Object.values(UTILITY_MAP_SOURCES)) {
+  for (const source of Object.values(UTILITY_MAP_SOURCES).filter((item) => item.id !== 'sewer-ccn')) {
     const url = new URL(buildUtilityMapQueryUrl(source, bounds));
     assert.equal(url.searchParams.get('f'), 'geojson');
     assert.equal(url.searchParams.get('returnGeometry'), 'true');
     assert.equal(url.searchParams.get('geometry'), '-98.6,29.3,-98.4,29.5');
     assert.equal(url.searchParams.get('resultRecordCount'), '2000');
   }
+  const sewer = new URL(buildUtilityMapQueryUrl(UTILITY_MAP_SOURCES.sewerCcn, bounds), 'http://localhost');
+  assert.equal(sewer.pathname, '/api/bdp/utilities/sewer-ccn-map');
+  assert.equal(sewer.searchParams.get('west'), '-98.6');
+  assert.equal(sewer.searchParams.get('north'), '29.5');
 });
 
 test('utility map query rejects invalid bounds', () => {

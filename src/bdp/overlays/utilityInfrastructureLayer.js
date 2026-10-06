@@ -20,6 +20,10 @@ export const UTILITY_MAP_SOURCES = Object.freeze({
     url: PUCT_WATER_CCN_URL,
     fields: 'CCN_NO,UTILITY,STATUS,CCN_TYPE',
   }),
+  sewerCcn: Object.freeze({
+    id: 'sewer-ccn',
+    url: '/api/bdp/utilities/sewer-ccn-map',
+  }),
   transmission: Object.freeze({
     id: 'transmission',
     url: US_GOV_TRANSMISSION_ARCHIVE_URL,
@@ -63,6 +67,12 @@ export function buildUtilityMapQueryUrl(source, bounds, { limit = MAX_FEATURES }
   if (bounds.west >= bounds.east || bounds.south >= bounds.north) {
     throw new Error('invalid WGS84 bounds');
   }
+  if (source.id === 'sewer-ccn') {
+    const params = new URLSearchParams(Object.fromEntries(
+      ['west', 'south', 'east', 'north'].map((key) => [key, String(bounds[key])]),
+    ));
+    return `${source.url}?${params}`;
+  }
 
   const resultRecordCount = Math.max(
     1,
@@ -101,6 +111,15 @@ function styleWaterCcn(dataSource) {
   }
 }
 
+function styleSewerCcn(dataSource) {
+  for (const entity of dataSource.entities.values) {
+    if (!entity.polygon) continue;
+    entity.polygon.material = Cesium.Color.fromCssColorString('#d590f8').withAlpha(0.05);
+    entity.polygon.outline = true;
+    entity.polygon.outlineColor = Cesium.Color.fromCssColorString('#d590f8').withAlpha(0.7);
+  }
+}
+
 function styleTransmission(dataSource) {
   for (const entity of dataSource.entities.values) {
     if (!entity.polyline) continue;
@@ -120,6 +139,7 @@ async function loadGeoJson(geojson, sourceId) {
 
   if (sourceId === 'water-service') styleWaterService(source);
   else if (sourceId === 'water-ccn') styleWaterCcn(source);
+  else if (sourceId === 'sewer-ccn') styleSewerCcn(source);
   else if (sourceId === 'transmission') styleTransmission(source);
 
   return source;
@@ -138,6 +158,7 @@ export function createUtilityInfrastructureLayer({ fetchImpl = globalThis.fetch 
   const counts = {
     waterService: 0,
     waterCcn: 0,
+    sewerCcn: 0,
     transmission: 0,
   };
 
@@ -167,6 +188,12 @@ export function createUtilityInfrastructureLayer({ fetchImpl = globalThis.fetch 
     if (geojson.features.length >= MAX_FEATURES) {
       throw new Error(`${source.id} viewport result is capped; zoom in for reliable display`);
     }
+    if (geojson.truncated || (source.id === 'sewer-ccn' && geojson.coverage !== 'mapped-snapshot')) {
+      if (source.id === 'sewer-ccn') {
+        await replaceSource(key, source, { type: 'FeatureCollection', features: [] });
+      }
+      throw new Error(`${source.id} viewport source is incomplete or not current`);
+    }
 
     await replaceSource(key, source, geojson);
   }
@@ -175,7 +202,7 @@ export function createUtilityInfrastructureLayer({ fetchImpl = globalThis.fetch 
     id: 'bdp-utilities-infrastructure',
     name: 'BDP · Utilities / Infrastructure',
     icon: '⚡',
-    source: 'TWDB / PUCT water service + archived U.S. Government transmission',
+    source: 'TWDB / PUCT water and sewer CCN + archived U.S. Government transmission',
     updateInterval: QUERY_INTERVAL_MS,
 
     init(targetViewer) {
@@ -246,7 +273,7 @@ export function createUtilityInfrastructureLayer({ fetchImpl = globalThis.fetch 
             : null)
           .filter(Boolean);
 
-        lastBoundsKey = key;
+        lastBoundsKey = failures.length ? '' : key;
         lastUpdate = Date.now();
         lastError = failures.length ? failures.join(' | ') : null;
         status = failures.length
@@ -266,11 +293,11 @@ export function createUtilityInfrastructureLayer({ fetchImpl = globalThis.fetch 
 
     getStats() {
       return {
-        count: counts.waterService + counts.waterCcn + counts.transmission,
+        count: counts.waterService + counts.waterCcn + counts.sewerCcn + counts.transmission,
         counts: { ...counts },
         loading,
         status,
-        source: 'TWDB retail water service + PUCT water CCN + archived 2024 transmission screening',
+        source: 'TWDB retail water service + PUCT water/sewer CCN + archived 2024 transmission screening',
         lastUpdate,
         lastError,
         error: lastError,

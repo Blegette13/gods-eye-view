@@ -287,3 +287,32 @@ export function buildPuctSewerMetricsSql(parcelInput) {
   const request = normalizeWetlandsParcelRequest(parcelInput);
   return `SELECT bdp_puct_sewer_ccn_metrics(ST_SetSRID(ST_GeomFromGeoJSON(${sqlTextLiteral(JSON.stringify(request.geometry))}), 4326))::text`;
 }
+
+/** Bounded viewport clipping is performed by PostGIS for the native map. */
+export function buildPuctSewerMapSql(bounds) {
+  const coords = [bounds?.west, bounds?.south, bounds?.east, bounds?.north].map(Number);
+  if (coords.some((value) => !Number.isFinite(value)) || coords[0] >= coords[2] || coords[1] >= coords[3]
+    || coords[2] - coords[0] > 0.35 || coords[3] - coords[1] > 0.35
+    || coords[0] < -107 || coords[2] > -93 || coords[1] < 25 || coords[3] > 37) {
+    throw new Error('A bounded Texas WGS84 viewport is required');
+  }
+  return `WITH b AS (SELECT ST_MakeEnvelope(${coords.join(',')},4326) AS geom),
+  snapshot AS (SELECT source_last_modified FROM bdp_puct_sewer_ccn_snapshot WHERE singleton),
+  hits AS MATERIALIZED (
+    SELECT c.* FROM bdp_puct_sewer_ccn c CROSS JOIN b
+    WHERE c.geom && b.geom AND ST_Intersects(c.geom,b.geom) LIMIT 501
+  ), clipped AS (
+    SELECT h.*, ST_CollectionExtract(ST_Intersection(h.geom,b.geom),3) AS clip
+    FROM hits h CROSS JOIN b LIMIT 500
+  )
+  SELECT jsonb_build_object('type','FeatureCollection',
+    'coverage', CASE WHEN NOT EXISTS (SELECT 1 FROM snapshot) THEN 'not-ingested'
+      WHEN (SELECT source_last_modified FROM snapshot) IS NULL
+        OR (SELECT source_last_modified FROM snapshot) < NOW() - INTERVAL '180 days'
+      THEN 'stale-or-unverified' ELSE 'mapped-snapshot' END,
+    'truncated',(SELECT COUNT(*) > 500 FROM hits),
+    'features',COALESCE((SELECT jsonb_agg(jsonb_build_object('type','Feature',
+      'geometry',ST_AsGeoJSON(clip,6)::jsonb,'properties',jsonb_build_object(
+        'CCN_NO',ccn_no,'UTILITY',utility,'sourceLastModified',(SELECT source_last_modified FROM snapshot))))
+      FROM clipped WHERE NOT ST_IsEmpty(clip)), '[]'::jsonb))::text`;
+}
