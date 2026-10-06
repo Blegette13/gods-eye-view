@@ -24,9 +24,10 @@ This directory contains BDP Land Co-specific land intelligence capabilities laye
 Bexar remains the default for `parcel: ID` and `owner: NAME` in the original
 God's Eye LOCATION tray. `travis parcel: ID`, `travis account: ID`, and
 `travis owner: NAME` select the Travis parcel layer in the same UI; `bexar`
-may also be given explicitly. Both layers feed the same normalized parcel,
-property card and unified intelligence request. Screen/Clear include both
-county layers, and switching county searches hides the other property card.
+may also be given explicitly. Williamson commands select the third county.
+All three layers feed the same normalized parcel,
+property card and unified intelligence request. Screen/Clear include all three
+county layers, and switching county searches hides other property cards.
 
 The Travis adapter uses Travis County GIS's TCAD property layer, with bounded
 GeoJSON queries for owner, property ID and viewport. It maps published TCAD
@@ -46,6 +47,18 @@ and https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdic
 (metadata checked October 6, 2026). The title review links to the Travis
 County Clerk's real-property page for manual lookup; a CAD deed reference does
 not establish title.
+
+Williamson is the third county pilot: `williamson parcel: ID` and
+`williamson owner: NAME` use Williamson County GIS's WCAD polygon layer. The
+same bounded search, God’s Eye map and property card show published ownership,
+acreage and appraisal observations. The service's update information conflicts
+with an old description date; currency remains unverified, including when
+`DataDate` is present. Empty values stay unknown, and capped/invalid results
+fail screening. The manual title-review link points to Williamson County
+Clerk's official public-record search. The live GIS metadata and a sample
+GeoJSON parcel are checked by BDP Validation. Source:
+https://gis.wilco.org/arcgis/rest/services/public/county_wcad_parcels/MapServer/0
+and https://www.wilcotx.gov/1611/Search-Records (checked October 6, 2026).
 
 ## Acquisition economics scenarios
 

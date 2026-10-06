@@ -55,6 +55,14 @@ export const BDP_DATA_SOURCES = Object.freeze({
     url: 'https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD_Travis_County_Property/MapServer/3',
     notes: 'County GIS layer with TCAD fields. Publication metadata for the separate TCAD_public service describes monthly assembly; this layer’s record currency, deed status and survey boundaries remain unverified.',
   }),
+  williamsonParcels: Object.freeze({
+    id: 'williamson-parcels', label: 'Williamson County Parcels / WCAD',
+    method: BDP_SOURCE_METHOD.GIS_SERVICE, authority: BDP_AUTHORITY.PRIMARY,
+    refreshClass: BDP_REFRESH_CLASS.ON_DEMAND, onDemandRefresh: true,
+    cacheTtlMs: 24 * 60 * 60 * 1000,
+    url: 'https://gis.wilco.org/arcgis/rest/services/public/county_wcad_parcels/MapServer/0',
+    notes: 'Official county GIS WCAD parcel polygon layer. Service update information conflicts with an older description date; record currency and legal boundaries are unverified. Query bounded owner/property/viewport results.',
+  }),
   texasRailroadCommission: Object.freeze({
     id: 'texas-rrc',
     label: 'Railroad Commission of Texas GIS',

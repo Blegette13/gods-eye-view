@@ -138,3 +138,6 @@ jobs:
 
       - name: Validate live Travis County parcel GIS contract
         run: node scripts/bdp/validate-travis-gis.mjs
+
+      - name: Validate live Williamson County parcel GIS contract
+        run: node scripts/bdp/validate-williamson-gis.mjs

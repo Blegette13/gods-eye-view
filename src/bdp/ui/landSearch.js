@@ -1,4 +1,4 @@
-const LAND_SEARCH_PATTERN = /^(?:(bexar|travis)\s+)?(parcel|account|acct|owner)\s*:?[\s]+(.+)$/i;
+const LAND_SEARCH_PATTERN = /^(?:(bexar|travis|williamson)\s+)?(parcel|account|acct|owner)\s*:?[\s]+(.+)$/i;
 
 function clean(value) {
   return String(value ?? '').trim();

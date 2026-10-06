@@ -6,6 +6,7 @@ import { parseBdpLandSearch } from './landSearch.js';
 const BDP_LAYER_IDS = new Set([
   'bdp-bexar-parcels',
   'bdp-travis-parcels',
+  'bdp-williamson-parcels',
   'bdp-fema-flood',
   'bdp-rrc-energy',
   'bdp-nwi-wetlands',
@@ -104,8 +105,8 @@ function attachLandSearch(search) {
 function adaptLocationTray() {
   const search = document.getElementById('location-search');
   if (!search) return;
-  search.placeholder = 'Place/coords · parcel: ID · owner: NAME · travis parcel: ID';
-  search.setAttribute('aria-label', 'Search map by address, place, coordinates, Bexar parcel or owner, or Travis parcel or owner command');
+  search.placeholder = 'Place/coords · parcel: ID · owner: NAME · county parcel: ID';
+  search.setAttribute('aria-label', 'Search map by address, place, coordinates, or Bexar, Travis, or Williamson parcel and owner commands');
   attachLandSearch(search);
 }
 

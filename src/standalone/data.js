@@ -15,6 +15,7 @@ import localDataLayers from '../data/localLayers.js';
 import { LAYER_STATE_REGISTRY } from '../data/layerState.js';
 import bexarParcelLayer from '../bdp/parcels/bexarParcelLayer.js';
 import travisParcelLayer from '../bdp/parcels/travisParcelLayer.js';
+import williamsonParcelLayer from '../bdp/parcels/williamsonParcelLayer.js';
 import femaFloodLayer from '../bdp/overlays/femaFloodLayer.js';
 import rrcEnergyLayer from '../bdp/overlays/rrcEnergyLayer.js';
 import nwiWetlandsLayer from '../bdp/overlays/nwiWetlandsLayer.js';
@@ -31,6 +32,7 @@ import { extendLayerStateRegistry } from '../bdp/config/layerRegistry.js';
 const BDP_SCREEN_LAYER_IDS = Object.freeze([
   'bdp-bexar-parcels',
   'bdp-travis-parcels',
+  'bdp-williamson-parcels',
   'bdp-fema-flood',
   'bdp-rrc-energy',
   'bdp-nwi-wetlands',
@@ -81,6 +83,7 @@ export function createStandaloneData({
 
   dataManager.register(bexarParcelLayer);
   dataManager.register(travisParcelLayer);
+  dataManager.register(williamsonParcelLayer);
   dataManager.register(femaFloodLayer);
   dataManager.register(rrcEnergyLayer);
   dataManager.register(nwiWetlandsLayer);
@@ -105,11 +108,18 @@ export function createStandaloneData({
     parcelSearchController?.abort();
     parcelSearchController = new AbortController();
     const { signal } = parcelSearchController;
-    const county = command.county === 'Travis' ? 'Travis' : 'Bexar';
-    const layer = county === 'Travis' ? travisParcelLayer : bexarParcelLayer;
-    const layerId =
-      county === 'Travis' ? 'bdp-travis-parcels' : 'bdp-bexar-parcels';
-    (county === 'Travis' ? bexarParcelLayer : travisParcelLayer).hideCard();
+    const countyLayers = {
+      Bexar: bexarParcelLayer,
+      Travis: travisParcelLayer,
+      Williamson: williamsonParcelLayer,
+    };
+    const county = command.county || 'Bexar';
+    const layer = countyLayers[county];
+    if (!layer) return;
+    const layerId = layer.id;
+    for (const [name, other] of Object.entries(countyLayers)) {
+      if (name !== county) other.hideCard();
+    }
 
     try {
       await dataManager.setEnabled(layerId, true, {

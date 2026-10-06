@@ -10,6 +10,11 @@ export const BDP_LAYER_STATE_REGISTRY = Object.freeze([
     disposition: 'enabled-only',
   }),
   Object.freeze({
+    id: 'bdp-williamson-parcels',
+    token: '4',
+    disposition: 'enabled-only',
+  }),
+  Object.freeze({
     id: 'bdp-fema-flood',
     token: 'h',
     disposition: 'enabled-only',

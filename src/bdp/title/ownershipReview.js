@@ -2,6 +2,7 @@ export const TITLE_REVIEW_REFERENCES = Object.freeze({
   texasGuidance: 'https://www.tdi.texas.gov/title/titlefaqs.html',
   bexarRecords: 'https://www.bexar.org/2950/Real-PropertyLand-Records',
   travisRecords: 'https://countyclerk.traviscountytx.gov/departments/recording/real-property/',
+  williamsonRecords: 'https://www.wilcotx.gov/1611/Search-Records',
 });
 
 const clean = (value) => typeof value === 'string' ? value.trim() : '';
@@ -17,6 +18,7 @@ function recordLookup(parcel) {
   for (const [name, codes, url] of [
     ['bexar', ['48029', '029'], TITLE_REVIEW_REFERENCES.bexarRecords],
     ['travis', ['48453', '453'], TITLE_REVIEW_REFERENCES.travisRecords],
+    ['williamson', ['48491', '491'], TITLE_REVIEW_REFERENCES.williamsonRecords],
   ]) {
     const byName = county === name;
     const byFips = codes.includes(fips);
