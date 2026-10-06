@@ -60,9 +60,12 @@ function propertyValue(entity, key) {
     : property;
 }
 
-export function createBexarParcelLayer({
+export function createCountyParcelLayer({
   adapter = bexarCadAdapter,
   propertyCardFactory = createBdpPropertyCard,
+  id = 'bdp-bexar-parcels',
+  name = 'BDP · Bexar Parcels',
+  source = 'Bexar County ArcGIS REST · BCAD',
 } = {}) {
   let viewer = null;
   let dataSource = null;
@@ -77,18 +80,27 @@ export function createBexarParcelLayer({
   let lastBoundsKey = '';
   let requestController = null;
   const parcelById = new Map();
+  function assertActive(signal) {
+    if (signal?.aborted || !enabled || !viewer) throw new DOMException('Parcel request cancelled', 'AbortError');
+  }
 
-  async function replaceSnapshot(parcels) {
+  async function replaceSnapshot(parcels, { signal } = {}) {
+    assertActive(signal);
     const next = await Cesium.GeoJsonDataSource.load(featureCollection(parcels), {
       clampToGround: true,
       stroke: Cesium.Color.fromCssColorString('#f2f2f2').withAlpha(0.82),
       fill: Cesium.Color.fromCssColorString('#ffffff').withAlpha(0.055),
       strokeWidth: 1.5,
     });
-    next.name = 'BDP Bexar Parcels';
+    next.name = name;
+    assertActive(signal);
     next.show = enabled;
 
     await viewer.dataSources.add(next);
+    if (signal?.aborted || !enabled || !viewer) {
+      viewer?.dataSources.remove(next, true);
+      throw new DOMException('Parcel request cancelled', 'AbortError');
+    }
     const previous = dataSource;
     dataSource = next;
     if (previous) viewer.dataSources.remove(previous, true);
@@ -98,35 +110,40 @@ export function createBexarParcelLayer({
     count = parcels.length;
   }
 
-  async function focusSnapshot(parcels) {
-    await replaceSnapshot(parcels);
+  async function focusSnapshot(parcels, { signal } = {}) {
+    await replaceSnapshot(parcels, { signal });
     lastBoundsKey = '';
     lastUpdate = Date.now();
     status = parcels.length ? 'nominal' : 'empty';
     if (dataSource && parcels.length) {
       await viewer.flyTo(dataSource, { duration: 1.15 });
     }
+    assertActive(signal);
   }
 
   async function focusParcel(parcelOrAccountId, { signal } = {}) {
-    if (!viewer || !propertyCard) throw new Error('Bexar parcel layer is not initialized');
-    if (!enabled) throw new Error('Bexar parcel layer must be enabled before parcel lookup');
+    if (!viewer || !propertyCard) throw new Error(`${adapter.county} parcel layer is not initialized`);
+    if (!enabled) throw new Error(`${adapter.county} parcel layer must be enabled before parcel lookup`);
 
     loading = true;
     status = 'loading';
     lastError = null;
     try {
       const parcel = await adapter.fetchParcel(parcelOrAccountId, { signal });
+      assertActive(signal);
       if (!parcel) {
         status = dataSource ? 'nominal' : 'empty';
         return null;
       }
 
-      await focusSnapshot([parcel]);
+      await focusSnapshot([parcel], { signal });
       propertyCard.show(parcel);
       return parcel;
     } catch (error) {
-      if (error?.name === 'AbortError') throw error;
+      if (error?.name === 'AbortError') {
+        status = enabled ? (dataSource ? 'nominal' : 'empty') : 'idle';
+        throw error;
+      }
       lastError = error instanceof Error ? error.message : String(error);
       status = dataSource ? 'degraded' : 'unavailable';
       throw error;
@@ -136,23 +153,28 @@ export function createBexarParcelLayer({
   }
 
   async function focusOwner(ownerName, { signal, limit = 100 } = {}) {
-    if (!viewer || !propertyCard) throw new Error('Bexar parcel layer is not initialized');
-    if (!enabled) throw new Error('Bexar parcel layer must be enabled before owner lookup');
+    if (!viewer || !propertyCard) throw new Error(`${adapter.county} parcel layer is not initialized`);
+    if (!enabled) throw new Error(`${adapter.county} parcel layer must be enabled before owner lookup`);
 
     loading = true;
     status = 'loading';
     lastError = null;
     try {
       const parcels = await adapter.fetchParcelsByOwner(ownerName, { signal, limit });
-      propertyCard.hide();
+      assertActive(signal);
       if (!parcels.length) {
+        propertyCard.hide();
         status = dataSource ? 'nominal' : 'empty';
         return [];
       }
-      await focusSnapshot(parcels);
+      await focusSnapshot(parcels, { signal });
+      propertyCard.hide();
       return parcels;
     } catch (error) {
-      if (error?.name === 'AbortError') throw error;
+      if (error?.name === 'AbortError') {
+        status = enabled ? (dataSource ? 'nominal' : 'empty') : 'idle';
+        throw error;
+      }
       lastError = error instanceof Error ? error.message : String(error);
       status = dataSource ? 'degraded' : 'unavailable';
       throw error;
@@ -162,10 +184,10 @@ export function createBexarParcelLayer({
   }
 
   const layer = {
-    id: 'bdp-bexar-parcels',
-    name: 'BDP · Bexar Parcels',
+    id,
+    name,
     icon: '▦',
-    source: 'Bexar County / BCAD',
+    source,
     updateInterval: QUERY_INTERVAL_MS,
 
     init(targetViewer) {
@@ -197,6 +219,9 @@ export function createBexarParcelLayer({
 
     focusParcel,
     focusOwner,
+    hideCard() {
+      propertyCard?.hide();
+    },
 
     async update(targetViewer) {
       if (!enabled || loading) return true;
@@ -224,10 +249,10 @@ export function createBexarParcelLayer({
 
       try {
         const parcels = await adapter.fetchParcelsInBounds(bounds, {
-          limit: 1000,
+          limit: adapter.county === 'Bexar' ? 1000 : 500,
           signal: requestController.signal,
         });
-        await replaceSnapshot(parcels);
+        await replaceSnapshot(parcels, { signal: requestController.signal });
         lastBoundsKey = key;
         lastUpdate = Date.now();
         status = 'nominal';
@@ -236,7 +261,7 @@ export function createBexarParcelLayer({
         if (error?.name === 'AbortError') return false;
         lastError = error instanceof Error ? error.message : String(error);
         status = dataSource ? 'degraded' : 'unavailable';
-        console.warn('[BDP:BexarParcels] refresh failed:', error);
+        console.warn(`[BDP:${adapter.county}Parcels] refresh failed:`, error);
         return false;
       } finally {
         loading = false;
@@ -248,7 +273,7 @@ export function createBexarParcelLayer({
         count,
         loading,
         status,
-        source: 'Bexar County ArcGIS REST · BCAD',
+        source,
         lastUpdate,
         lastError,
         error: lastError,
@@ -274,5 +299,6 @@ export function createBexarParcelLayer({
   return layer;
 }
 
-export const bexarParcelLayer = createBexarParcelLayer();
+export const createBexarParcelLayer = createCountyParcelLayer;
+export const bexarParcelLayer = createCountyParcelLayer();
 export default bexarParcelLayer;

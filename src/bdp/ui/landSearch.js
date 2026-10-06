@@ -1,4 +1,4 @@
-const LAND_SEARCH_PATTERN = /^(parcel|account|acct|owner)\s*:?[\s]+(.+)$/i;
+const LAND_SEARCH_PATTERN = /^(?:(bexar|travis)\s+)?(parcel|account|acct|owner)\s*:?[\s]+(.+)$/i;
 
 function clean(value) {
   return String(value ?? '').trim();
@@ -16,8 +16,9 @@ export function parseBdpLandSearch(value) {
   const match = query.match(LAND_SEARCH_PATTERN);
   if (!match) return null;
 
-  const command = match[1].toLowerCase();
-  const term = clean(match[2]);
+  const county = match[1] ? match[1][0].toUpperCase() + match[1].slice(1).toLowerCase() : null;
+  const command = match[2].toLowerCase();
+  const term = clean(match[3]);
   if (!term) return null;
 
   if (command === 'owner') {
@@ -26,6 +27,7 @@ export function parseBdpLandSearch(value) {
       kind: 'owner',
       value: term,
       command,
+      ...(county && { county }),
     });
   }
 
@@ -34,6 +36,7 @@ export function parseBdpLandSearch(value) {
     kind: 'parcel',
     value: term,
     command,
+    ...(county && { county }),
   });
 }
 

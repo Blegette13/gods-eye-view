@@ -23,6 +23,16 @@ test('parses explicit owner commands', () => {
   });
 });
 
+test('county-prefixed commands route Travis and preserve Bexar defaults', () => {
+  assert.deepEqual(parseBdpLandSearch('TRAVIS parcel: 12345'), {
+    kind: 'parcel', value: '12345', command: 'parcel', county: 'Travis',
+  });
+  assert.deepEqual(parseBdpLandSearch('bexar owner: Smith LLC'), {
+    kind: 'owner', value: 'Smith LLC', command: 'owner', county: 'Bexar',
+  });
+  assert.equal(parseBdpLandSearch('Harris parcel: 123'), null);
+});
+
 test('leaves ordinary God\'s Eye location searches untouched', () => {
   assert.equal(parseBdpLandSearch('Austin, TX'), null);
   assert.equal(parseBdpLandSearch('29.4241,-98.4936'), null);

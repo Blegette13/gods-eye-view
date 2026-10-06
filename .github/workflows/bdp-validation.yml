@@ -135,3 +135,6 @@ jobs:
 
       - name: Validate development constraint unions and incomplete coverage
         run: node scripts/bdp/validate-development-postgis.mjs
+
+      - name: Validate live Travis County parcel GIS contract
+        run: node scripts/bdp/validate-travis-gis.mjs

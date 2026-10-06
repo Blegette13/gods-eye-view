@@ -22,7 +22,8 @@ test('record routing handles county identity and never falls back to a different
   assert.match(buildOwnershipTitleReview(parcel).recordLookup.url, /bexar.org/);
   assert.match(buildOwnershipTitleReview({ countyFips: '029' }).recordLookup.url, /bexar.org/);
   assert.match(buildOwnershipTitleReview({ county: ' Bexar County ' }).recordLookup.url, /bexar.org/);
-  for (const candidate of [{ county: 'Travis' }, { county: 'Travis', countyFips: '48029' }, { county: 'Bexar', countyFips: '48453' }, {}]) {
+  assert.match(buildOwnershipTitleReview({ county: 'Travis', countyFips: '48453' }).recordLookup.url, /traviscountytx.gov/);
+  for (const candidate of [{ county: 'Travis', countyFips: '48029' }, { county: 'Bexar', countyFips: '48453' }, {}]) {
     assert.equal(buildOwnershipTitleReview(candidate).recordLookup.url, null);
   }
 });

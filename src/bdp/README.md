@@ -19,6 +19,34 @@ This directory contains BDP Land Co-specific land intelligence capabilities laye
 - `intelligence/` — acquisition scoring, red flags, best-use, and entitlement analysis.
 - `ui/` — BDP property and acquisition interfaces.
 
+## County parcel pilots
+
+Bexar remains the default for `parcel: ID` and `owner: NAME` in the original
+God's Eye LOCATION tray. `travis parcel: ID`, `travis account: ID`, and
+`travis owner: NAME` select the Travis parcel layer in the same UI; `bexar`
+may also be given explicitly. Both layers feed the same normalized parcel,
+property card and unified intelligence request. Screen/Clear include both
+county layers, and switching county searches hides the other property card.
+
+The Travis adapter uses Travis County GIS's TCAD property layer, with bounded
+GeoJSON queries for owner, property ID and viewport. It maps published TCAD
+fields, preserving missing values as unknown and treating county GIS ownership,
+legal description, acreage, values and deed references as unverified source
+observations. A retrieval timestamp is not the date the CAD records changed.
+Partial/capped responses, missing polygon geometry and missing property IDs
+fail screening rather than producing a misleading subset. The separate county
+TCAD_public layer is described as monthly; that does not establish the
+currency of each record in this layer. Unit tests use representative published
+fields and mocked responses; BDP Validation also checks the live GIS metadata
+and a real parcel GeoJSON response. Browser rendering at deployment remains
+to be checked. Other counties remain unsupported until verified adapters are added.
+
+Source catalog: https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD_Travis_County_Property/MapServer/3
+and https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD_public/MapServer/layers
+(metadata checked October 6, 2026). The title review links to the Travis
+County Clerk's real-property page for manual lookup; a CAD deed reference does
+not establish title.
+
 ## Acquisition economics scenarios
 
 The unified screening response includes `evidence.acquisitionEconomics`, derived

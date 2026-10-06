@@ -1,6 +1,7 @@
 export const TITLE_REVIEW_REFERENCES = Object.freeze({
   texasGuidance: 'https://www.tdi.texas.gov/title/titlefaqs.html',
   bexarRecords: 'https://www.bexar.org/2950/Real-PropertyLand-Records',
+  travisRecords: 'https://countyclerk.traviscountytx.gov/departments/recording/real-property/',
 });
 
 const clean = (value) => typeof value === 'string' ? value.trim() : '';
@@ -13,10 +14,15 @@ function recordLookup(parcel) {
   const county = clean(parcel.county || parcel.jurisdiction?.county).toLowerCase().replace(/ county$/, '');
   const fips = clean(parcel.countyFips);
   // Conflicting county identifiers must never send a buyer to the wrong clerk.
-  const byName = county === 'bexar';
-  const byFips = ['48029', '029'].includes(fips);
-  if ((byName && (!fips || byFips)) || (byFips && (!county || byName))) {
-    return Object.freeze({ label: 'Bexar County land records', url: TITLE_REVIEW_REFERENCES.bexarRecords, status: 'manual-lookup' });
+  for (const [name, codes, url] of [
+    ['bexar', ['48029', '029'], TITLE_REVIEW_REFERENCES.bexarRecords],
+    ['travis', ['48453', '453'], TITLE_REVIEW_REFERENCES.travisRecords],
+  ]) {
+    const byName = county === name;
+    const byFips = codes.includes(fips);
+    if ((byName && (!fips || byFips)) || (byFips && (!county || byName))) {
+      return Object.freeze({ label: `${name[0].toUpperCase()}${name.slice(1)} County land records`, url, status: 'manual-lookup' });
+    }
   }
   return Object.freeze({ label: 'County land-record lookup', url: null, status: 'not-configured' });
 }

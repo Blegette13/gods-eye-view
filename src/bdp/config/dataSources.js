@@ -47,6 +47,14 @@ export const BDP_DATA_SOURCES = Object.freeze({
     url: 'https://maps.bexar.org/arcgis/rest/services/Parcels/MapServer/0',
     notes: 'Official Bexar County ArcGIS parcel service sourced from BCAD; query by viewport or parcel id instead of crawling records.',
   }),
+  travisParcels: Object.freeze({
+    id: 'travis-parcels', label: 'Travis County Parcels / TCAD',
+    method: BDP_SOURCE_METHOD.GIS_SERVICE, authority: BDP_AUTHORITY.PRIMARY,
+    refreshClass: BDP_REFRESH_CLASS.ON_DEMAND, onDemandRefresh: true,
+    cacheTtlMs: 24 * 60 * 60 * 1000,
+    url: 'https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD_Travis_County_Property/MapServer/3',
+    notes: 'County GIS layer with TCAD fields. Publication metadata for the separate TCAD_public service describes monthly assembly; this layer’s record currency, deed status and survey boundaries remain unverified.',
+  }),
   texasRailroadCommission: Object.freeze({
     id: 'texas-rrc',
     label: 'Railroad Commission of Texas GIS',

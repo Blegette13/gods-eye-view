@@ -14,6 +14,7 @@ import militaryAwarenessLayer from '../data/militaryAwareness.js';
 import localDataLayers from '../data/localLayers.js';
 import { LAYER_STATE_REGISTRY } from '../data/layerState.js';
 import bexarParcelLayer from '../bdp/parcels/bexarParcelLayer.js';
+import travisParcelLayer from '../bdp/parcels/travisParcelLayer.js';
 import femaFloodLayer from '../bdp/overlays/femaFloodLayer.js';
 import rrcEnergyLayer from '../bdp/overlays/rrcEnergyLayer.js';
 import nwiWetlandsLayer from '../bdp/overlays/nwiWetlandsLayer.js';
@@ -29,6 +30,7 @@ import { extendLayerStateRegistry } from '../bdp/config/layerRegistry.js';
 
 const BDP_SCREEN_LAYER_IDS = Object.freeze([
   'bdp-bexar-parcels',
+  'bdp-travis-parcels',
   'bdp-fema-flood',
   'bdp-rrc-energy',
   'bdp-nwi-wetlands',
@@ -78,6 +80,7 @@ export function createStandaloneData({
   }
 
   dataManager.register(bexarParcelLayer);
+  dataManager.register(travisParcelLayer);
   dataManager.register(femaFloodLayer);
   dataManager.register(rrcEnergyLayer);
   dataManager.register(nwiWetlandsLayer);
@@ -102,16 +105,21 @@ export function createStandaloneData({
     parcelSearchController?.abort();
     parcelSearchController = new AbortController();
     const { signal } = parcelSearchController;
+    const county = command.county === 'Travis' ? 'Travis' : 'Bexar';
+    const layer = county === 'Travis' ? travisParcelLayer : bexarParcelLayer;
+    const layerId =
+      county === 'Travis' ? 'bdp-travis-parcels' : 'bdp-bexar-parcels';
+    (county === 'Travis' ? bexarParcelLayer : travisParcelLayer).hideCard();
 
     try {
-      await dataManager.setEnabled('bdp-bexar-parcels', true, {
+      await dataManager.setEnabled(layerId, true, {
         origin: 'user',
         signal,
       });
       if (signal.aborted) return;
 
       if (command.kind === 'owner') {
-        const parcels = await bexarParcelLayer.focusOwner(command.value, {
+        const parcels = await layer.focusOwner(command.value, {
           signal,
           limit: 100,
         });
@@ -124,19 +132,20 @@ export function createStandaloneData({
                   kind: 'owner',
                   query: command.value,
                   count: parcels.length,
+                  county,
                 }
               : {
                   ok: false,
                   kind: 'owner',
                   query: command.value,
-                  message: `No Bexar parcels found for owner ${command.value}`,
+                  message: `No ${county} parcels found for owner ${command.value}`,
                 },
           }),
         );
         return;
       }
 
-      const parcel = await bexarParcelLayer.focusParcel(command.value, {
+      const parcel = await layer.focusParcel(command.value, {
         signal,
       });
       if (signal.aborted) return;
@@ -150,12 +159,13 @@ export function createStandaloneData({
                 query: command.value,
                 parcelId: parcel.parcelId,
                 owner: parcel.owner?.name || '',
+                county,
               }
             : {
                 ok: false,
                 kind: 'parcel',
                 query: command.value,
-                message: `No Bexar parcel found for ${command.value}`,
+                message: `No ${county} parcel found for ${command.value}`,
               },
         }),
       );
