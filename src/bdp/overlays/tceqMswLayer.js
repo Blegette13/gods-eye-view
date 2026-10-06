@@ -150,8 +150,7 @@ export function createTceqMswLayer({
       }
 
       const key = boundsKey(bounds);
-      if (key === lastBoundsKey && dataSource) {
-        status = 'nominal';
+      if (key === lastBoundsKey && dataSource && Date.now() - lastUpdate < QUERY_INTERVAL_MS) {
         return true;
       }
 
@@ -160,16 +159,19 @@ export function createTceqMswLayer({
       lastError = null;
       requestController?.abort();
       requestController = new AbortController();
+      const controller = requestController;
 
       try {
         const payload = await featureLoader(bounds, {
-          signal: requestController.signal,
+          signal: controller.signal,
         });
-        if (requestController.signal.aborted) return false;
+        if (controller.signal.aborted) return false;
         await replaceSnapshot(payload.points);
         lastBoundsKey = key;
         lastUpdate = Date.now();
-        status = 'nominal';
+        status = payload.coverage?.complete === false || payload.truncated
+          ? 'degraded' : 'nominal';
+        if (status === 'degraded') lastError = 'MSW coverage incomplete/stale or viewport capped; no clearance implied';
         return true;
       } catch (error) {
         if (error?.name === 'AbortError') return false;

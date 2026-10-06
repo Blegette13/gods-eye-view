@@ -194,6 +194,7 @@ export function scoreEpaCleanupEnvironment(cleanups) {
 
 /** Preliminary state/local solid-waste-site component from TCEQ point screening. */
 export function scoreTceqMswEnvironment(msw) {
+  if (msw?.coverage_complete !== true) return null;
   const nearestM = finiteOrNull(msw?.nearest_msw_site_m);
   const onParcel = finiteOrNull(msw?.msw_points_on_parcel);
   const active1 = finiteOrNull(msw?.active_landfills_within_1_mi);
@@ -205,10 +206,8 @@ export function scoreTceqMswEnvironment(msw) {
   const hazardous3 = finiteOrNull(msw?.hazardous_history_sites_within_3_mi);
   const total5 = finiteOrNull(msw?.all_msw_sites_within_5_mi);
 
-  if (
-    [nearestM, onParcel, active1, active3, closed1, closed3, unauthorized1, unauthorized3, hazardous3, total5]
-      .every((value) => value === null)
-  ) return null;
+  if ([onParcel, active1, active3, closed1, closed3, unauthorized1, unauthorized3, hazardous3, total5]
+    .some((value) => value === null || value < 0)) return null;
 
   let score = 100;
   const evidence = [];

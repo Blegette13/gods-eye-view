@@ -124,3 +124,6 @@ jobs:
             ST_GeomFromText('POLYGON((-98.50 29.40,-98.49 29.40,-98.49 29.41,-98.50 29.41,-98.50 29.40))', 4326)
           );
           SQL
+
+      - name: Validate populated MSW spatial and ingestion fixtures
+        run: node scripts/bdp/validate-msw-postgis.mjs

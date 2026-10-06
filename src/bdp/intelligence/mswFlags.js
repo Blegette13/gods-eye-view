@@ -20,6 +20,15 @@ export function deriveMswFlags(msw) {
   if (!msw) return Object.freeze([]);
 
   const flags = [];
+  if (msw.coverage_complete === false) {
+    flags.push(flag({
+      id: 'tceq-msw-coverage-incomplete',
+      severity: 'info',
+      title: 'TCEQ MSW coverage incomplete or stale',
+      detail: 'One or more snapshots are missing/stale or contain unlocated records. Mapped-site flags remain useful, but zero proximity counts do not provide clearance and MSW scoring is withheld.',
+      evidence: { coverage: msw.coverage || null },
+    }));
+  }
   const onParcel = finiteOrNull(msw.msw_points_on_parcel);
   const active1 = finiteOrNull(msw.active_landfills_within_1_mi);
   const active3 = finiteOrNull(msw.active_landfills_within_3_mi);

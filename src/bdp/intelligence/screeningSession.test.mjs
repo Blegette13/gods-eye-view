@@ -35,6 +35,7 @@ test('collects screening evidence and derives score coverage/red flags', async (
       nearest_site_name: 'TEST SITE',
     }),
     mswLoader: async () => ({
+      coverage_complete: true,
       nearest_msw_site_m: 1200,
       nearest_site_name: 'TEST LANDFILL',
       msw_points_on_parcel: 0,

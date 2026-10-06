@@ -79,6 +79,8 @@ SELECT jsonb_build_object(
   'source', 'Texas Commission on Environmental Quality municipal-solid-waste data',
   'screeningOnly', true,
   'boundaryInferred', false,
+  'coverage', bdp_tceq_msw_coverage(),
+  'truncated', (SELECT COUNT(*) FROM rows) >= ${TCEQ_MSW_MAX_FEATURES},
   'points', jsonb_build_object(
     'type', 'FeatureCollection',
     'features', COALESCE((
@@ -100,7 +102,10 @@ export function buildTceqMswParcelSql(input) {
   const geometryJson = JSON.stringify(request.geometry);
 
   return `
-SELECT row_to_json(metrics)::text
+SELECT (to_jsonb(metrics) || jsonb_build_object(
+  'coverage', bdp_tceq_msw_coverage(),
+  'coverage_complete', (bdp_tceq_msw_coverage() ->> 'complete')::boolean
+))::text
 FROM bdp_tceq_parcel_msw_metrics(
   ST_SetSRID(ST_GeomFromGeoJSON(${sqlTextLiteral(geometryJson)}), 4326)
 ) AS metrics;

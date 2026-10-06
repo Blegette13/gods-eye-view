@@ -1,3 +1,4 @@
+import { evaluateAcquisitionEconomics } from '../economics/acquisitionEconomics.js';
 import { fetchBdpParcelEnergy } from '../rrc/client.js';
 import {
   fetchBdpParcelCleanups,
@@ -111,6 +112,8 @@ export async function runBdpParcelScreening(parcel, {
       : null;
   });
 
+  evidence.acquisitionEconomics = evaluateAcquisitionEconomics(parcel);
+
   const components = {
     ...buildCurrentScreeningComponents({
       flood: evidence.flood,
@@ -148,7 +151,8 @@ export async function runBdpParcelScreening(parcel, {
   }));
   const redFlagSummary = summarizeBdpRedFlags(redFlags);
 
-  const succeededSources = BDP_SCREENING_SOURCES.filter((source) => evidence[source] !== null);
+  const succeededSources = BDP_SCREENING_SOURCES.filter((source) => evidence[source] != null
+    && (source !== 'msw' || evidence.msw.coverage_complete === true));
   const failedSources = BDP_SCREENING_SOURCES.filter((source) => errors[source] !== null);
 
   return Object.freeze({

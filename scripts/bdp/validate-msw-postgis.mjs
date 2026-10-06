@@ -1,0 +1,66 @@
+import { execFileSync } from 'node:child_process';
+import { buildNormalizeSql, buildMswAlreadyImportedSql } from './tceq-msw-import.mjs';
+
+// Uses the same PG* environment as BDP Validation; all fixture writes roll back.
+const manifest = { filename: 'fixture.xls', url: 'https://example.test/fixture', checksumSha256: 'a'.repeat(64), checkedAt: new Date().toISOString() };
+const normalize = buildNormalizeSql({ dataset: 'facilities', table: 'msw_validation_stage', manifest }).replace('BEGIN;', '').replace('COMMIT;', '');
+const previousChecksumQuery = buildMswAlreadyImportedSql({ dataset: 'facilities', checksumSha256: 'a'.repeat(64) });
+const latestChecksumQuery = buildMswAlreadyImportedSql({ dataset: 'facilities', checksumSha256: 'b'.repeat(64) });
+const sql = `
+BEGIN;
+TRUNCATE bdp_tceq_msw_sites, bdp_ingestion_runs;
+DO $$ BEGIN
+  IF (bdp_tceq_msw_coverage()->>'complete')::boolean THEN
+    RAISE EXCEPTION 'Empty database cannot provide MSW coverage'; END IF;
+END $$;
+CREATE TEMP TABLE msw_validation_stage(site_name text, physical_type text, physical_site_status text, latitude text, longitude text);
+INSERT INTO msw_validation_stage VALUES
+ ('Fixture landfill','1AE','Active','29.405','-98.495'),
+ ('Fixture transfer','5CC','Active','29.405','-98.495'),
+ ('Fixture construction','CP','Active','29.405','-98.495');
+${normalize}
+INSERT INTO bdp_tceq_msw_sites(source_dataset,source_filename,source_url,site_name,physical_status,geom,unauthorized,hazardous_waste_confirmed)
+VALUES
+ ('closed','fixture','fixture','Closed fixture','Closed',ST_SetSRID(ST_Point(-98.495,29.405),4326),NULL,NULL),
+ ('revoked','fixture','fixture','Revoked fixture','Not Constructed',ST_SetSRID(ST_Point(-98.495,29.405),4326),NULL,NULL),
+ ('unnumbered','fixture','fixture','Historical fixture','Historical',ST_SetSRID(ST_Point(-98.495,29.405),4326),true,true);
+DO $$ DECLARE m record; BEGIN
+ SELECT * INTO m FROM bdp_tceq_parcel_msw_metrics(ST_GeomFromText('POLYGON((-98.5 29.4,-98.49 29.4,-98.49 29.41,-98.5 29.41,-98.5 29.4))',4326));
+ IF m.msw_points_on_parcel <> 6 OR m.active_landfills_within_1_mi <> 1
+   OR m.closed_sites_within_1_mi <> 1 OR m.unauthorized_sites_within_1_mi <> 1
+   OR m.hazardous_history_sites_within_3_mi <> 1 OR m.nearest_msw_site_m <> 0 THEN
+   RAISE EXCEPTION 'MSW populated parcel metrics mismatch: %', row_to_json(m); END IF;
+ IF (bdp_tceq_msw_coverage()->>'complete')::boolean THEN
+   RAISE EXCEPTION 'Missing snapshot manifests cannot provide coverage'; END IF;
+END $$;
+INSERT INTO bdp_ingestion_runs(source_id,dataset,status,completed_at,row_count,checksum_sha256)
+ SELECT 'tceq-msw',source_dataset,'succeeded',NOW(),COUNT(*),repeat('a',64)
+ FROM bdp_tceq_msw_sites WHERE source_dataset <> 'facilities' GROUP BY source_dataset;
+DO $$ BEGIN
+ IF NOT (bdp_tceq_msw_coverage()->>'complete')::boolean THEN
+   RAISE EXCEPTION 'Fresh full fixtures should provide coverage'; END IF;
+END $$;
+INSERT INTO bdp_ingestion_runs(source_id,dataset,status,completed_at,row_count,checksum_sha256)
+VALUES ('tceq-msw','facilities','succeeded',NOW() + INTERVAL '1 second',3,repeat('b',64));
+DO $$ BEGIN
+ IF (${previousChecksumQuery}) THEN
+   RAISE EXCEPTION 'A-B-A checksum recurrence must reimport, not skip historical snapshot'; END IF;
+ IF NOT (${latestChecksumQuery}) THEN
+   RAISE EXCEPTION 'Latest checksum should skip unchanged snapshot'; END IF;
+END $$;
+UPDATE bdp_ingestion_runs SET completed_at = NOW() WHERE dataset = 'facilities';
+UPDATE bdp_ingestion_runs SET completed_at = NOW() - INTERVAL '15 days' WHERE dataset = 'closed';
+DO $$ BEGIN
+ IF (bdp_tceq_msw_coverage()->>'complete')::boolean THEN
+   RAISE EXCEPTION 'Stale weekly import cannot provide coverage'; END IF;
+END $$;
+UPDATE bdp_ingestion_runs SET completed_at = NOW();
+UPDATE bdp_tceq_msw_sites SET geom = NULL WHERE source_dataset = 'unnumbered';
+DO $$ BEGIN
+ IF (bdp_tceq_msw_coverage()->>'complete')::boolean THEN
+   RAISE EXCEPTION 'Unlocated historical records cannot provide full coverage'; END IF;
+END $$;
+ROLLBACK;
+`;
+execFileSync('psql', ['-v', 'ON_ERROR_STOP=1'], { input: sql, stdio: ['pipe', 'inherit', 'inherit'] });
+console.log('[BDP:MSW] Populated spatial, importer and coverage assertions passed');

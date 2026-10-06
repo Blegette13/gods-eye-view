@@ -3,6 +3,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { sha256Hex } from '../../src/bdp/ingestion/rrcDownloader.js';
 import { getTceqMswDataset } from '../../src/bdp/environment/tceqMswCatalog.js';
 
 function parseArgs(argv) {
@@ -101,25 +102,27 @@ function applySchema(service) {
   ]);
 }
 
-function alreadyImported(service, { dataset, checksumSha256 }) {
-  if (!checksumSha256) return false;
-  const query = `
+export function buildMswAlreadyImportedSql({ dataset, checksumSha256 }) {
+  getTceqMswDataset(dataset);
+  return `
     SELECT EXISTS (
       SELECT 1
-      FROM bdp_ingestion_runs
-      WHERE source_id = 'tceq-msw'
-        AND dataset = ${sqlLiteral(dataset)}
-        AND county_fips IS NULL
-        AND checksum_sha256 = ${sqlLiteral(checksumSha256)}
-        AND status = 'succeeded'
-    );
+      FROM (SELECT * FROM bdp_ingestion_runs
+        WHERE source_id = 'tceq-msw' AND dataset = ${sqlLiteral(dataset)}
+          AND status = 'succeeded' AND county_fips IS NULL
+        ORDER BY completed_at DESC NULLS LAST, id DESC LIMIT 1) AS latest
+      WHERE checksum_sha256 = ${sqlLiteral(checksumSha256)}
+        AND row_count > 0
+        AND row_count = (SELECT COUNT(*) FROM bdp_tceq_msw_sites WHERE source_dataset = ${sqlLiteral(dataset)})
+    )
   `;
+}
+
+function alreadyImported(service, { dataset, checksumSha256 }) {
+  if (!checksumSha256) return false;
   return run('psql', [
-    ...psqlArgs(service),
-    '--tuples-only',
-    '--no-align',
-    '--command',
-    query,
+    ...psqlArgs(service), '--tuples-only', '--no-align', '--command',
+    buildMswAlreadyImportedSql({ dataset, checksumSha256 }),
   ], { capture: true }) === 't';
 }
 
@@ -157,8 +160,8 @@ function safeNumber(expression) {
 function safeDate(expression) {
   return `CASE
     WHEN ${expression} IS NULL THEN NULL
-    WHEN ${expression} ~ '^\\d{4}-\\d{2}-\\d{2}' THEN SUBSTRING(${expression} FROM 1 FOR 10)::DATE
-    WHEN ${expression} ~ '^\\d{1,2}/\\d{1,2}/\\d{4}' THEN ${expression}::DATE
+    WHEN pg_input_is_valid(${expression}, 'date') AND ${expression} ~ '^\\d{4}-\\d{2}-\\d{2}' THEN SUBSTRING(${expression} FROM 1 FOR 10)::DATE
+    WHEN pg_input_is_valid(${expression}, 'date') AND ${expression} ~ '^\\d{1,2}/\\d{1,2}/\\d{4}' THEN ${expression}::DATE
     ELSE NULL
   END`;
 }
@@ -226,6 +229,8 @@ function unnumberedExpressions() {
 }
 
 export function buildNormalizeSql({ dataset, table, manifest }) {
+  getTceqMswDataset(dataset);
+  if (!/^[a-z_][a-z0-9_]*$/.test(table)) throw new Error('Invalid MSW staging table');
   const fields = dataset === 'unnumbered'
     ? unnumberedExpressions()
     : currentDatasetExpressions();
@@ -277,13 +282,20 @@ export function buildNormalizeSql({ dataset, table, manifest }) {
       ${fields.coordinateSource},
       ${fields.locationText},
       CASE
-        WHEN ${latNumber} BETWEEN -90 AND 90
-          AND ${lonNumber} BETWEEN -180 AND 180
+        WHEN ${latNumber} BETWEEN 25 AND 37
+          AND ${lonNumber} BETWEEN -107 AND -93
         THEN ST_SetSRID(ST_MakePoint(${lonNumber}, ${latNumber}), 4326)
         ELSE NULL
       END
     FROM ${table} s
     WHERE COALESCE(${fields.siteName}, ${fields.authorizationNumber}) IS NOT NULL;
+
+    DO $guard$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM bdp_tceq_msw_sites WHERE source_dataset = ${sqlLiteral(dataset)})
+        OR NOT EXISTS (SELECT 1 FROM bdp_tceq_msw_sites WHERE source_dataset = ${sqlLiteral(dataset)} AND geom IS NOT NULL)
+      THEN RAISE EXCEPTION 'MSW snapshot has no usable records/coordinates; previous snapshot retained'; END IF;
+    END $guard$;
 
     INSERT INTO bdp_ingestion_runs (
       source_id, dataset, source_filename, source_url, source_last_modified,
@@ -295,7 +307,7 @@ export function buildNormalizeSql({ dataset, table, manifest }) {
       ${sqlLiteral(manifest.url)},
       ${sourceLastModified},
       ${sqlLiteral(manifest.checksumSha256 || '')},
-      NOW(),
+      ${sqlLiteral(manifest.checkedAt)}::timestamptz,
       'succeeded',
       (SELECT COUNT(*) FROM bdp_tceq_msw_sites WHERE source_dataset = ${sqlLiteral(dataset)})
     );
@@ -305,13 +317,35 @@ export function buildNormalizeSql({ dataset, table, manifest }) {
   `;
 }
 
+export async function validateMswCache({ spec, sourcePath, manifest, now = Date.now() }) {
+  if (manifest.dataset !== spec.dataset || manifest.filename !== spec.filename || manifest.url !== spec.url) {
+    throw new Error('MSW cache manifest does not match official dataset');
+  }
+  const checkedAt = Date.parse(manifest.checkedAt);
+  if (!Number.isFinite(checkedAt) || checkedAt > now || now - checkedAt > 14 * 86400000) {
+    throw new Error('MSW cache verification expired; run the downloader before importing');
+  }
+  const bytes = new Uint8Array(await readFile(sourcePath));
+  if (!/^[a-f0-9]{64}$/.test(manifest.checksumSha256 || '')
+    || await sha256Hex(bytes) !== manifest.checksumSha256) {
+    throw new Error('MSW cached file checksum mismatch; run the downloader again');
+  }
+}
+
 async function importDataset({ service, dataset, cacheDir }) {
   const spec = getTceqMswDataset(dataset);
   const sourcePath = path.resolve(cacheDir, spec.filename);
   const manifestPath = `${sourcePath}.json`;
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  await validateMswCache({ spec, sourcePath, manifest });
 
   if (alreadyImported(service, { dataset, checksumSha256: manifest.checksumSha256 })) {
+    run('psql', [...psqlArgs(service), '--command', `
+      UPDATE bdp_ingestion_runs SET completed_at = ${sqlLiteral(manifest.checkedAt)}::timestamptz
+      WHERE id = (SELECT id FROM bdp_ingestion_runs WHERE source_id = 'tceq-msw'
+        AND dataset = ${sqlLiteral(dataset)} AND status = 'succeeded' AND county_fips IS NULL
+        ORDER BY completed_at DESC NULLS LAST, id DESC LIMIT 1);
+    `]);
     return { dataset, filename: spec.filename, status: 'skipped-unchanged' };
   }
 

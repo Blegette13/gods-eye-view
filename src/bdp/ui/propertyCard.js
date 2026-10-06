@@ -1,6 +1,8 @@
+import { ACQUISITION_COST_FIELDS, evaluateAcquisitionEconomics } from '../economics/acquisitionEconomics.js';
 import { fetchBdpParcelIntelligence } from '../intelligence/client.js';
 
 function formatMoney(value) {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return '—';
   const number = Number(value);
   if (!Number.isFinite(number)) return '—';
   return new Intl.NumberFormat('en-US', {
@@ -11,48 +13,56 @@ function formatMoney(value) {
 }
 
 function formatNumber(value, digits = 2) {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return '—';
   const number = Number(value);
   if (!Number.isFinite(number)) return '—';
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: digits }).format(number);
 }
 
 function formatMiles(meters) {
+  if (meters === null || meters === undefined || meters === '' || typeof meters === 'boolean') return '—';
   const number = Number(meters);
   if (!Number.isFinite(number)) return '—';
   return `${formatNumber(number / 1609.344, 2)} mi`;
 }
 
 function formatPercent(value) {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return '—';
   const number = Number(value);
   if (!Number.isFinite(number)) return '—';
   return `${formatNumber(number, 1)}%`;
 }
 
 function formatAcres(value) {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return '—';
   const number = Number(value);
   if (!Number.isFinite(number)) return '—';
   return `${formatNumber(number, 2)} ac`;
 }
 
 function formatFeet(value) {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return '—';
   const number = Number(value);
   if (!Number.isFinite(number)) return '—';
   return `${formatNumber(number, 0)} ft`;
 }
 
 function formatDistanceFeetFromMeters(value) {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return '—';
   const number = Number(value);
   if (!Number.isFinite(number)) return '—';
   return `${formatNumber(number * 3.280839895, 0)} ft`;
 }
 
 function formatDegrees(value) {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return '—';
   const number = Number(value);
   if (!Number.isFinite(number)) return '—';
   return `${formatNumber(number, 1)}°`;
 }
 
 function formatVehicles(value) {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return '—';
   const number = Number(value);
   if (!Number.isFinite(number)) return '—';
   return `${formatNumber(number, 0)} / day`;
@@ -101,11 +111,11 @@ function energyRows(metrics) {
   if (!metrics) return [row('RRC screening', 'No metrics returned')];
   return [
     row('Nearest well', formatMiles(metrics.nearest_well_m)),
-    row('Wells ≤ 1 mi', String(metrics.wells_within_1_mi ?? 0)),
-    row('Wells ≤ 2 mi', String(metrics.wells_within_2_mi ?? 0)),
-    row('Wells ≤ 5 mi', String(metrics.wells_within_5_mi ?? 0)),
+    row('Wells ≤ 1 mi', String(metrics.wells_within_1_mi ?? '—')),
+    row('Wells ≤ 2 mi', String(metrics.wells_within_2_mi ?? '—')),
+    row('Wells ≤ 5 mi', String(metrics.wells_within_5_mi ?? '—')),
     row('Nearest pipe', formatMiles(metrics.nearest_pipeline_m)),
-    row('Pipe crossings', String(metrics.pipeline_crossing_count ?? 0)),
+    row('Pipe crossings', String(metrics.pipeline_crossing_count ?? '—')),
     row('Pipe on tract', formatMiles(metrics.pipeline_length_on_parcel_m)),
   ];
 }
@@ -127,8 +137,8 @@ function wetlandRows(metrics) {
   return [
     row('NWI mapped', formatAcres(metrics.nwi_mapped_acres)),
     row('NWI share', formatPercent(metrics.nwi_percent)),
-    row('NWI features', String(metrics.nwi_feature_count ?? 0)),
-    row('NWI types', String(metrics.nwi_type_count ?? 0)),
+    row('NWI features', String(metrics.nwi_feature_count ?? '—')),
+    row('NWI types', String(metrics.nwi_type_count ?? '—')),
     row('Non-NWI acres', formatAcres(metrics.preliminary_non_nwi_acres)),
   ];
 }
@@ -138,13 +148,13 @@ function cleanupRows(metrics) {
   return [
     row('Nearest cleanup', formatMiles(metrics.nearest_cleanup_m)),
     row('Nearest site', metrics.nearest_site_name || '—'),
-    row('On parcel', String(metrics.cleanup_sites_on_parcel ?? 0)),
-    row('Sites ≤ 1 mi', String(metrics.cleanup_sites_within_1_mi ?? 0)),
-    row('Sites ≤ 3 mi', String(metrics.cleanup_sites_within_3_mi ?? 0)),
-    row('Sites ≤ 5 mi', String(metrics.cleanup_sites_within_5_mi ?? 0)),
-    row('Superfund ≤ 5 mi', String(metrics.superfund_within_5_mi ?? 0)),
-    row('RCRA CA ≤ 5 mi', String(metrics.rcra_within_5_mi ?? 0)),
-    row('Brownfields ≤ 5 mi', String(metrics.brownfields_within_5_mi ?? 0)),
+    row('On parcel', String(metrics.cleanup_sites_on_parcel ?? '—')),
+    row('Sites ≤ 1 mi', String(metrics.cleanup_sites_within_1_mi ?? '—')),
+    row('Sites ≤ 3 mi', String(metrics.cleanup_sites_within_3_mi ?? '—')),
+    row('Sites ≤ 5 mi', String(metrics.cleanup_sites_within_5_mi ?? '—')),
+    row('Superfund ≤ 5 mi', String(metrics.superfund_within_5_mi ?? '—')),
+    row('RCRA CA ≤ 5 mi', String(metrics.rcra_within_5_mi ?? '—')),
+    row('Brownfields ≤ 5 mi', String(metrics.brownfields_within_5_mi ?? '—')),
   ];
 }
 
@@ -152,20 +162,110 @@ function mswRows(metrics) {
   if (!metrics) return [row('TCEQ MSW', 'No data returned')];
 
   return [
-    row('Nearest MSW site', formatMiles(metrics.nearest_msw_site_m)),
+    row('MSW coverage', metrics.coverage_complete === true ? 'IMPORTED · CURRENT' : 'INCOMPLETE / STALE · UNKNOWN'),
+    row('Nearest MSW ≤ 5 mi', formatMiles(metrics.nearest_msw_site_m)),
     row('Nearest site', metrics.nearest_site_name || '—'),
     row('Nearest dataset', metrics.nearest_site_dataset || '—'),
     row('Nearest type', metrics.nearest_site_type || '—'),
     row('Nearest status', metrics.nearest_site_status || '—'),
-    row('Points on parcel', String(metrics.msw_points_on_parcel ?? 0)),
-    row('Active landfill ≤ 1 mi', String(metrics.active_landfills_within_1_mi ?? 0)),
-    row('Active landfill ≤ 3 mi', String(metrics.active_landfills_within_3_mi ?? 0)),
-    row('Closed sites ≤ 1 mi', String(metrics.closed_sites_within_1_mi ?? 0)),
-    row('Closed sites ≤ 3 mi', String(metrics.closed_sites_within_3_mi ?? 0)),
-    row('Unauthorized ≤ 1 mi', String(metrics.unauthorized_sites_within_1_mi ?? 0)),
-    row('Unauthorized ≤ 3 mi', String(metrics.unauthorized_sites_within_3_mi ?? 0)),
-    row('Haz. history ≤ 3 mi', String(metrics.hazardous_history_sites_within_3_mi ?? 0)),
+    row('Points on parcel', String(metrics.msw_points_on_parcel ?? '—')),
+    row('Active landfill ≤ 1 mi', String(metrics.active_landfills_within_1_mi ?? '—')),
+    row('Active landfill ≤ 3 mi', String(metrics.active_landfills_within_3_mi ?? '—')),
+    row('Closed sites ≤ 1 mi', String(metrics.closed_sites_within_1_mi ?? '—')),
+    row('Closed sites ≤ 3 mi', String(metrics.closed_sites_within_3_mi ?? '—')),
+    row('Unauthorized ≤ 1 mi', String(metrics.unauthorized_sites_within_1_mi ?? '—')),
+    row('Unauthorized ≤ 3 mi', String(metrics.unauthorized_sites_within_3_mi ?? '—')),
+    row('Haz. history ≤ 3 mi', String(metrics.hazardous_history_sites_within_3_mi ?? '—')),
   ];
+}
+
+function economicsRows(metrics) {
+  if (!metrics) return [row('Economics', 'Unknown')];
+  return [
+    row('Evidence', 'USER SCENARIO · UNVERIFIED'),
+    row('Economics score', 'WITHHELD · VERIFIED MARKET / COST EVIDENCE NEEDED'),
+    row('Asking price', formatMoney(metrics.askingPrice)),
+    row('Ask / reported acre', formatMoney(metrics.askingPricePerAcre)),
+    row('Additional costs', formatMoney(metrics.totalAdditionalCosts)),
+    row('All-in basis', formatMoney(metrics.allInCost)),
+    row('Basis / reported acre', formatMoney(metrics.allInCostPerAcre)),
+    row('Break-even exit', formatMoney(metrics.breakEvenExitPrice)),
+    row('Assumed exit price', formatMoney(metrics.assumedExitPrice)),
+    row('Scenario profit', formatMoney(metrics.scenarioProfit)),
+    row('Return on cost', formatPercent(metrics.returnOnCostPercent)),
+    row('Target return', formatPercent(metrics.targetReturnPercent)),
+    row('Residual max offer', formatMoney(metrics.maximumOffer)),
+    ...(metrics.targetFeasible === false ? [row('Target feasibility', 'NO POSITIVE OFFER UNDER THESE ASSUMPTIONS')] : []),
+    row('Missing inputs', metrics.missingInputs.length ? metrics.missingInputs.join(', ') : 'NONE · ASSUMPTIONS ONLY'),
+    row('CAD land / acre', formatMoney(metrics.cadLandValuePerAcre)),
+    row('CAD currency', metrics.cadRecordCurrency.toUpperCase()),
+    row('Scenario note', metrics.notice),
+  ];
+}
+
+function growthRows(metrics) {
+  if (!metrics) return [row('Growth Radar', 'No data returned')];
+  return [
+    row('Coverage', 'SAN ANTONIO PLANNING SOURCES · 25-MILE VICINITY'),
+    row('Growth score', 'WITHHELD · PLANNING CONTEXT ONLY'),
+    row('Nearest MTP corridor', metrics.nearest_mtp_street || '—'),
+    row('MTP distance', formatMiles(metrics.nearest_mtp_m)),
+    row('MTP crossings', formatNumber(metrics.mtp_crossing_count, 0)),
+    row('Proposed/changed ≤ 5 mi', formatNumber(metrics.mtp_proposed_or_changed_within_5_mi, 0)),
+    row('Preliminary plats on tract', formatNumber(metrics.preliminary_plats_on_parcel, 0)),
+    row('Preliminary plats ≤ 5 mi', formatNumber(metrics.preliminary_plats_within_5_mi, 0)),
+    row('Preliminary plats ≤ 10 mi', formatNumber(metrics.preliminary_plats_within_10_mi, 0)),
+    row('Preliminary plats ≤ 25 mi', formatNumber(metrics.preliminary_plats_within_25_mi, 0)),
+    row('Nearest preliminary plat', metrics.nearest_preliminary_plat_name || '—'),
+    row('Nearest center', metrics.nearest_regional_center_name || '—'),
+    row('Center distance', formatMiles(metrics.nearest_regional_center_m)),
+    row('Centers ≤ 25 mi', formatNumber(metrics.regional_centers_within_25_mi, 0)),
+    row('Planning notice', 'City planning context does not establish funding, construction, current plat approval, legal access or statewide growth coverage.'),
+  ];
+}
+
+function economicsForm(parcel, results) {
+  const form = document.createElement('form');
+  form.className = 'bdp-economics-form';
+  const fields = [
+    ['askingPrice', 'Asking price ($)'],
+    ...ACQUISITION_COST_FIELDS.map(([key, label]) => [key, `${label} ($)`]),
+    ['exitPrice', 'Assumed exit price before disposition costs ($)'],
+    ['targetReturnPercent', 'Target return on all-in cost (%)'],
+  ];
+  const inputs = {};
+  for (const [key, labelText] of fields) {
+    const label = document.createElement('label');
+    label.className = 'bdp-economics-field';
+    const text = document.createElement('span');
+    text.textContent = labelText;
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.name = key;
+    input.min = key === 'askingPrice' || key === 'exitPrice' ? '0.01' : '0';
+    input.step = 'any';
+    input.placeholder = 'Unknown';
+    input.setAttribute('aria-label', labelText);
+    const value = key === 'askingPrice' ? parcel.acquisition?.askingPrice : parcel.acquisition?.scenario?.[key];
+    input.value = value == null ? '' : String(value);
+    inputs[key] = input;
+    label.append(text, input);
+    form.append(label);
+  }
+  const button = document.createElement('button');
+  button.type = 'submit';
+  button.textContent = 'CALCULATE SCENARIO';
+  const note = document.createElement('p');
+  note.textContent = 'Blank = unknown. Enter 0 only as an explicit assumption. Scenarios last for this selection and are not saved.';
+  form.append(button, note);
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const scenario = Object.fromEntries(fields.filter(([key]) => key !== 'askingPrice').map(([key]) => [key, inputs[key].value]));
+    const candidate = { ...parcel, acquisition: { ...parcel.acquisition, askingPrice: inputs.askingPrice.value, scenario } };
+    results.replaceChildren(...economicsRows(evaluateAcquisitionEconomics(candidate)));
+    results.dataset.scenarioEdited = 'true';
+  });
+  return form;
 }
 
 function cemeteryRows(metrics) {
@@ -175,12 +275,12 @@ function cemeteryRows(metrics) {
     row('Nearest cemetery', formatMiles(metrics.nearest_cemetery_m)),
     row('Nearest name', metrics.nearest_cemetery_name || '—'),
     row('Nearest type', metrics.nearest_cemetery_type || '—'),
-    row('Cemeteries on tract', String(metrics.cemeteries_intersecting_parcel ?? 0)),
+    row('Cemeteries on tract', String(metrics.cemeteries_intersecting_parcel ?? '—')),
     row('Overlap', formatAcres(metrics.cemetery_overlap_acres)),
     row('Overlap share', formatPercent(metrics.cemetery_overlap_percent)),
-    row('Cemeteries ≤ 1 mi', String(metrics.cemeteries_within_1_mi ?? 0)),
-    row('Cemeteries ≤ 3 mi', String(metrics.cemeteries_within_3_mi ?? 0)),
-    row('Cemeteries ≤ 5 mi', String(metrics.cemeteries_within_5_mi ?? 0)),
+    row('Cemeteries ≤ 1 mi', String(metrics.cemeteries_within_1_mi ?? '—')),
+    row('Cemeteries ≤ 3 mi', String(metrics.cemeteries_within_3_mi ?? '—')),
+    row('Cemeteries ≤ 5 mi', String(metrics.cemeteries_within_5_mi ?? '—')),
     row('Archeology', 'RESTRICTED DATA · NOT PUBLICLY SCREENED'),
   ];
 }
@@ -224,7 +324,7 @@ function transportationRows(metrics) {
     row('Nearest road', roadLabel || '—'),
     row('Road distance', formatDistanceFeetFromMeters(metrics.nearest_road_m)),
     row('Centerline on tract', metrics.road_centerline_intersects_parcel ? 'YES · MAPPED' : 'NO'),
-    row('Roads ≤ 250 ft', String(metrics.road_centerlines_within_250_ft ?? 0)),
+    row('Roads ≤ 250 ft', String(metrics.road_centerlines_within_250_ft ?? '—')),
     row('Nearest AADT', formatVehicles(metrics.nearest_aadt_current)),
     row('AADT route', metrics.nearest_aadt_route || '—'),
     row('AADT distance', formatMiles(metrics.nearest_aadt_m)),
@@ -257,7 +357,7 @@ function utilityRows(metrics) {
     row('CCN number(s)', ccnNumbers || '—'),
     row('Electric capacity', 'UNVERIFIED'),
     row('Nearest transmission', formatMiles(metrics.nearest_transmission_m)),
-    row('Transmission crossings', String(metrics.transmission_crossing_count ?? 0)),
+    row('Transmission crossings', String(metrics.transmission_crossing_count ?? '—')),
     row('Transmission on tract', formatMiles(metrics.transmission_length_on_parcel_m)),
     row(
       'Transmission source',
@@ -274,10 +374,10 @@ function waterRightsRows(metrics) {
   return [
     row('Ownership', 'UNVERIFIED'),
     row('Nearest mapped point', formatMiles(metrics.nearest_water_right_point_m)),
-    row('Points on parcel', String(metrics.water_right_points_on_parcel ?? 0)),
-    row('Points ≤ 1 mi', String(metrics.water_right_points_within_1_mi ?? 0)),
-    row('Points ≤ 5 mi', String(metrics.water_right_points_within_5_mi ?? 0)),
-    row('Distinct rights ≤ 5 mi', String(metrics.distinct_water_rights_within_5_mi ?? 0)),
+    row('Points on parcel', String(metrics.water_right_points_on_parcel ?? '—')),
+    row('Points ≤ 1 mi', String(metrics.water_right_points_within_1_mi ?? '—')),
+    row('Points ≤ 5 mi', String(metrics.water_right_points_within_5_mi ?? '—')),
+    row('Distinct rights ≤ 5 mi', String(metrics.distinct_water_rights_within_5_mi ?? '—')),
   ];
 }
 
@@ -291,7 +391,7 @@ function soilRows(summary) {
     row('Dominant soil', dominantLabel),
     row('Dominant share', dominant ? formatPercent(dominant.mappedSharePercent) : '—'),
     row('Mapped soils', formatAcres(summary.mappedAcres)),
-    row('Map units', String(summary.mapunitCount ?? 0)),
+    row('Map units', String(summary.mapunitCount ?? '—')),
     row('Farmland class', dominant?.farmlandClass || '—'),
     row('Survey area', dominant?.areaSymbol || '—'),
   ];
@@ -341,6 +441,12 @@ function redFlagElements(flags) {
 
 function appendScreeningResult(containers, screening) {
   const { evidence, errors } = screening;
+  if (containers.economics.dataset.scenarioEdited !== 'true') {
+    containers.economics.replaceChildren(...economicsRows(evidence.acquisitionEconomics));
+  }
+  containers.growthRadar.replaceChildren(...(evidence.growthRadar
+    ? growthRows(evidence.growthRadar)
+    : [row('Growth Radar', sourceErrorLabel(errors.growthRadar, 'San Antonio Growth Radar'))]));
   containers.intelligence.replaceChildren(...intelligenceRows(screening));
   containers.flags.replaceChildren(...redFlagElements(screening.redFlags));
 
@@ -479,7 +585,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       row('Land value', formatMoney(parcel.valuation?.landValue)),
       row('Improvements', formatMoney(parcel.valuation?.improvementValue)),
       row('Total value', formatMoney(parcel.valuation?.marketValue)),
-      row('Value / acre', formatMoney(parcel.acquisition?.pricePerAcre)),
+      row('CAD value / acre', formatMoney(parcel.acquisition?.pricePerAcre)),
       row('Property use', parcel.providerData?.propertyUse),
       row('Legal', parcel.property?.legalDescription),
       row('Mailing', parcel.owner?.mailingAddress),
@@ -488,6 +594,8 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     );
 
     const containers = {
+      economics: document.createElement('div'),
+      growthRadar: document.createElement('div'),
       intelligence: document.createElement('div'),
       flags: document.createElement('div'),
       energy: document.createElement('div'),
@@ -503,6 +611,8 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       soils: document.createElement('div'),
       terrain: document.createElement('div'),
     };
+    containers.economics.append(...economicsRows(evaluateAcquisitionEconomics(parcel)));
+    containers.growthRadar.append(row('Growth Radar', 'Loading…'));
     containers.intelligence.append(row('BDP screening', 'Loading evidence…'));
     containers.flags.append(row('Flags', 'Loading evidence…'));
     containers.energy.append(row('RRC screening', 'Loading…'));
@@ -521,6 +631,8 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     body.append(
       sectionHeading('BDP INTELLIGENCE'), containers.intelligence,
       sectionHeading('RED FLAGS'), containers.flags,
+      sectionHeading('ACQUISITION ECONOMICS'), containers.economics, economicsForm(parcel, containers.economics),
+      sectionHeading('GROWTH RADAR'), containers.growthRadar,
       sectionHeading('ENTITLEMENT / ZONING'), containers.entitlement,
       sectionHeading('ACCESS / TXDOT TRAFFIC'), containers.transportation,
       sectionHeading('UTILITIES / INFRASTRUCTURE'), containers.utilities,

@@ -323,3 +323,11 @@
     display: none;
   }
 }
+
+/* Native property-panel acquisition scenario controls. */
+.bdp-economics-form { display: grid; gap: 8px; margin: 10px 0 16px; }
+.bdp-economics-field { display: grid; gap: 4px; font: inherit; color: var(--text-secondary, #9aabb8); }
+.bdp-economics-field input { width: 100%; box-sizing: border-box; padding: 7px 9px; color: var(--text-primary, #d9e4ec); background: rgba(10, 20, 30, .8); border: 1px solid rgba(135, 176, 195, .25); border-radius: 3px; font: inherit; }
+.bdp-economics-form button { padding: 8px; background: rgba(83, 165, 178, .12); color: var(--text-primary, #d9e4ec); border: 1px solid rgba(135, 176, 195, .35); cursor: pointer; font: inherit; }
+.bdp-economics-form p { font-size: 10px; line-height: 1.5; color: var(--text-secondary, #9aabb8); margin: 0; }
+.bdp-economics-form input:focus-visible, .bdp-economics-form button:focus-visible { outline: 2px solid #83d3df; outline-offset: 2px; }

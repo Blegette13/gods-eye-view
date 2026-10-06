@@ -1,6 +1,7 @@
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 import { sha256Hex } from '../../src/bdp/ingestion/rrcDownloader.js';
 import { createTceqMswIngestionPlan } from '../../src/bdp/environment/tceqMswCatalog.js';
 
@@ -71,13 +72,16 @@ async function downloadDataset(entry, cacheDir, fetchImpl = globalThis.fetch) {
   const manifestPath = `${archivePath}.json`;
   const previous = await readManifest(manifestPath);
   const exists = await fileExists(archivePath);
+  const cacheValid = exists && previous?.checksumSha256
+    && await sha256Hex(new Uint8Array(await readFile(archivePath))) === previous.checksumSha256;
 
   const response = await fetchImpl(entry.url, {
-    headers: conditionalHeaders(previous),
+    headers: conditionalHeaders(cacheValid ? previous : null),
     redirect: 'follow',
   });
 
-  if (response.status === 304 && exists && previous) {
+  if (response.status === 304 && cacheValid) {
+    await writeFile(manifestPath, `${JSON.stringify({ ...previous, checkedAt: new Date().toISOString() }, null, 2)}\n`);
     return { dataset: entry.dataset, filename: entry.filename, status: 'skipped-unchanged' };
   }
   if (!response.ok) {
@@ -86,7 +90,7 @@ async function downloadDataset(entry, cacheDir, fetchImpl = globalThis.fetch) {
 
   const bytes = new Uint8Array(await response.arrayBuffer());
   const checksumSha256 = await sha256Hex(bytes);
-  const unchanged = exists && previous?.checksumSha256 === checksumSha256;
+  const unchanged = cacheValid && previous?.checksumSha256 === checksumSha256;
 
   if (!unchanged) await writeFile(archivePath, bytes);
 
@@ -125,17 +129,20 @@ export async function runTceqMswDownload(options = {}) {
   return results;
 }
 
-const options = parseArgs(process.argv.slice(2));
-if (options.help) {
-  console.log(usage());
-} else {
-  try {
-    const results = await runTceqMswDownload(options);
-    for (const result of results) {
-      console.log(`[BDP:TCEQ:MSW] ${result.status} ${result.filename}`);
+const invoked = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : '';
+if (import.meta.url === invoked) {
+  const options = parseArgs(process.argv.slice(2));
+  if (options.help) {
+    console.log(usage());
+  } else {
+    try {
+      const results = await runTceqMswDownload(options);
+      for (const result of results) {
+        console.log(`[BDP:TCEQ:MSW] ${result.status} ${result.filename}`);
+      }
+    } catch (error) {
+      console.error(`[BDP:TCEQ:MSW] ${error instanceof Error ? error.message : String(error)}`);
+      process.exitCode = 1;
     }
-  } catch (error) {
-    console.error(`[BDP:TCEQ:MSW] ${error instanceof Error ? error.message : String(error)}`);
-    process.exitCode = 1;
   }
 }

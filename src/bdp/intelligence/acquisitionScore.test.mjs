@@ -130,6 +130,7 @@ test('builds only currently supported screening categories', () => {
 
 test('TCEQ MSW point screening penalizes on-tract and unauthorized history without claiming contamination', () => {
   const result = scoreTceqMswEnvironment({
+    coverage_complete: true,
     nearest_msw_site_m: 0,
     msw_points_on_parcel: 1,
     active_landfills_within_1_mi: 1,
@@ -158,6 +159,7 @@ test('environment score gains confidence when TCEQ MSW joins NWI and EPA evidenc
       brownfields_within_5_mi: 0,
     },
     msw: {
+      coverage_complete: true,
       nearest_msw_site_m: 9000,
       msw_points_on_parcel: 0,
       active_landfills_within_1_mi: 0,
@@ -172,4 +174,11 @@ test('environment score gains confidence when TCEQ MSW joins NWI and EPA evidenc
   });
   assert.equal(result.confidence, 0.72);
   assert.match(result.source, /TCEQ MSW/);
+});
+
+test('MSW empty, partial and stale imports cannot earn favorable environmental scores', () => {
+  for (const coverage_complete of [undefined, false]) {
+    assert.equal(scoreTceqMswEnvironment({ coverage_complete, all_msw_sites_within_5_mi: 0 }), null);
+  }
+  assert.equal(scoreTceqMswEnvironment({ coverage_complete: true, all_msw_sites_within_5_mi: 0 }), null);
 });

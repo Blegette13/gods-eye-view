@@ -80,3 +80,26 @@ The pipeline shapefile exposes attributes including operator, system/subsystem, 
 - Pipelines by county: official RRC ZIP shapefile, published twice weekly.
 
 The ingestion catalog lives in `rrcCatalog.js`; download resolution/checksums live in `rrcDownloader.js`; the normalized PostGIS schema is in `sql/rrcPostgis.sql`; parcel metrics are in `sql/rrcParcelEnergy.sql`.
+
+## MSW validation and coverage
+
+MSW needs PostgreSQL 16+ (`pg_input_is_valid`), PostGIS, GDAL XLS/XLSX support,
+and a configured `BDP_PG_SERVICE`. Run the downloader before importing: cached
+files must match the official dataset manifest, checksum and a verification time
+within 14 days. An unchanged verified download refreshes import currency;
+returning to an older checksum imports that snapshot rather than skipping it
+because the checksum once appeared in history. Empty/unusable snapshots roll
+back without replacing the existing dataset. Invalid dates become unknown.
+Coordinates outside a broad Texas sanity envelope remain unlocated records.
+
+`bdp_tceq_msw_coverage()` reports all four snapshots, retrieval/import currency,
+record counts and unlocated rows. Weekly imports older than 14 days, missing
+snapshots and unlocated records withhold the MSW score. This is intentionally
+conservative statewide coverage, not a determination that an unlocated site
+is near a specific parcel. Historical inventory does not become current merely
+because it was downloaded again. Known proximity flags remain visible even when
+coverage is incomplete; zero counts cannot establish environmental clearance.
+
+BDP Validation runs `node scripts/bdp/validate-msw-postgis.mjs` using its PG*
+connection. Transactional fixtures exercise the actual importer, type codes,
+on-parcel counts and missing/stale/unlocated coverage states, then roll back.
