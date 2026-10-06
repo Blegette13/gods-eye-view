@@ -1,11 +1,18 @@
 import { normalizeHaysFeature, HAYS_PARCEL_LAYER_URL } from '../../src/bdp/cad/haysAdapter.js';
 
 async function json(url) {
-  const response = await fetch(url, { signal: AbortSignal.timeout(20000) });
-  if (!response.ok) throw new Error(`Hays GIS HTTP ${response.status}`);
-  const data = await response.json();
-  if (data?.error) throw new Error(`Hays GIS ${data.error.code}: ${data.error.message}`);
-  return data;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
+      if (!response.ok) throw new Error(`Hays GIS HTTP ${response.status}`);
+      const data = await response.json();
+      if (data?.error) throw new Error(`Hays GIS ${data.error.code}: ${data.error.message}`);
+      return data;
+    } catch (error) {
+      if (attempt === 2 || !['TimeoutError', 'TypeError'].includes(error?.name)) throw error;
+      console.warn(`[BDP:Hays] Public GIS request failed transiently; retrying once (${error.name})`);
+    }
+  }
 }
 const metadata = await json(`${HAYS_PARCEL_LAYER_URL}?f=pjson`);
 const names = new Set((metadata.fields || []).map((field) => field.name));
