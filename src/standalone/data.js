@@ -16,6 +16,7 @@ import { LAYER_STATE_REGISTRY } from '../data/layerState.js';
 import bexarParcelLayer from '../bdp/parcels/bexarParcelLayer.js';
 import travisParcelLayer from '../bdp/parcels/travisParcelLayer.js';
 import williamsonParcelLayer from '../bdp/parcels/williamsonParcelLayer.js';
+import haysParcelLayer from '../bdp/parcels/haysParcelLayer.js';
 import femaFloodLayer from '../bdp/overlays/femaFloodLayer.js';
 import rrcEnergyLayer from '../bdp/overlays/rrcEnergyLayer.js';
 import nwiWetlandsLayer from '../bdp/overlays/nwiWetlandsLayer.js';
@@ -33,6 +34,7 @@ const BDP_SCREEN_LAYER_IDS = Object.freeze([
   'bdp-bexar-parcels',
   'bdp-travis-parcels',
   'bdp-williamson-parcels',
+  'bdp-hays-parcels',
   'bdp-fema-flood',
   'bdp-rrc-energy',
   'bdp-nwi-wetlands',
@@ -84,6 +86,7 @@ export function createStandaloneData({
   dataManager.register(bexarParcelLayer);
   dataManager.register(travisParcelLayer);
   dataManager.register(williamsonParcelLayer);
+  dataManager.register(haysParcelLayer);
   dataManager.register(femaFloodLayer);
   dataManager.register(rrcEnergyLayer);
   dataManager.register(nwiWetlandsLayer);
@@ -112,6 +115,7 @@ export function createStandaloneData({
       Bexar: bexarParcelLayer,
       Travis: travisParcelLayer,
       Williamson: williamsonParcelLayer,
+      Hays: haysParcelLayer,
     };
     const county = command.county || 'Bexar';
     const layer = countyLayers[county];

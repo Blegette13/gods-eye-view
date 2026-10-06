@@ -25,8 +25,8 @@ Bexar remains the default for `parcel: ID` and `owner: NAME` in the original
 God's Eye LOCATION tray. `travis parcel: ID`, `travis account: ID`, and
 `travis owner: NAME` select the Travis parcel layer in the same UI; `bexar`
 may also be given explicitly. Williamson commands select the third county.
-All three layers feed the same normalized parcel,
-property card and unified intelligence request. Screen/Clear include all three
+All county layers feed the same normalized parcel,
+property card and unified intelligence request. Screen/Clear include all
 county layers, and switching county searches hides other property cards.
 
 The Travis adapter uses Travis County GIS's TCAD property layer, with bounded
@@ -59,6 +59,21 @@ Clerk's official public-record search. The live GIS metadata and a sample
 GeoJSON parcel are checked by BDP Validation. Source:
 https://gis.wilco.org/arcgis/rest/services/public/county_wcad_parcels/MapServer/0
 and https://www.wilcotx.gov/1611/Search-Records (checked October 6, 2026).
+
+Hays is the fourth selectable screening county: `hays parcel: ID` and
+`hays owner: NAME` query a public CODS/TNRIS Hays CAD polygon copy. The layer
+provides parcel geometry, published owner, legal acreage (only where units
+are acres), situs, legal description and historical values to the same map,
+property panel and unified request. Its metadata says TNRIS acquired it in
+February 2022 and sampled records report tax year 2022. The UI labels record
+currency **STALE**, shows the source tax year and a high-priority verification
+flag; retrieval today is not a current CAD roll or proof of ownership. Verify
+with current Hays CAD records, the Hays County Clerk, and survey/title work.
+Result caps, missing geometry, conflicting county identifiers and duplicate
+parcel IDs fail the request. BDP Validation checks the live layer metadata
+and a sample GeoJSON parcel. Source:
+https://services6.arcgis.com/XnTA1N5QxtOFa9o8/ArcGIS/rest/services/CODS_Public_Map/FeatureServer/6
+(checked October 6, 2026). The Clerk page is a manual document-lookup link.
 
 ## PUCT sewer CCN territory
 

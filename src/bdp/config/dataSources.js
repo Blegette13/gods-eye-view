@@ -63,6 +63,14 @@ export const BDP_DATA_SOURCES = Object.freeze({
     url: 'https://gis.wilco.org/arcgis/rest/services/public/county_wcad_parcels/MapServer/0',
     notes: 'Official county GIS WCAD parcel polygon layer. Service update information conflicts with an older description date; record currency and legal boundaries are unverified. Query bounded owner/property/viewport results.',
   }),
+  haysParcels: Object.freeze({
+    id: 'hays-parcels', label: 'Hays County Parcels / Hays CAD historical copy',
+    method: BDP_SOURCE_METHOD.GIS_SERVICE, authority: BDP_AUTHORITY.SECONDARY,
+    refreshClass: BDP_REFRESH_CLASS.ON_DEMAND, onDemandRefresh: true,
+    cacheTtlMs: 24 * 60 * 60 * 1000,
+    url: 'https://services6.arcgis.com/XnTA1N5QxtOFa9o8/ArcGIS/rest/services/CODS_Public_Map/FeatureServer/6',
+    notes: 'TNRIS acquired this Hays CAD public polygon copy in February 2022; parcel tax year is historical. Hays is selectable for screening, but current owner, valuation and legal boundaries must be verified separately.',
+  }),
   texasRailroadCommission: Object.freeze({
     id: 'texas-rrc',
     label: 'Railroad Commission of Texas GIS',

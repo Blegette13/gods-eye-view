@@ -23,6 +23,7 @@ test('record routing handles county identity and never falls back to a different
   assert.match(buildOwnershipTitleReview({ countyFips: '029' }).recordLookup.url, /bexar.org/);
   assert.match(buildOwnershipTitleReview({ county: ' Bexar County ' }).recordLookup.url, /bexar.org/);
   assert.match(buildOwnershipTitleReview({ county: 'Travis', countyFips: '48453' }).recordLookup.url, /traviscountytx.gov/);
+  assert.match(buildOwnershipTitleReview({ county: 'Hays', countyFips: '48209' }).recordLookup.url, /hayscountytx.gov/);
   assert.match(buildOwnershipTitleReview({ county: 'Williamson', countyFips: '48491' }).recordLookup.url, /wilcotx.gov/);
   for (const candidate of [{ county: 'Travis', countyFips: '48029' }, { county: 'Bexar', countyFips: '48453' }, {}]) {
     assert.equal(buildOwnershipTitleReview(candidate).recordLookup.url, null);

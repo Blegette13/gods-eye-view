@@ -104,6 +104,7 @@ function sourceQualityRows(parcel) {
   const currencyRow = row('Record currency', currency.replaceAll('-', ' ').toUpperCase());
   currencyRow.dataset.bdpSourceCurrency = currency;
   const rows = [currencyRow];
+  if (Number.isInteger(parcel.providerData?.taxYear)) rows.push(row('Source tax year', String(parcel.providerData.taxYear)));
   if (parcel.source?.sourceNotice) rows.push(row('Source note', parcel.source.sourceNotice));
   return rows;
 }

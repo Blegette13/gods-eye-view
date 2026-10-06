@@ -3,6 +3,7 @@ export const TITLE_REVIEW_REFERENCES = Object.freeze({
   bexarRecords: 'https://www.bexar.org/2950/Real-PropertyLand-Records',
   travisRecords: 'https://countyclerk.traviscountytx.gov/departments/recording/real-property/',
   williamsonRecords: 'https://www.wilcotx.gov/1611/Search-Records',
+  haysRecords: 'https://www.hayscountytx.gov/166/County-Clerk',
 });
 
 const clean = (value) => typeof value === 'string' ? value.trim() : '';
@@ -19,6 +20,7 @@ function recordLookup(parcel) {
     ['bexar', ['48029', '029'], TITLE_REVIEW_REFERENCES.bexarRecords],
     ['travis', ['48453', '453'], TITLE_REVIEW_REFERENCES.travisRecords],
     ['williamson', ['48491', '491'], TITLE_REVIEW_REFERENCES.williamsonRecords],
+    ['hays', ['48209', '209'], TITLE_REVIEW_REFERENCES.haysRecords],
   ]) {
     const byName = county === name;
     const byFips = codes.includes(fips);

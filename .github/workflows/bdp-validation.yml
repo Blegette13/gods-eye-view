@@ -154,3 +154,6 @@ jobs:
 
       - name: Validate live Williamson County parcel GIS contract
         run: node scripts/bdp/validate-williamson-gis.mjs
+
+      - name: Validate live Hays County parcel GIS contract
+        run: node scripts/bdp/validate-hays-gis.mjs
