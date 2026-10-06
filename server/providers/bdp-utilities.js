@@ -4,6 +4,8 @@ import {
   buildUtilityParcelMetricsSql,
   buildPuctSewerMetricsSql,
   buildPuctSewerMapSql,
+  buildPuctWaterMetricsSql,
+  buildPuctWaterMapSql,
   buildUtilityParcelQueryUrls,
   normalizeTransmissionLines,
   normalizeWaterCcn,
@@ -121,15 +123,20 @@ export async function screenBdpParcelUtilities(input) {
     waterCcn,
     transmission,
   }));
-  let sewer;
-  try {
-    sewer = await queryPostgisJson(buildPuctSewerMetricsSql(input));
-  } catch (error) {
-    if (!/function bdp_puct_sewer_ccn_metrics\(geometry\) does not exist/.test(String(error?.stderr || error?.message))) throw error;
-    sewer = { sewer_ccn_coverage: 'not-ingested', sewer_ccn_overlap_percent: null,
-      sewer_ccn_utilities: [], sewer_ccn_numbers: [], sewer_ccn_source_last_modified: null };
-  }
-  const metrics = { ...waterAndTransmission, ...sewer };
+  const readCcn = async (kind, sql) => {
+    try { return await queryPostgisJson(sql); }
+    catch (error) {
+      if (!String(error?.stderr || error?.message).includes(`function bdp_puct_${kind}_ccn_metrics(geometry) does not exist`)) throw error;
+      const prefix = kind === 'water' ? 'puct_water_ccn' : 'sewer_ccn';
+      return { [`${prefix}_coverage`]: 'not-ingested', [`${prefix}_overlap_percent`]: null,
+        [`${prefix}_utilities`]: [], [`${prefix}_numbers`]: [], [`${prefix}_source_last_modified`]: null };
+    }
+  };
+  const [sewer, currentWater] = await Promise.all([
+    readCcn('sewer', buildPuctSewerMetricsSql(input)),
+    readCcn('water', buildPuctWaterMetricsSql(input)),
+  ]);
+  const metrics = { ...waterAndTransmission, ...sewer, ...currentWater };
 
   return Object.freeze({
     sourceFeatureCounts: Object.freeze({
@@ -201,7 +208,7 @@ async function handleUtilities(request, response, next) {
   if (!url.pathname.startsWith(API_BASE)) return next();
 
   try {
-    if (url.pathname === `${API_BASE}/sewer-ccn-map`) {
+    if ([`${API_BASE}/sewer-ccn-map`, `${API_BASE}/water-ccn-map`].includes(url.pathname)) {
       if (request.method !== 'GET') {
         response.setHeader('Allow', 'GET');
         return sendJson(response, 405, { error: 'method_not_allowed' });
@@ -210,7 +217,8 @@ async function handleUtilities(request, response, next) {
       if (Object.values(bounds).some((value) => value === null || value === '')) {
         return sendJson(response, 400, { error: 'invalid_request', message: 'A bounded Texas WGS84 viewport is required' });
       }
-      const data = await queryPostgisJson(buildPuctSewerMapSql(bounds));
+      const data = await queryPostgisJson(url.pathname.endsWith('/water-ccn-map')
+        ? buildPuctWaterMapSql(bounds) : buildPuctSewerMapSql(bounds));
       return sendJson(response, 200, data);
     }
     if (url.pathname !== `${API_BASE}/screen`) {
@@ -225,7 +233,7 @@ async function handleUtilities(request, response, next) {
     const result = await screenBdpParcelUtilities(input);
 
     return sendJson(response, 200, {
-      source: 'TWDB water service + PUCT water CCN + PUCT sewer CCN snapshot (if imported) + archived U.S. Government transmission screening',
+      source: 'TWDB water service + archived water CCN + current PUCT water/sewer CCN snapshots (if imported) + archived U.S. Government transmission screening',
       screeningOnly: true,
       transmissionDataCurrency: 'archived-2024',
       ...result,

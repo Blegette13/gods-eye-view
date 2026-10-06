@@ -86,8 +86,12 @@ The separate TWDB-hosted PUCT water CCN layer still reflects a 2021 published
 copy. It remains visible as archived territory context and is labeled as such
 in the panel. Its overlap no longer earns score points, penalizes absence, or
 reduces the no-current-water-service review priority. The official PUCT water
-CCN ZIP is a later import target; retrieval recency of that archive will also
-need to be preserved on every screened parcel.
+CCN ZIP now has a parallel checksum-verified PostGIS importer at
+`scripts/bdp/puct-water-import.mjs`, with a source timestamp, parcel overlap,
+and close-zoom God’s Eye map outline. Run it with the same database and GDAL
+requirements as the sewer importer. Missing or older-than-180-day snapshots
+display as unknown. Even a current CCN does not prove an actual main, available
+capacity, a tap, or a will-serve commitment and does not grant score points.
 
 ## Acquisition economics scenarios
 

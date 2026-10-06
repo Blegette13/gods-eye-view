@@ -288,9 +288,13 @@ export function buildPuctSewerMetricsSql(parcelInput) {
   const request = normalizeWetlandsParcelRequest(parcelInput);
   return `SELECT bdp_puct_sewer_ccn_metrics(ST_SetSRID(ST_GeomFromGeoJSON(${sqlTextLiteral(JSON.stringify(request.geometry))}), 4326))::text`;
 }
+export function buildPuctWaterMetricsSql(parcelInput) {
+  const request = normalizeWetlandsParcelRequest(parcelInput);
+  return `SELECT bdp_puct_water_ccn_metrics(ST_SetSRID(ST_GeomFromGeoJSON(${sqlTextLiteral(JSON.stringify(request.geometry))}), 4326))::text`;
+}
 
 /** Bounded viewport clipping is performed by PostGIS for the native map. */
-export function buildPuctSewerMapSql(bounds) {
+function buildPuctCcnMapSql(bounds, kind) {
   const coords = [bounds?.west, bounds?.south, bounds?.east, bounds?.north].map(Number);
   if (coords.some((value) => !Number.isFinite(value)) || coords[0] >= coords[2] || coords[1] >= coords[3]
     || coords[2] - coords[0] > 0.35 || coords[3] - coords[1] > 0.35
@@ -298,9 +302,9 @@ export function buildPuctSewerMapSql(bounds) {
     throw new Error('A bounded Texas WGS84 viewport is required');
   }
   return `WITH b AS (SELECT ST_MakeEnvelope(${coords.join(',')},4326) AS geom),
-  snapshot AS (SELECT source_last_modified FROM bdp_puct_sewer_ccn_snapshot WHERE singleton),
+  snapshot AS (SELECT source_last_modified FROM bdp_puct_${kind}_ccn_snapshot WHERE singleton),
   hits AS MATERIALIZED (
-    SELECT c.* FROM bdp_puct_sewer_ccn c CROSS JOIN b
+    SELECT c.* FROM bdp_puct_${kind}_ccn c CROSS JOIN b
     WHERE c.geom && b.geom AND ST_Intersects(c.geom,b.geom) LIMIT 501
   ), clipped AS (
     SELECT h.*, ST_CollectionExtract(ST_Intersection(h.geom,b.geom),3) AS clip
@@ -317,3 +321,5 @@ export function buildPuctSewerMapSql(bounds) {
         'CCN_NO',ccn_no,'UTILITY',utility,'sourceLastModified',(SELECT source_last_modified FROM snapshot))))
       FROM clipped WHERE NOT ST_IsEmpty(clip)), '[]'::jsonb))::text`;
 }
+export function buildPuctSewerMapSql(bounds) { return buildPuctCcnMapSql(bounds, 'sewer'); }
+export function buildPuctWaterMapSql(bounds) { return buildPuctCcnMapSql(bounds, 'water'); }

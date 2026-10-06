@@ -438,6 +438,12 @@ function utilityRows(metrics) {
     row('Water CCN · 2021 copy', formatPercent(metrics.water_ccn_overlap_percent)),
     row('CCN utility', ccnUtilities || '—'),
     row('CCN number(s)', ccnNumbers || '—'),
+    row('PUCT water CCN', metrics.puct_water_ccn_coverage === 'mapped-snapshot'
+      ? formatPercent(metrics.puct_water_ccn_overlap_percent) : 'UNKNOWN · SNAPSHOT NOT CURRENT'),
+    row('PUCT water utility', metrics.puct_water_ccn_coverage === 'mapped-snapshot'
+      ? (metrics.puct_water_ccn_utilities || []).filter(Boolean).join(', ') || '—' : '—'),
+    row('PUCT water source', metrics.puct_water_ccn_source_last_modified
+      ? String(metrics.puct_water_ccn_source_last_modified).slice(0, 10) : 'NOT INGESTED'),
     row('Sewer capacity', 'UNVERIFIED'),
     row('Sewer CCN', metrics.sewer_ccn_coverage === 'mapped-snapshot'
       ? formatPercent(metrics.sewer_ccn_overlap_percent) : 'UNKNOWN · SNAPSHOT NOT CURRENT'),

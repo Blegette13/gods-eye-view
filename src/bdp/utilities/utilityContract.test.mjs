@@ -7,6 +7,8 @@ import {
   buildUtilityParcelMetricsSql,
   buildPuctSewerMetricsSql,
   buildPuctSewerMapSql,
+  buildPuctWaterMetricsSql,
+  buildPuctWaterMapSql,
   buildUtilityParcelQueryUrls,
   normalizeTransmissionLines,
   normalizeWaterCcn,
@@ -85,8 +87,10 @@ test('utility metric SQL keeps service territory separate from transmission prox
   assert.match(sql, /nearest_transmission_m/);
   assert.match(sql, /archived-2024/);
   assert.match(buildPuctSewerMetricsSql(parcel), /bdp_puct_sewer_ccn_metrics/);
+  assert.match(buildPuctWaterMetricsSql(parcel), /bdp_puct_water_ccn_metrics/);
   const mapSql = buildPuctSewerMapSql({ west: -98.6, south: 29.3, east: -98.4, north: 29.5 });
   assert.match(mapSql, /ST_Intersection/);
   assert.match(mapSql, /LIMIT 501/);
+  assert.match(buildPuctWaterMapSql({ west: -98.6, south: 29.3, east: -98.4, north: 29.5 }), /bdp_puct_water_ccn/);
   assert.throws(() => buildPuctSewerMapSql({ west: -100, south: 29, east: -99, north: 30 }), /bounded Texas/);
 });

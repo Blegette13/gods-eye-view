@@ -97,7 +97,9 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/tceqParcelMsw.sql
 
       - name: Apply PUCT sewer CCN spatial schema
-        run: psql -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/puctSewerCcn.sql
+        run: |
+          psql -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/puctSewerCcn.sql
+          psql -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/puctWaterCcn.sql
 
       - name: Verify required spatial objects
         run: |
@@ -112,6 +114,7 @@ jobs:
           SELECT to_regprocedure('bdp_tceq_parcel_water_metrics(geometry)') IS NOT NULL;
           SELECT to_regprocedure('bdp_tceq_parcel_msw_metrics(geometry)') IS NOT NULL;
           SELECT to_regprocedure('bdp_puct_sewer_ccn_metrics(geometry)') IS NOT NULL;
+          SELECT to_regprocedure('bdp_puct_water_ccn_metrics(geometry)') IS NOT NULL;
           SQL
 
       - name: Smoke test empty-dataset parcel functions
@@ -134,6 +137,9 @@ jobs:
 
       - name: Validate official PUCT sewer CCN import and parcel metrics
         run: node scripts/bdp/validate-puct-sewer-postgis.mjs
+
+      - name: Validate official PUCT water CCN import and parcel metrics
+        run: node scripts/bdp/validate-puct-water-postgis.mjs
 
       - name: Validate populated MSW spatial and ingestion fixtures
         env:

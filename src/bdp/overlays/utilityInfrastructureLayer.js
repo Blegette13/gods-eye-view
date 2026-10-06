@@ -16,9 +16,13 @@ export const UTILITY_MAP_SOURCES = Object.freeze({
     fields: 'PWSName,PWSId,Active,LUpDateTime',
   }),
   waterCcn: Object.freeze({
-    id: 'water-ccn',
+    id: 'water-ccn-archive',
     url: PUCT_WATER_CCN_URL,
     fields: 'CCN_NO,UTILITY,STATUS,CCN_TYPE',
+  }),
+  currentWaterCcn: Object.freeze({
+    id: 'water-ccn',
+    url: '/api/bdp/utilities/water-ccn-map',
   }),
   sewerCcn: Object.freeze({
     id: 'sewer-ccn',
@@ -67,7 +71,7 @@ export function buildUtilityMapQueryUrl(source, bounds, { limit = MAX_FEATURES }
   if (bounds.west >= bounds.east || bounds.south >= bounds.north) {
     throw new Error('invalid WGS84 bounds');
   }
-  if (source.id === 'sewer-ccn') {
+  if (source.url.startsWith('/api/bdp/utilities/')) {
     const params = new URLSearchParams(Object.fromEntries(
       ['west', 'south', 'east', 'north'].map((key) => [key, String(bounds[key])]),
     ));
@@ -111,6 +115,15 @@ function styleWaterCcn(dataSource) {
   }
 }
 
+function styleCurrentWaterCcn(dataSource) {
+  for (const entity of dataSource.entities.values) {
+    if (!entity.polygon) continue;
+    entity.polygon.material = Cesium.Color.fromCssColorString('#f1d477').withAlpha(0.05);
+    entity.polygon.outline = true;
+    entity.polygon.outlineColor = Cesium.Color.fromCssColorString('#f1d477').withAlpha(0.7);
+  }
+}
+
 function styleSewerCcn(dataSource) {
   for (const entity of dataSource.entities.values) {
     if (!entity.polygon) continue;
@@ -138,7 +151,8 @@ async function loadGeoJson(geojson, sourceId) {
   });
 
   if (sourceId === 'water-service') styleWaterService(source);
-  else if (sourceId === 'water-ccn') styleWaterCcn(source);
+  else if (sourceId === 'water-ccn-archive') styleWaterCcn(source);
+  else if (sourceId === 'water-ccn') styleCurrentWaterCcn(source);
   else if (sourceId === 'sewer-ccn') styleSewerCcn(source);
   else if (sourceId === 'transmission') styleTransmission(source);
 
@@ -158,6 +172,7 @@ export function createUtilityInfrastructureLayer({ fetchImpl = globalThis.fetch 
   const counts = {
     waterService: 0,
     waterCcn: 0,
+    currentWaterCcn: 0,
     sewerCcn: 0,
     transmission: 0,
   };
@@ -188,8 +203,8 @@ export function createUtilityInfrastructureLayer({ fetchImpl = globalThis.fetch 
     if (geojson.features.length >= MAX_FEATURES) {
       throw new Error(`${source.id} viewport result is capped; zoom in for reliable display`);
     }
-    if (geojson.truncated || (source.id === 'sewer-ccn' && geojson.coverage !== 'mapped-snapshot')) {
-      if (source.id === 'sewer-ccn') {
+    if (geojson.truncated || (source.url.startsWith('/api/bdp/utilities/') && geojson.coverage !== 'mapped-snapshot')) {
+      if (source.url.startsWith('/api/bdp/utilities/')) {
         await replaceSource(key, source, { type: 'FeatureCollection', features: [] });
       }
       throw new Error(`${source.id} viewport source is incomplete or not current`);
@@ -202,7 +217,7 @@ export function createUtilityInfrastructureLayer({ fetchImpl = globalThis.fetch 
     id: 'bdp-utilities-infrastructure',
     name: 'BDP · Utilities / Infrastructure',
     icon: '⚡',
-    source: 'TWDB / PUCT water and sewer CCN + archived U.S. Government transmission',
+    source: 'TWDB water service + PUCT water/sewer CCN snapshots + archived water CCN/transmission',
     updateInterval: QUERY_INTERVAL_MS,
 
     init(targetViewer) {
@@ -293,11 +308,11 @@ export function createUtilityInfrastructureLayer({ fetchImpl = globalThis.fetch 
 
     getStats() {
       return {
-        count: counts.waterService + counts.waterCcn + counts.sewerCcn + counts.transmission,
+        count: counts.waterService + counts.waterCcn + counts.currentWaterCcn + counts.sewerCcn + counts.transmission,
         counts: { ...counts },
         loading,
         status,
-        source: 'TWDB retail water service + PUCT water/sewer CCN + archived 2024 transmission screening',
+        source: 'TWDB retail water service + current PUCT water/sewer CCN snapshots + archived TWDB water CCN/transmission',
         lastUpdate,
         lastError,
         error: lastError,
