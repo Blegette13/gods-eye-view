@@ -1,5 +1,6 @@
 import { evaluateAcquisitionEconomics } from '../economics/acquisitionEconomics.js';
 import { buildOwnershipTitleReview } from '../title/ownershipReview.js';
+import { buildAcquisitionBrief } from './acquisitionBrief.js';
 import { fetchBdpParcelEnergy } from '../rrc/client.js';
 import {
   fetchBdpParcelCleanups,
@@ -164,6 +165,7 @@ export async function runBdpParcelScreening(parcel, {
     && (source !== 'msw' || evidence.msw.coverage_complete === true)
     && (source !== 'flood' || evidence.flood.coverage_complete === true));
   const failedSources = BDP_SCREENING_SOURCES.filter((source) => errors[source] !== null);
+  const acquisitionBrief = buildAcquisitionBrief({ parcel, evidence, errors, score, redFlags });
 
   return Object.freeze({
     parcelId: String(parcel.id || parcel.parcelId || ''),
@@ -174,6 +176,7 @@ export async function runBdpParcelScreening(parcel, {
     succeededSources: Object.freeze(succeededSources),
     failedSources: Object.freeze(failedSources),
     sourceCoveragePercent: (succeededSources.length / BDP_SCREENING_SOURCES.length) * 100,
+    acquisitionBrief,
     score,
     redFlags,
     redFlagSummary,

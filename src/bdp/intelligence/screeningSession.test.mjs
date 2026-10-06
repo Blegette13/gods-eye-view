@@ -121,6 +121,9 @@ test('collects screening evidence and derives score coverage/red flags', async (
   });
 
   assert.equal(result.sourceCoveragePercent, 100);
+  assert.equal(result.acquisitionBrief.buyRecommendation, null);
+  assert.ok(result.acquisitionBrief.risks.some((risk) => risk.id === 'pipeline-crossing'));
+  assert.ok(result.acquisitionBrief.gaps.some((gap) => gap.id === 'category:ownershipTitle'));
   assert.equal(result.score.components.ownershipTitle.status, 'unknown');
   assert.equal(result.evidence.ownershipTitle.title_clear, null);
   assert.equal(result.evidence.ownershipTitle.tasks[0].id, 'survey-easements');
@@ -168,6 +171,8 @@ test('keeps partial evidence when providers fail', async () => {
   });
 
   assert.equal(result.sourceCoveragePercent, (2 / 13) * 100);
+  assert.equal(result.acquisitionBrief.buyRecommendation, null);
+  assert.ok(result.acquisitionBrief.gaps.some((gap) => gap.id === 'source:flood' && gap.status === 'unavailable'));
   assert.equal(result.evidence.ownershipTitle.status, 'documents-required');
   assert.ok(result.evidence.ownershipTitle.tasks.every((task) => task.status === 'unknown'));
   assert.equal(result.score.components.ownershipTitle.status, 'unknown');

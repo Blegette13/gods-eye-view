@@ -3,6 +3,7 @@ import test from 'node:test';
 import { createBdpPropertyCard } from './propertyCard.js';
 import { evaluateAcquisitionEconomics } from '../economics/acquisitionEconomics.js';
 import { buildOwnershipTitleReview } from '../title/ownershipReview.js';
+import { buildAcquisitionBrief } from '../intelligence/acquisitionBrief.js';
 
 // Minimal DOM for interaction tests without changing production dependencies.
 class Element {
@@ -58,12 +59,18 @@ test('native property panel keeps nulls unknown, shows Growth Radar and calculat
     await tick();
     const screened = response(parcel);
     screened.evidence.ownershipTitle = buildOwnershipTitleReview(parcel, { energy: { pipeline_crossing_count: 1 } });
+    screened.acquisitionBrief = buildAcquisitionBrief({ parcel, evidence: screened.evidence, score: screened.score,
+      redFlags: [{ id: 'pipeline-crossing', severity: 'high', title: 'Pipeline brief trigger', detail: 'Easement dimensions require verification.', source: 'RRC' }] });
     resolveScreening(screened);
     await tick();
     // Late provider responses must not overwrite an edited scenario.
     assert.equal(valueFor('All-in basis'), '$100,000');
     assert.match(valueFor('PRIORITY · Survey / easements'), /Mapped pipeline/);
     assert.equal(valueFor('Verified legal access'), 'UNKNOWN');
+    assert.equal(valueFor('Acquisition recommendation'), 'WITHHELD · VERIFICATION REQUIRED');
+    assert.match(valueFor('HIGH · Pipeline brief trigger'), /Easement dimensions require verification/);
+    const briefRisk = rows().find((el) => el.children[0].textContent === 'HIGH · Pipeline brief trigger');
+    assert.deepEqual(JSON.parse(briefRisk.dataset.bdpEvidenceRefs), ['redFlags.pipeline-crossing']);
     assert.equal(valueFor('Nearest MSW ≤ 5 mi'), '—');
     assert.equal(valueFor('Points on parcel'), '—');
     assert.match(valueFor('MSW coverage'), /UNKNOWN/);
@@ -76,6 +83,8 @@ test('native property panel keeps nulls unknown, shows Growth Radar and calculat
     form.listeners.submit({ preventDefault() {} });
     assert.equal(valueFor('All-in basis'), '—');
     card.show({ ...parcel, parcelId: '456' });
+    assert.equal(valueFor('HIGH · Pipeline brief trigger'), undefined);
+    assert.equal(valueFor('Acquisition brief'), 'Loading evidence…');
     assert.equal(valueFor('PRIORITY · Survey / easements'), undefined);
     assert.equal(input('askingPrice').value, '');
     assert.equal(valueFor('All-in basis'), '—');
@@ -83,5 +92,34 @@ test('native property panel keeps nulls unknown, shows Growth Radar and calculat
   } finally {
     card?.destroy();
     globalThis.document = previous;
+  }
+});
+
+test('late acquisition briefs cannot cross parcel selections and failed requests leave no loading verdict', async () => {
+  const previous = globalThis.document;
+  const previousWarn = console.warn;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  console.warn = () => {};
+  let card;
+  try {
+    const pending = new Map();
+    card = createBdpPropertyCard({ screeningLoader: (candidate) => new Promise((resolve, reject) => pending.set(candidate.parcelId, { resolve, reject })) });
+    card.show(parcel);
+    await tick();
+    card.show({ ...parcel, parcelId: '456' });
+    await tick();
+    const old = response(parcel);
+    old.acquisitionBrief = buildAcquisitionBrief({ parcel, redFlags: [{ id: 'fema-floodway', severity: 'high', title: 'OLD PARCEL HAZARD', detail: 'Old evidence', source: 'FEMA' }] });
+    pending.get('123').resolve(old);
+    await tick();
+    assert.ok(!card.root.textContent.includes('OLD PARCEL HAZARD'));
+    pending.get('456').reject(new Error('Unavailable'));
+    await tick();
+    const briefRow = find(card.root, (el) => el.className === 'bdp-property-row' && el.children[0].textContent === 'Acquisition brief')[0];
+    assert.equal(briefRow.children[1].textContent, 'Unavailable · no acquisition recommendation');
+  } finally {
+    card?.destroy();
+    globalThis.document = previous;
+    console.warn = previousWarn;
   }
 });

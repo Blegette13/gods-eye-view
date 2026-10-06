@@ -38,6 +38,31 @@ scenario results do not fill the model's 12-point acquisition-economics category
 Verified sale comparables, cost evidence and market underwriting remain future
 work. The ten score weights are unchanged.
 
+## Parcel acquisition brief
+
+The unified response includes top-level `acquisitionBrief`, assembled
+deterministically from the existing score components, provider errors and red
+flags. It performs no new GIS calculation or external fetch and does not change
+score weights, source coverage or the underlying evidence. Non-info flags are
+screening review triggers; info flags are separate screening limits. Source
+details and qualifiers are retained verbatim, including MSW point uncertainty.
+
+Unknown/preliminary categories and absent, failed or incomplete feeds become
+explicit gaps. High/critical flags lead the review order, followed by unresolved
+evidence and confirmation tasks. Every action links to its flag/gap IDs and
+evidence references; unrecognized future flags remain visible with a generic
+source-review action. References such as `redFlags.<id>` select by flag ID;
+`score.components.<category>`, `evidence.<source>` and `errors.<source>` address
+the same unified screening snapshot, including explicitly unknown values.
+
+The existing property panel shows the review triggers and first three actions,
+with expandable evidence gaps, screening limits and remaining tasks. Source
+names are displayed; machine-readable evidence references are retained on rows
+for auditing. Briefs reset with parcel selection and stale responses are ignored.
+Scenario edits cannot enable a verdict or change model coverage. This first
+version always withholds buy/pass recommendations, even for high numeric scores.
+An empty risk list is not clearance. No LLM-generated facts are used.
+
 ## Ownership / title review
 
 The unified evidence package includes `evidence.ownershipTitle`, a deterministic

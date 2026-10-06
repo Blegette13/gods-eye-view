@@ -108,6 +108,37 @@ function sourceQualityRows(parcel) {
   return rows;
 }
 
+function acquisitionBriefRows(brief) {
+  const evidenceRow = (label, text, refs) => {
+    const element = row(label, text);
+    element.dataset.bdpEvidenceRefs = JSON.stringify(refs);
+    return element;
+  };
+  const details = (label, elements) => {
+    const container = document.createElement('details');
+    const summary = document.createElement('summary');
+    summary.textContent = label;
+    container.append(summary, ...elements);
+    return container;
+  };
+  const actionRows = brief.actions.map((action, index) => evidenceRow(
+    `${index + 1}. ${action.label}`,
+    `${action.priority.replaceAll('-', ' ').toUpperCase()} · ${action.action} Basis: ${action.basis.join('; ') || 'Category evidence requires confirmation.'}`,
+    action.evidenceRefs,
+  ));
+  return [
+    row('Acquisition brief', brief.summary),
+    row('Acquisition recommendation', 'WITHHELD · VERIFICATION REQUIRED'),
+    row('Scored model coverage', formatPercent(brief.scoreCoveragePercent)),
+    ...brief.risks.map((risk) => evidenceRow(`${risk.severity.toUpperCase()} · ${risk.title}`, `${risk.detail} Source: ${risk.source}.`, [risk.evidenceRef])),
+    ...actionRows.slice(0, 3),
+    details(`More review tasks (${Math.max(actionRows.length - 3, 0)})`, actionRows.slice(3)),
+    details(`Evidence gaps (${brief.gaps.length})`, brief.gaps.map((gap) => evidenceRow(`GAP · ${gap.label}`, `${gap.status.toUpperCase()} · ${gap.detail}`, [gap.evidenceRef]))),
+    details(`Screening limits (${brief.caveats.length})`, brief.caveats.map((item) => evidenceRow(`LIMIT · ${item.title}`, `${item.detail} Source: ${item.source}.`, [item.evidenceRef]))),
+    row('Brief limits', brief.notice),
+  ];
+}
+
 function titleReferenceRow(label, url, text) {
   if (!Object.values(TITLE_REVIEW_REFERENCES).includes(url)) return row(label, 'Lookup not configured for this county');
   const element = row(label, '');
@@ -493,6 +524,9 @@ function redFlagElements(flags) {
 
 function appendScreeningResult(containers, screening) {
   const { evidence, errors } = screening;
+  containers.acquisitionBrief.replaceChildren(...(screening.acquisitionBrief
+    ? acquisitionBriefRows(screening.acquisitionBrief)
+    : [row('Acquisition brief', 'Unavailable · no acquisition recommendation')]));
   if (evidence.ownershipTitle) containers.ownershipTitle.replaceChildren(...ownershipTitleRows(evidence.ownershipTitle));
   if (containers.economics.dataset.scenarioEdited !== 'true') {
     containers.economics.replaceChildren(...economicsRows(evidence.acquisitionEconomics));
@@ -650,6 +684,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     );
 
     const containers = {
+      acquisitionBrief: document.createElement('div'),
       ownershipTitle: document.createElement('div'),
       developmentConstraints: document.createElement('div'),
       economics: document.createElement('div'),
@@ -669,6 +704,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       soils: document.createElement('div'),
       terrain: document.createElement('div'),
     };
+    containers.acquisitionBrief.append(row('Acquisition brief', 'Loading evidence…'));
     containers.ownershipTitle.append(...ownershipTitleRows(buildOwnershipTitleReview(parcel)));
     containers.developmentConstraints.append(row('Constraint footprint', 'Loading…'));
     containers.economics.append(...economicsRows(evaluateAcquisitionEconomics(parcel)));
@@ -690,6 +726,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
 
     body.append(
       sectionHeading('BDP INTELLIGENCE'), containers.intelligence,
+      sectionHeading('ACQUISITION BRIEF'), containers.acquisitionBrief,
       sectionHeading('RED FLAGS'), containers.flags,
       sectionHeading('OWNERSHIP / TITLE REVIEW'), containers.ownershipTitle,
       sectionHeading('ACQUISITION ECONOMICS'), containers.economics, economicsForm(parcel, containers.economics),
@@ -739,6 +776,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       })
       .catch((error) => {
         if (token !== renderToken) return;
+        containers.acquisitionBrief.replaceChildren(row('Acquisition brief', 'Unavailable · no acquisition recommendation'));
         containers.intelligence.replaceChildren(row('BDP screening', 'Screening session unavailable'));
         containers.flags.replaceChildren(row('Flags', 'Evidence could not be assembled'));
         console.warn('[BDP:PropertyCard] screening failed:', error);
