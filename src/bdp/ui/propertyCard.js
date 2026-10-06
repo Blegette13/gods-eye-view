@@ -438,6 +438,13 @@ function utilityRows(metrics) {
     row('Water CCN', formatPercent(metrics.water_ccn_overlap_percent)),
     row('CCN utility', ccnUtilities || '—'),
     row('CCN number(s)', ccnNumbers || '—'),
+    row('Sewer capacity', 'UNVERIFIED'),
+    row('Sewer CCN', metrics.sewer_ccn_coverage === 'mapped-snapshot'
+      ? formatPercent(metrics.sewer_ccn_overlap_percent) : 'UNKNOWN · SNAPSHOT NOT CURRENT'),
+    row('Sewer CCN utility', metrics.sewer_ccn_coverage === 'mapped-snapshot'
+      ? (metrics.sewer_ccn_utilities || []).filter(Boolean).join(', ') || '—' : '—'),
+    row('Sewer CCN source', metrics.sewer_ccn_source_last_modified
+      ? String(metrics.sewer_ccn_source_last_modified).slice(0, 10) : 'NOT INGESTED'),
     row('Electric capacity', 'UNVERIFIED'),
     row('Nearest transmission', formatMiles(metrics.nearest_transmission_m)),
     row('Transmission crossings', String(metrics.transmission_crossing_count ?? '—')),

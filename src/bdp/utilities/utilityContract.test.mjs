@@ -5,6 +5,7 @@ import {
   PUCT_WATER_CCN_URL,
   US_GOV_TRANSMISSION_ARCHIVE_URL,
   buildUtilityParcelMetricsSql,
+  buildPuctSewerMetricsSql,
   buildUtilityParcelQueryUrls,
   normalizeTransmissionLines,
   normalizeWaterCcn,
@@ -82,4 +83,5 @@ test('utility metric SQL keeps service territory separate from transmission prox
   assert.match(sql, /water_ccn_overlap_percent/);
   assert.match(sql, /nearest_transmission_m/);
   assert.match(sql, /archived-2024/);
+  assert.match(buildPuctSewerMetricsSql(parcel), /bdp_puct_sewer_ccn_metrics/);
 });

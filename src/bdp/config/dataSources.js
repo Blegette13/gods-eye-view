@@ -162,6 +162,14 @@ export const BDP_DATA_SOURCES = Object.freeze({
     url: 'https://services.twdb.texas.gov/arcgis/rest/services/PWS/Public_Utility_Commission_CCN_Water/MapServer/0',
     notes: 'Water CCN polygons represent legal service territory, not proof of current capacity or a development-specific service commitment. The TWDB-hosted GIS copy may lag current PUCT filings, so acquisition decisions require current PUCT/provider verification.',
   }),
+  puctSewerCcn: Object.freeze({
+    id: 'puct-sewer-ccn', label: 'PUCT Sewer CCN Territory',
+    method: BDP_SOURCE_METHOD.BULK_DOWNLOAD, authority: BDP_AUTHORITY.AUTHORITATIVE,
+    refreshClass: BDP_REFRESH_CLASS.QUARTERLY, onDemandRefresh: true,
+    cacheTtlMs: 7 * 24 * 60 * 60 * 1000,
+    url: 'https://ftp.puc.texas.gov/public/puct-info/industry/water/utilities/PUCT_CCN_SEWER_TSMS.zip',
+    notes: 'Official statewide sewer CCN GIS archive. Imported snapshot timestamp and checksum accompany parcel overlap. Territory is not a current retail service boundary, collection line, capacity or will-serve commitment. Missing import remains unknown.',
+  }),
   usGovernmentTransmissionArchive: Object.freeze({
     id: 'us-government-transmission-archive',
     label: 'U.S. Government Transmission Infrastructure Archive',

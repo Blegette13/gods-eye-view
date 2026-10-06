@@ -281,3 +281,9 @@ CROSS JOIN line_summary ls
 LEFT JOIN nearest_line nl ON true;
 `.trim();
 }
+
+/** Query the imported official PUCT sewer snapshot; absence stays unknown. */
+export function buildPuctSewerMetricsSql(parcelInput) {
+  const request = normalizeWetlandsParcelRequest(parcelInput);
+  return `SELECT bdp_puct_sewer_ccn_metrics(ST_SetSRID(ST_GeomFromGeoJSON(${sqlTextLiteral(JSON.stringify(request.geometry))}), 4326))::text`;
+}

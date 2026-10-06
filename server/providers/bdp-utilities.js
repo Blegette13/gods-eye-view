@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import {
   buildUtilityParcelMetricsSql,
+  buildPuctSewerMetricsSql,
   buildUtilityParcelQueryUrls,
   normalizeTransmissionLines,
   normalizeWaterCcn,
@@ -114,11 +115,20 @@ export async function screenBdpParcelUtilities(input) {
     ),
   ]);
 
-  const metrics = await queryPostgisJson(buildUtilityParcelMetricsSql(input, {
+  const waterAndTransmission = await queryPostgisJson(buildUtilityParcelMetricsSql(input, {
     waterServiceAreas,
     waterCcn,
     transmission,
   }));
+  let sewer;
+  try {
+    sewer = await queryPostgisJson(buildPuctSewerMetricsSql(input));
+  } catch (error) {
+    if (!/function bdp_puct_sewer_ccn_metrics\(geometry\) does not exist/.test(String(error?.stderr || error?.message))) throw error;
+    sewer = { sewer_ccn_coverage: 'not-ingested', sewer_ccn_overlap_percent: null,
+      sewer_ccn_utilities: [], sewer_ccn_numbers: [], sewer_ccn_source_last_modified: null };
+  }
+  const metrics = { ...waterAndTransmission, ...sewer };
 
   return Object.freeze({
     sourceFeatureCounts: Object.freeze({
@@ -202,7 +212,7 @@ async function handleUtilities(request, response, next) {
     const result = await screenBdpParcelUtilities(input);
 
     return sendJson(response, 200, {
-      source: 'TWDB water service + PUCT water CCN + archived U.S. Government transmission screening',
+      source: 'TWDB water service + PUCT water CCN + PUCT sewer CCN snapshot (if imported) + archived U.S. Government transmission screening',
       screeningOnly: true,
       transmissionDataCurrency: 'archived-2024',
       ...result,

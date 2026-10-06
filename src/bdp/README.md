@@ -60,6 +60,25 @@ GeoJSON parcel are checked by BDP Validation. Source:
 https://gis.wilco.org/arcgis/rest/services/public/county_wcad_parcels/MapServer/0
 and https://www.wilcotx.gov/1611/Search-Records (checked October 6, 2026).
 
+## PUCT sewer CCN territory
+
+The official PUCT GIS page provides a statewide sewer CCN TSMS shapefile ZIP.
+`node scripts/bdp/puct-sewer-import.mjs` downloads it with ETag/Last-Modified
+checks, verifies SHA-256, uses GDAL to transform polygons to EPSG:4326, and
+atomically replaces the PostGIS territory snapshot only after validation.
+Set `BDP_PG_SERVICE` (or `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER` and
+`PGPASSWORD`) and install `ogr2ogr` and `psql`. Apply
+`src/bdp/ingestion/sql/puctSewerCcn.sql` to an existing database first; new
+Docker databases receive it on initialization. CI imports the current official
+archive and checks a parcel overlap. The unified utilities request includes
+sewer CCN overlap, utility and CCN numbers with source Last-Modified. No import
+or a source timestamp older than 180 days displays as unknown. A CCN is a
+mapped certificated service area; it does not prove a current sewer main,
+connection, capacity, extension cost, or provider commitment. Sewer CCN does
+not increase the preliminary Utilities score. PUCT source:
+https://www.puc.texas.gov/industry/water/utilities/gis/ (checked October 6,
+2026).
+
 ## Acquisition economics scenarios
 
 The unified screening response includes `evidence.acquisitionEconomics`, derived
