@@ -109,3 +109,7 @@ uses positional string fields, detects the `SITE_NAME1` / `LATIT_DD` header row,
 and maps columns by those header values; preamble and header rows are excluded.
 Combined `1 AE & 4 AE` and `MONOFILL` types are included in landfill screening;
 collection/transfer/construction-over-closed-site codes are not active landfills.
+
+With `BDP_VALIDATE_GDAL=1`, spatial validation also writes a fixture XLSX via GDAL,
+imports its notice/header/data rows through the real XLSX-to-PostgreSQL driver,
+and checks the normalized results. The CI job installs `gdal-bin` for this path.
