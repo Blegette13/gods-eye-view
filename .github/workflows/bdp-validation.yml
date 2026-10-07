@@ -157,3 +157,6 @@ jobs:
 
       - name: Validate live Hays County parcel GIS contract
         run: node scripts/bdp/validate-hays-gis.mjs
+
+      - name: Validate live Dallas County parcel GIS contract
+        run: node scripts/bdp/validate-dallas-gis.mjs

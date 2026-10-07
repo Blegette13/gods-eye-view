@@ -36,6 +36,9 @@ test('county-prefixed commands route Travis and preserve Bexar defaults', () => 
   assert.deepEqual(parseBdpLandSearch('Hays parcel: 10003'), {
     kind: 'parcel', value: '10003', command: 'parcel', county: 'Hays',
   });
+  assert.deepEqual(parseBdpLandSearch('dallas owner: Smith LLC'), {
+    kind: 'owner', value: 'Smith LLC', command: 'owner', county: 'Dallas',
+  });
   assert.equal(parseBdpLandSearch('Harris parcel: 123'), null);
 });
 

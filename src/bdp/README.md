@@ -75,6 +75,20 @@ and a sample GeoJSON parcel. Source:
 https://services6.arcgis.com/XnTA1N5QxtOFa9o8/ArcGIS/rest/services/CODS_Public_Map/FeatureServer/6
 (checked October 6, 2026). The Clerk page is a manual document-lookup link.
 
+Dallas is the fifth selectable county: `dallas parcel: ID` and
+`dallas owner: NAME` query Dallas Central Appraisal District's ParcelPublishing
+polygon layer. Published parcel IDs, owner names, situs, description and
+appraisal observations feed the existing map, property panel and unified
+request. `STATEDAREA` is used as reported acreage only when the record explicitly
+states acres; otherwise acreage remains unknown. A reported revaluation year
+is shown but does not verify current ownership, sale price or title. The
+County Clerk link is for manual public-record review. Capped responses,
+invalid geometry and repeated parcel IDs fail screening. BDP Validation
+checks the live DCAD layer metadata and one GeoJSON polygon. Sources:
+https://maps.dcad.org/prdwa/rest/services/Property/ParcelQuery/MapServer/4
+and https://www.dallascounty.org/government/county-clerk/recording/
+(checked October 7, 2026).
+
 ## PUCT sewer CCN territory
 
 The official PUCT GIS page provides a statewide sewer CCN TSMS shapefile ZIP.

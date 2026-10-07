@@ -71,6 +71,14 @@ export const BDP_DATA_SOURCES = Object.freeze({
     url: 'https://services6.arcgis.com/XnTA1N5QxtOFa9o8/ArcGIS/rest/services/CODS_Public_Map/FeatureServer/6',
     notes: 'TNRIS acquired this Hays CAD public polygon copy in February 2022; parcel tax year is historical. Hays is selectable for screening, but current owner, valuation and legal boundaries must be verified separately.',
   }),
+  dallasParcels: Object.freeze({
+    id: 'dallas-parcels', label: 'Dallas County Parcels / DCAD',
+    method: BDP_SOURCE_METHOD.GIS_SERVICE, authority: BDP_AUTHORITY.PRIMARY,
+    refreshClass: BDP_REFRESH_CLASS.ON_DEMAND, onDemandRefresh: true,
+    cacheTtlMs: 24 * 60 * 60 * 1000,
+    url: 'https://maps.dcad.org/prdwa/rest/services/Property/ParcelQuery/MapServer/4',
+    notes: 'Official DCAD ParcelPublishing polygon layer with parcel/owner/appraisal observations. Revaluation year and GIS update date do not establish current deed/title or a surveyed boundary; stated acreage is unknown unless the record explicitly gives acres.',
+  }),
   texasRailroadCommission: Object.freeze({
     id: 'texas-rrc',
     label: 'Railroad Commission of Texas GIS',

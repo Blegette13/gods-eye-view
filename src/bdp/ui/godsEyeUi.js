@@ -8,6 +8,7 @@ const BDP_LAYER_IDS = new Set([
   'bdp-travis-parcels',
   'bdp-williamson-parcels',
   'bdp-hays-parcels',
+  'bdp-dallas-parcels',
   'bdp-fema-flood',
   'bdp-rrc-energy',
   'bdp-nwi-wetlands',
