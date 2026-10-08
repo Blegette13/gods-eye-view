@@ -5,6 +5,7 @@ import { evaluateAcquisitionEconomics } from '../economics/acquisitionEconomics.
 import { buildOwnershipTitleReview } from '../title/ownershipReview.js';
 import { buildAcquisitionBrief } from '../intelligence/acquisitionBrief.js';
 import { buildBdpSourceCoverage } from '../intelligence/sourceCoverage.js';
+import { normalizeHarrisFeature } from '../cad/harrisAdapter.js';
 
 // Minimal DOM for interaction tests without changing production dependencies.
 class Element {
@@ -28,6 +29,31 @@ function response(candidate) {
   return { evidence: { developmentConstraints: { status: 'incomplete-fema-coverage', combined_mapped_constraint_acres: 10, outside_mapped_footprint_acres: null }, acquisitionEconomics: evaluateAcquisitionEconomics(candidate), msw: { coverage_complete: false, nearest_msw_site_m: null }, growthRadar: { preliminary_plats_within_25_mi: 4 } }, errors: {},
     score: { readiness: 'insufficient-evidence', coveragePercent: 0, confidenceAdjustedCoveragePercent: 0 }, redFlags: [], redFlagSummary: { critical: 0, high: 0, medium: 0 }, sourceCoveragePercent: 0 };
 }
+
+test('Harris source year and stacked-account caveat display without verifying ownership or asking price', async () => {
+  const previous = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const candidate = normalizeHarrisFeature({ type: 'Feature', properties: {
+      HCAD_NUM: '0402810000356', tax_year: '2026', Acreage: '2 AC', total_market_val: 100000, Stacked: 1,
+    }, geometry: { type: 'Polygon', coordinates: [[[-95,29],[-94.99,29],[-94.99,29.01],[-95,29]]] } });
+    card = createBdpPropertyCard({ screeningLoader: async () => response(candidate) });
+    card.show(candidate);
+    await tick();
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const valueFor = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.equal(valueFor('Source tax year'), '2026');
+    assert.match(valueFor('Source note'), /share geometry/);
+    assert.equal(valueFor('Asking price'), '—');
+    assert.equal(valueFor('Verified vesting'), 'UNKNOWN');
+    const lookup = find(card.root, (el) => el.tagName === 'a' && el.textContent === 'Open county land records')[0];
+    assert.equal(lookup.href, 'https://cclerk.hctx.net/RealProperty.aspx');
+  } finally {
+    card?.destroy();
+    globalThis.document = previous;
+  }
+});
 
 test('native property panel keeps nulls unknown, shows Growth Radar and calculates explicit cost scenarios', async () => {
   const previous = globalThis.document;

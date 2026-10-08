@@ -89,6 +89,25 @@ https://maps.dcad.org/prdwa/rest/services/Property/ParcelQuery/MapServer/4
 and https://www.dallascounty.org/government/county-clerk/recording/
 (checked October 7, 2026).
 
+Harris is the sixth selectable county: `harris parcel: ACCOUNT`,
+`harris account: ACCOUNT`, and `harris owner: NAME` use the official county-hosted
+HCAD polygon layer. Account IDs retain all 13 digits, including leading zeros.
+Up to three published owner names, situs/mailing address, legal description,
+explicitly labeled acreage, land/market appraisal values and source tax year
+feed the original God’s Eye map, property panel and unified request. Missing
+acreage/values stay unknown. Appraised value is retained as source context, not
+an asking price, verified sale price or assessed tax liability. Retrieval and
+tax year do not verify record currency or title.
+
+Stacked/condominium accounts may share geometry, so account acreages must not
+be summed as distinct physical land. Invalid/capped results, conflicting
+account/county identifiers and repeated account IDs fail screening. The manual
+title-review link points to Harris County Clerk; it does not perform a record
+search. BDP Validation checks every requested field and a live GeoJSON sample.
+Sources: https://www.gis.hctx.net/arcgis/rest/services/HCAD/Parcels/MapServer/0,
+https://hcad.org/assets/uploads/pdf/GIS-ReadMe.pdf and
+https://cclerk.hctx.net/RealProperty.aspx (checked October 8, 2026).
+
 ## PUCT sewer CCN territory
 
 The official PUCT GIS page provides a statewide sewer CCN TSMS shapefile ZIP.

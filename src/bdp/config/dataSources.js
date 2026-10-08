@@ -79,6 +79,14 @@ export const BDP_DATA_SOURCES = Object.freeze({
     url: 'https://maps.dcad.org/prdwa/rest/services/Property/ParcelQuery/MapServer/4',
     notes: 'Official DCAD ParcelPublishing polygon layer with parcel/owner/appraisal observations. Revaluation year and GIS update date do not establish current deed/title or a surveyed boundary; stated acreage is unknown unless the record explicitly gives acres.',
   }),
+  harrisParcels: Object.freeze({
+    id: 'harris-parcels', label: 'Harris County Parcels / HCAD',
+    method: BDP_SOURCE_METHOD.GIS_SERVICE, authority: BDP_AUTHORITY.PRIMARY,
+    refreshClass: BDP_REFRESH_CLASS.ON_DEMAND, onDemandRefresh: true,
+    cacheTtlMs: 24 * 60 * 60 * 1000,
+    url: 'https://www.gis.hctx.net/arcgis/rest/services/HCAD/Parcels/MapServer/0',
+    notes: 'Official county-hosted HCAD polygons with account/owner/tax-year/appraisal fields. Currency remains unverified; reported acreage is not surveyed land. Stacked accounts can share geometry and must not be treated as separate physical land.',
+  }),
   texasRailroadCommission: Object.freeze({
     id: 'texas-rrc',
     label: 'Railroad Commission of Texas GIS',

@@ -18,6 +18,7 @@ import travisParcelLayer from '../bdp/parcels/travisParcelLayer.js';
 import williamsonParcelLayer from '../bdp/parcels/williamsonParcelLayer.js';
 import haysParcelLayer from '../bdp/parcels/haysParcelLayer.js';
 import dallasParcelLayer from '../bdp/parcels/dallasParcelLayer.js';
+import harrisParcelLayer from '../bdp/parcels/harrisParcelLayer.js';
 import femaFloodLayer from '../bdp/overlays/femaFloodLayer.js';
 import rrcEnergyLayer from '../bdp/overlays/rrcEnergyLayer.js';
 import nwiWetlandsLayer from '../bdp/overlays/nwiWetlandsLayer.js';
@@ -37,6 +38,7 @@ const BDP_SCREEN_LAYER_IDS = Object.freeze([
   'bdp-williamson-parcels',
   'bdp-hays-parcels',
   'bdp-dallas-parcels',
+  'bdp-harris-parcels',
   'bdp-fema-flood',
   'bdp-rrc-energy',
   'bdp-nwi-wetlands',
@@ -90,6 +92,7 @@ export function createStandaloneData({
   dataManager.register(williamsonParcelLayer);
   dataManager.register(haysParcelLayer);
   dataManager.register(dallasParcelLayer);
+  dataManager.register(harrisParcelLayer);
   dataManager.register(femaFloodLayer);
   dataManager.register(rrcEnergyLayer);
   dataManager.register(nwiWetlandsLayer);
@@ -120,6 +123,7 @@ export function createStandaloneData({
       Williamson: williamsonParcelLayer,
       Hays: haysParcelLayer,
       Dallas: dallasParcelLayer,
+      Harris: harrisParcelLayer,
     };
     const county = command.county || 'Bexar';
     const layer = countyLayers[county];

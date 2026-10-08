@@ -5,6 +5,7 @@ export const TITLE_REVIEW_REFERENCES = Object.freeze({
   williamsonRecords: 'https://www.wilcotx.gov/1611/Search-Records',
   haysRecords: 'https://www.hayscountytx.gov/166/County-Clerk',
   dallasRecords: 'https://www.dallascounty.org/government/county-clerk/recording/',
+  harrisRecords: 'https://cclerk.hctx.net/RealProperty.aspx',
 });
 
 const clean = (value) => typeof value === 'string' ? value.trim() : '';
@@ -23,6 +24,7 @@ function recordLookup(parcel) {
     ['williamson', ['48491', '491'], TITLE_REVIEW_REFERENCES.williamsonRecords],
     ['hays', ['48209', '209'], TITLE_REVIEW_REFERENCES.haysRecords],
     ['dallas', ['48113', '113'], TITLE_REVIEW_REFERENCES.dallasRecords],
+    ['harris', ['48201', '201'], TITLE_REVIEW_REFERENCES.harrisRecords],
   ]) {
     const byName = county === name;
     const byFips = codes.includes(fips);

@@ -23,6 +23,17 @@ test('parses explicit owner commands', () => {
   });
 });
 
+test('Harris parcel/account/owner commands keep leading zeros and county routing', () => {
+  for (const command of ['parcel', 'account']) {
+    assert.deepEqual(parseBdpLandSearch(`HARRIS ${command}: 0402810000356`), {
+      kind: 'parcel', value: '0402810000356', command, county: 'Harris',
+    });
+  }
+  assert.deepEqual(parseBdpLandSearch('harris owner: Lakewood Development'), {
+    kind: 'owner', value: 'Lakewood Development', command: 'owner', county: 'Harris',
+  });
+});
+
 test('county-prefixed commands route Travis and preserve Bexar defaults', () => {
   assert.deepEqual(parseBdpLandSearch('TRAVIS parcel: 12345'), {
     kind: 'parcel', value: '12345', command: 'parcel', county: 'Travis',
@@ -39,7 +50,7 @@ test('county-prefixed commands route Travis and preserve Bexar defaults', () => 
   assert.deepEqual(parseBdpLandSearch('dallas owner: Smith LLC'), {
     kind: 'owner', value: 'Smith LLC', command: 'owner', county: 'Dallas',
   });
-  assert.equal(parseBdpLandSearch('Harris parcel: 123'), null);
+  assert.equal(parseBdpLandSearch('Collin parcel: 123'), null);
 });
 
 test('leaves ordinary God\'s Eye location searches untouched', () => {
