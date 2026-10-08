@@ -524,10 +524,30 @@ function intelligenceRows(screening) {
     scoreRow,
     row('Model coverage', formatPercent(score.coveragePercent)),
     row('Evidence conf.', formatPercent(score.confidenceAdjustedCoveragePercent)),
-    row('Live feeds', formatPercent(screening.sourceCoveragePercent)),
+    row('Feed response coverage', formatPercent(screening.sourceCoveragePercent)),
+    ...sourceCoverageRows(screening),
     row('High flags', String(redFlagSummary.high + redFlagSummary.critical)),
     row('Medium flags', String(redFlagSummary.medium)),
   ];
+}
+
+function sourceCoverageRows(screening) {
+  const details = document.createElement('details');
+  const summary = document.createElement('summary');
+  summary.textContent = 'SOURCE RESPONSE STATUS · NOT CLEARANCE';
+  details.append(summary);
+  const coverage = screening.sourceCoverage;
+  if (coverage) {
+    details.append(...Object.values(coverage).map((item) => {
+      const element = row(item.label, `${item.status.toUpperCase()} · ${item.detail}`);
+      element.dataset.bdpEvidenceRefs = JSON.stringify([`sourceCoverage.${item.source}`]);
+      return element;
+    }));
+  } else {
+    details.append(row('Source status', 'UNKNOWN · Detailed source status was not returned.'));
+  }
+  details.append(row('Coverage meaning', 'Feed responses are not county coverage, complete GIS inventories, score-model coverage or legal clearance. San Antonio entitlement and Growth Radar remain regional screens.'));
+  return [details];
 }
 
 function redFlagElements(flags) {

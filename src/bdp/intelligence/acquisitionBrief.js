@@ -1,4 +1,5 @@
 import { BDP_SCORE_WEIGHTS } from './acquisitionScore.js';
+import { BDP_SCREENING_SOURCE_LABELS, describeBdpSourceCoverage } from './sourceCoverage.js';
 
 const CATEGORY = Object.freeze({
   ownershipTitle: ['Ownership / title', 'Obtain deed, seller-authority, title commitment, exception and survey evidence; verify legal access and any claimed mineral/water interests.'],
@@ -21,13 +22,6 @@ const SOURCE_CATEGORY = Object.freeze({
   entitlement: 'entitlementZoning', growthRadar: 'growth', developmentConstraints: 'developmentPotential',
 });
 const SEVERITY = Object.freeze({ critical: 4, high: 3, medium: 2, low: 1, info: 0 });
-const SOURCE_LABEL = Object.freeze({
-  energy: 'RRC wells / pipelines', flood: 'FEMA flood mapping', wetlands: 'USFWS NWI wetlands',
-  cleanups: 'EPA cleanup records', msw: 'TCEQ MSW records', soils: 'SSURGO soils', terrain: 'USGS terrain',
-  transportation: 'TxDOT roads / traffic', utilities: 'Utility screening', waterRights: 'TCEQ water-right points',
-  cemeteries: 'THC cultural screening', entitlement: 'Entitlement screening', growthRadar: 'Growth Radar',
-  developmentConstraints: 'Combined development constraints',
-});
 
 function categoryForFlag(id) {
   if (/^(parcel-source|pipeline|nearby-rrc|mineral-rights|tceq-water-right)/.test(id)) return 'ownershipTitle';
@@ -69,12 +63,11 @@ export function buildAcquisitionBrief({ parcel = {}, evidence = {}, errors = {},
   for (const [source, category] of Object.entries(SOURCE_CATEGORY)) {
     const metrics = evidence[source];
     const error = errors[source];
-    const incomplete = ['flood', 'msw'].includes(source) && metrics?.coverage_complete !== true;
-    if (metrics == null || error || incomplete) {
+    const coverage = describeBdpSourceCoverage(source, metrics, error);
+    if (coverage.status !== 'returned') {
       gaps.push({
-        id: `source:${source}`, category, label: SOURCE_LABEL[source], status: error ? 'unavailable' : 'unknown',
-        detail: error ? 'Source screening failed; restore the feed and re-screen.'
-          : metrics == null ? 'No source evidence returned.' : 'Coverage is incomplete or unverified; zero counts cannot establish clearance.',
+        id: `source:${source}`, category, label: BDP_SCREENING_SOURCE_LABELS[source], status: coverage.status === 'limited' ? 'unknown' : coverage.status,
+        detail: coverage.detail,
         evidenceRef: error ? `errors.${source}` : `evidence.${source}`,
       });
     }

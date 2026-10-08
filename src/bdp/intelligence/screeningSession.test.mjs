@@ -121,6 +121,9 @@ test('collects screening evidence and derives score coverage/red flags', async (
   });
 
   assert.equal(result.sourceCoveragePercent, 100);
+  assert.equal(Object.keys(result.sourceCoverage).length, 13);
+  assert.deepEqual(result.limitedSources, []);
+  assert.deepEqual(result.unknownSources, []);
   assert.equal(result.acquisitionBrief.buyRecommendation, null);
   assert.ok(result.acquisitionBrief.risks.some((risk) => risk.id === 'pipeline-crossing'));
   assert.ok(result.acquisitionBrief.gaps.some((gap) => gap.id === 'category:ownershipTitle'));
@@ -179,6 +182,8 @@ test('keeps partial evidence when providers fail', async () => {
   assert.deepEqual([...result.succeededSources].sort(), ['soils', 'terrain']);
   assert.deepEqual([...result.failedSources].sort(), ['cemeteries', 'cleanups', 'energy', 'entitlement', 'flood', 'growthRadar', 'msw', 'transportation', 'utilities', 'waterRights', 'wetlands']);
   assert.equal(result.errors.energy.status, 503);
+  assert.equal(result.sourceCoverage.energy.status, 'unavailable');
+  assert.equal(result.sourceCoverage.terrain.status, 'returned');
   assert.equal(result.errors.cleanups.status, 503);
   assert.equal(result.errors.msw.status, 503);
   assert.equal(result.errors.transportation.status, 503);
@@ -196,4 +201,30 @@ test('keeps partial evidence when providers fail', async () => {
   assert.equal(result.score.components.accessTraffic.status, 'unknown');
   assert.equal(result.score.components.utilitiesInfrastructure.status, 'unknown');
   assert.equal(result.score.components.entitlementZoning.status, 'unknown');
+});
+
+test('partial utilities and unresolved regional mapping remain explicit gaps without hiding surviving metrics', async () => {
+  const options = Object.fromEntries(['energy', 'flood', 'wetlands', 'cleanups', 'msw', 'soils',
+    'terrain', 'transportation', 'utilities', 'waterRights', 'cemeteries', 'entitlement', 'growthRadar']
+    .map((source) => [`${source}Loader`, async () => null]));
+  options.utilitiesLoader = async () => ({ water_service_source_status: 'unavailable',
+    water_service_overlap_percent: null, puct_water_ccn_coverage: 'mapped-snapshot',
+    puct_water_ccn_overlap_percent: 60, sewer_ccn_coverage: 'not-ingested' });
+  options.entitlementLoader = async () => ({ jurisdiction_screen: 'outside-or-unresolved',
+    city_zoning_coverage_percent: 0 });
+  options.terrainLoader = async () => ({ slope: { meanDegrees: 2 } });
+  const result = await runBdpParcelScreening(parcel, options);
+  assert.deepEqual(result.succeededSources, ['terrain']);
+  assert.deepEqual(result.limitedSources, ['utilities', 'entitlement']);
+  assert.equal(result.unknownSources.length, 10);
+  assert.equal(result.sourceCoveragePercent, (1 / 13) * 100);
+  assert.deepEqual(result.failedSources, []);
+  assert.equal(result.evidence.utilities.puct_water_ccn_overlap_percent, 60);
+  assert.equal(result.score.components.utilitiesInfrastructure.status, 'unknown');
+  assert.equal(result.score.components.entitlementZoning.status, 'unknown');
+  for (const source of ['utilities', 'entitlement']) {
+    const gap = result.acquisitionBrief.gaps.find((item) => item.id === `source:${source}`);
+    assert.equal(gap.status, 'unknown');
+    assert.equal(gap.detail, result.sourceCoverage[source].detail);
+  }
 });

@@ -1,6 +1,7 @@
 import { evaluateAcquisitionEconomics } from '../economics/acquisitionEconomics.js';
 import { buildOwnershipTitleReview } from '../title/ownershipReview.js';
 import { buildAcquisitionBrief } from './acquisitionBrief.js';
+import { buildBdpSourceCoverage } from './sourceCoverage.js';
 import { fetchBdpParcelEnergy } from '../rrc/client.js';
 import {
   fetchBdpParcelCleanups,
@@ -161,9 +162,10 @@ export async function runBdpParcelScreening(parcel, {
   }));
   const redFlagSummary = summarizeBdpRedFlags(redFlags);
 
-  const succeededSources = BDP_SCREENING_SOURCES.filter((source) => evidence[source] != null
-    && (source !== 'msw' || evidence.msw.coverage_complete === true)
-    && (source !== 'flood' || evidence.flood.coverage_complete === true));
+  const sourceCoverage = buildBdpSourceCoverage(BDP_SCREENING_SOURCES, evidence, errors);
+  const succeededSources = BDP_SCREENING_SOURCES.filter((source) => sourceCoverage[source].status === 'returned');
+  const limitedSources = BDP_SCREENING_SOURCES.filter((source) => sourceCoverage[source].status === 'limited');
+  const unknownSources = BDP_SCREENING_SOURCES.filter((source) => sourceCoverage[source].status === 'unknown');
   const failedSources = BDP_SCREENING_SOURCES.filter((source) => errors[source] !== null);
   const acquisitionBrief = buildAcquisitionBrief({ parcel, evidence, errors, score, redFlags });
 
@@ -175,6 +177,9 @@ export async function runBdpParcelScreening(parcel, {
     errors: Object.freeze(errors),
     succeededSources: Object.freeze(succeededSources),
     failedSources: Object.freeze(failedSources),
+    limitedSources: Object.freeze(limitedSources),
+    unknownSources: Object.freeze(unknownSources),
+    sourceCoverage,
     sourceCoveragePercent: (succeededSources.length / BDP_SCREENING_SOURCES.length) * 100,
     acquisitionBrief,
     score,

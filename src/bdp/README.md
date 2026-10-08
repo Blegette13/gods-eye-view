@@ -127,6 +127,25 @@ status for that source, while the other remote results and imported PUCT
 snapshots remain in the unified parcel response. A failed feed never becomes
 a measured zero overlap or zero crossings.
 
+## Source response status
+
+The unified request includes a per-feed `sourceCoverage` ledger with `returned`,
+`limited`, `unavailable`, or `unknown` status. Partial utility failures, missing
+or stale imported PUCT snapshots, incomplete FEMA/MSW coverage, empty evidence,
+and unresolved San Antonio jurisdiction cannot count as unrestricted returned
+feeds. Surviving metrics and mapped-risk flags remain available. These limits
+also become source gaps in the acquisition brief. The native property panel
+shows the ledger in an expandable source-response section, without another API
+request. Derived analyses do not add independent sources to the denominator.
+
+`sourceCoveragePercent` remains the percentage of the 13 feeds that returned
+evidence without these explicit limits; it is now labeled **Feed response
+coverage**, not "Live feeds". It does not establish inventory completeness,
+current records, county coverage, score-model coverage, legal clearance or
+utility capacity. San Antonio entitlement and Growth Radar remain regional
+screens, including when their requests succeed. Score weights and withholding
+of acquisition recommendations are unchanged.
+
 ## Acquisition economics scenarios
 
 The unified screening response includes `evidence.acquisitionEconomics`, derived

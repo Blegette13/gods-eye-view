@@ -4,6 +4,7 @@ import { createBdpPropertyCard } from './propertyCard.js';
 import { evaluateAcquisitionEconomics } from '../economics/acquisitionEconomics.js';
 import { buildOwnershipTitleReview } from '../title/ownershipReview.js';
 import { buildAcquisitionBrief } from '../intelligence/acquisitionBrief.js';
+import { buildBdpSourceCoverage } from '../intelligence/sourceCoverage.js';
 
 // Minimal DOM for interaction tests without changing production dependencies.
 class Element {
@@ -58,6 +59,8 @@ test('native property panel keeps nulls unknown, shows Growth Radar and calculat
     assert.equal(valueFor('Residual max offer'), '$100,000');
     await tick();
     const screened = response(parcel);
+    screened.evidence.utilities = { water_service_source_status: 'unavailable', puct_water_ccn_overlap_percent: 60 };
+    screened.sourceCoverage = buildBdpSourceCoverage(['utilities', 'msw'], screened.evidence, screened.errors);
     screened.evidence.ownershipTitle = buildOwnershipTitleReview(parcel, { energy: { pipeline_crossing_count: 1 } });
     screened.acquisitionBrief = buildAcquisitionBrief({ parcel, evidence: screened.evidence, score: screened.score,
       redFlags: [{ id: 'pipeline-crossing', severity: 'high', title: 'Pipeline brief trigger', detail: 'Easement dimensions require verification.', source: 'RRC' }] });
@@ -74,6 +77,12 @@ test('native property panel keeps nulls unknown, shows Growth Radar and calculat
     assert.equal(valueFor('Nearest MSW ≤ 5 mi'), '—');
     assert.equal(valueFor('Points on parcel'), '—');
     assert.match(valueFor('MSW coverage'), /UNKNOWN/);
+    assert.match(valueFor('Utility screening'), /LIMITED.*Water-service boundaries: source unavailable/);
+    assert.match(valueFor('Coverage meaning'), /not county coverage/);
+    assert.equal(valueFor('Feed response coverage'), '0%');
+    assert.equal(valueFor('Live feeds'), undefined);
+    const coverageRow = rows().find((el) => el.children[0].textContent === 'Utility screening');
+    assert.deepEqual(JSON.parse(coverageRow.dataset.bdpEvidenceRefs), ['sourceCoverage.utilities']);
     assert.equal(valueFor('Preliminary plats ≤ 25 mi'), '4');
     assert.equal(valueFor('Combined footprint'), '10 ac');
     assert.equal(valueFor('Outside mapped footprint'), '—');
@@ -84,6 +93,7 @@ test('native property panel keeps nulls unknown, shows Growth Radar and calculat
     assert.equal(valueFor('All-in basis'), '—');
     card.show({ ...parcel, parcelId: '456' });
     assert.equal(valueFor('HIGH · Pipeline brief trigger'), undefined);
+    assert.equal(valueFor('Utility screening'), undefined);
     assert.equal(valueFor('Acquisition brief'), 'Loading evidence…');
     assert.equal(valueFor('PRIORITY · Survey / easements'), undefined);
     assert.equal(input('askingPrice').value, '');
