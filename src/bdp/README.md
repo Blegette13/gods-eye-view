@@ -127,6 +127,18 @@ status for that source, while the other remote results and imported PUCT
 snapshots remain in the unified parcel response. A failed feed never becomes
 a measured zero overlap or zero crossings.
 
+## Fail-closed environmental evidence
+
+EPA cleanup normalization fails closed on transfer-limit flags and missing,
+unsupported or invalid point geometry; records are never silently discarded
+into a zero-site screen. EPA scoring requires explicit nonnegative integer
+counts for every scored category, internally consistent counts, and a distance
+when nearby records exist. Missing/invalid values do not count as zero. NWI/FEMA
+percentages must be between 0 and 100; FEMA also requires floodway acreage.
+Terrain/soil scoring ignores invalid slopes/shares and retains independently
+valid evidence at its lower confidence. These checks leave GIS calculations
+in PostGIS and do not change category weights or mapped-risk flags.
+
 ## Source response status
 
 The unified request includes a per-feed `sourceCoverage` ledger with `returned`,

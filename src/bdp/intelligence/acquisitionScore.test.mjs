@@ -188,3 +188,41 @@ test('missing or incomplete FEMA coverage cannot earn a favorable flood score', 
     assert.equal(scoreFemaFloodWater({ coverage_complete, mapped_flood_percent: 0 }), null);
   }
 });
+
+test('EPA requires all scored counts and a measured distance when nearby records exist', () => {
+  const clear = { nearest_cleanup_m: null, cleanup_sites_on_parcel: 0, cleanup_sites_within_5_mi: 0,
+    superfund_within_5_mi: 0, rcra_within_5_mi: 0, brownfields_within_5_mi: 0 };
+  assert.equal(scoreEpaCleanupEnvironment(clear).score, 100);
+  for (const field of ['cleanup_sites_on_parcel', 'cleanup_sites_within_5_mi', 'superfund_within_5_mi',
+    'rcra_within_5_mi', 'brownfields_within_5_mi']) {
+    for (const value of [undefined, null, false, '', ' ', -1, 0.5, [], {}]) {
+      assert.equal(scoreEpaCleanupEnvironment({ ...clear, [field]: value }), null, `${field}: ${String(value)}`);
+    }
+  }
+  assert.equal(scoreEpaCleanupEnvironment({ cleanup_sites_on_parcel: 0 }), null);
+  assert.equal(scoreEpaCleanupEnvironment({ ...clear, superfund_within_5_mi: 1 }), null);
+  assert.equal(scoreEpaCleanupEnvironment({ ...clear, cleanup_sites_within_5_mi: 1 }), null);
+  assert.equal(scoreEpaCleanupEnvironment({ ...clear, nearest_cleanup_m: -1 }), null);
+  assert.ok(scoreEpaCleanupEnvironment({ ...clear, cleanup_sites_within_5_mi: 1, nearest_cleanup_m: 100 }).score < 100);
+  const wetlandOnly = scoreEnvironmental({ wetlands: { nwi_percent: 10 }, cleanups: { cleanup_sites_on_parcel: 0 } });
+  assert.equal(wetlandOnly.confidence, 0.35);
+  assert.equal(wetlandOnly.source, 'USFWS NWI screening');
+});
+
+test('malformed percentages, slopes and floodway metrics cannot become favorable observations', () => {
+  for (const value of [false, true, '', ' ', [], {}, -1, 101, Infinity, NaN]) {
+    assert.equal(scoreWetlandsEnvironment({ nwi_percent: value }), null);
+    assert.equal(scoreFemaFloodWater({ coverage_complete: true, mapped_flood_percent: value, floodway_acres: 0 }), null);
+  }
+  for (const value of [undefined, null, false, -1, ' ']) {
+    assert.equal(scoreFemaFloodWater({ coverage_complete: true, mapped_flood_percent: 0, floodway_acres: value }), null);
+  }
+  for (const value of [false, [], {}, -1, 91]) {
+    assert.equal(scoreTerrainSoil({ terrain: { slope: { meanDegrees: value } } }), null);
+  }
+  assert.equal(scoreWetlandsEnvironment({ nwi_percent: '0' }).score, 100);
+  assert.equal(scoreFemaFloodWater({ coverage_complete: true, mapped_flood_percent: 0, floodway_acres: 0 }).score, 100);
+  assert.equal(scoreTerrainSoil({ terrain: { slope: { meanDegrees: false } },
+    soils: { dominant: { mappedSharePercent: 80 } } }).confidence, 0.45);
+  assert.equal(normalizeComponentScore(false), null);
+});

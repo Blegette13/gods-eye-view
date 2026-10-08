@@ -31,7 +31,7 @@ test('EPA parcel query is Texas-only and expands beyond parcel bounds', () => {
   assert.ok(north > 29.42);
 });
 
-test('normalizes only point cleanup features and preserves risk fields', () => {
+test('normalizes valid point cleanup features and preserves risk fields', () => {
   const normalized = normalizeEpaCleanupFeatureCollection({
     type: 'FeatureCollection',
     features: [
@@ -44,16 +44,33 @@ test('normalizes only point cleanup features and preserves risk fields', () => {
           SF_SITE_NAME: 'TEST SUPERFUND',
         },
       },
-      {
-        type: 'Feature',
-        geometry: { type: 'Polygon', coordinates: [] },
-        properties: {},
-      },
     ],
   });
   assert.equal(normalized.features.length, 1);
   assert.equal(normalized.features[0].properties.PRIMARY_NAME, 'TEST CLEANUP');
   assert.equal(normalized.features[0].properties.SF_SITE_NAME, 'TEST SUPERFUND');
+});
+
+test('capped EPA responses fail even when the feature count is below the local limit', () => {
+  for (const limit of [{ exceededTransferLimit: true }, { properties: { exceededTransferLimit: true } }]) {
+    assert.throws(() => normalizeEpaCleanupFeatureCollection({ type: 'FeatureCollection', features: [], ...limit }), /capped/);
+  }
+});
+
+test('invalid or missing EPA geometries cannot be silently dropped into a clear screen', () => {
+  for (const geometry of [null, { type: 'Polygon', coordinates: [] },
+    { type: 'Point', coordinates: [] }, { type: 'Point', coordinates: [-98] },
+    { type: 'Point', coordinates: ['-98', 29] }, { type: 'Point', coordinates: [-98, null] },
+    { type: 'Point', coordinates: [-181, 29] }, { type: 'Point', coordinates: [-98, 91] },
+    { type: 'Point', coordinates: [-98, NaN] }]) {
+    const input = { type: 'FeatureCollection', features: [
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [-98, 29] }, properties: {} },
+      { type: 'Feature', geometry, properties: {} },
+    ] };
+    assert.throws(() => normalizeEpaCleanupFeatureCollection(input), /counts are unknown/);
+    assert.throws(() => buildEpaCleanupMetricsSql(parcel, input), /counts are unknown/);
+  }
+  assert.equal(normalizeEpaCleanupFeatureCollection({ type: 'FeatureCollection', features: [] }).features.length, 0);
 });
 
 test('cleanup metrics SQL calculates exact parcel proximity in PostGIS', () => {

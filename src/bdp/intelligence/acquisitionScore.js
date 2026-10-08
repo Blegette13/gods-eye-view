@@ -19,7 +19,8 @@ if (BDP_SCORE_TOTAL_WEIGHT !== 100) {
 }
 
 function finiteOrNull(value) {
-  if (value === null || value === undefined || value === '') return null;
+  if (typeof value !== 'number' && typeof value !== 'string') return null;
+  if (typeof value === 'string' && !value.trim()) return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
@@ -134,7 +135,7 @@ function clamp(value, min, max) {
 /** Preliminary environmental component from NWI screening only. */
 export function scoreWetlandsEnvironment(wetlands) {
   const percent = finiteOrNull(wetlands?.nwi_percent);
-  if (percent === null) return null;
+  if (percent === null || percent < 0 || percent > 100) return null;
   const score = clamp(100 - percent * 2, 0, 100);
   return Object.freeze({
     score,
@@ -153,7 +154,13 @@ export function scoreEpaCleanupEnvironment(cleanups) {
   const rcra = finiteOrNull(cleanups?.rcra_within_5_mi);
   const brownfields = finiteOrNull(cleanups?.brownfields_within_5_mi);
   const total = finiteOrNull(cleanups?.cleanup_sites_within_5_mi);
-  if ([nearestM, onParcel, superfund, rcra, brownfields, total].every((value) => value === null)) return null;
+  // Every scored count must be explicitly measured. A solitary zero must not
+  // imply that unreported cleanup categories are clear.
+  const counts = [onParcel, superfund, rcra, brownfields, total];
+  if (counts.some((value) => !Number.isSafeInteger(value) || value < 0)
+    || [onParcel, superfund, rcra, brownfields].some((value) => value > total)
+    || (total > 0 && nearestM === null)
+    || (nearestM !== null && nearestM < 0)) return null;
 
   let score = 100;
   const evidence = [];
@@ -207,7 +214,7 @@ export function scoreTceqMswEnvironment(msw) {
   const total5 = finiteOrNull(msw?.all_msw_sites_within_5_mi);
 
   if ([onParcel, active1, active3, closed1, closed3, unauthorized1, unauthorized3, hazardous3, total5]
-    .some((value) => value === null || value < 0)) return null;
+    .some((value) => !Number.isSafeInteger(value) || value < 0)) return null;
 
   let score = 100;
   const evidence = [];
@@ -313,7 +320,8 @@ export function scoreFemaFloodWater(flood) {
   if (flood?.coverage_complete !== true) return null;
   const mappedPercent = finiteOrNull(flood?.mapped_flood_percent);
   const floodwayAcres = finiteOrNull(flood?.floodway_acres);
-  if (mappedPercent === null) return null;
+  if (mappedPercent === null || mappedPercent < 0 || mappedPercent > 100
+    || floodwayAcres === null || floodwayAcres < 0) return null;
   let score = 100 - mappedPercent * 1.5;
   if (Number.isFinite(floodwayAcres) && floodwayAcres > 0) score -= 20;
   score = clamp(score, 0, 100);
@@ -333,8 +341,10 @@ export function scoreFemaFloodWater(flood) {
 
 /** Preliminary terrain/soil component from 3DEP slope and SSURGO coverage. */
 export function scoreTerrainSoil({ terrain, soils } = {}) {
-  const meanSlope = finiteOrNull(terrain?.slope?.meanDegrees);
-  const dominantShare = finiteOrNull(soils?.dominant?.mappedSharePercent);
+  const slope = finiteOrNull(terrain?.slope?.meanDegrees);
+  const share = finiteOrNull(soils?.dominant?.mappedSharePercent);
+  const meanSlope = slope !== null && slope >= 0 && slope <= 90 ? slope : null;
+  const dominantShare = share !== null && share >= 0 && share <= 100 ? share : null;
   const farmlandClass = String(soils?.dominant?.farmlandClass || '').trim();
   if (meanSlope === null && dominantShare === null) return null;
 

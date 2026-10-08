@@ -58,12 +58,24 @@ export function normalizeEpaCleanupFeatureCollection(input) {
   if (!input || input.type !== 'FeatureCollection' || !Array.isArray(input.features)) {
     throw new Error('US EPA cleanup service returned malformed GeoJSON');
   }
-  if (input.features.length >= EPA_CLEANUP_MAX_SOURCE_FEATURES) {
+  if (input.exceededTransferLimit === true
+    || input.properties?.exceededTransferLimit === true
+    || input.features.length >= EPA_CLEANUP_MAX_SOURCE_FEATURES) {
     throw new Error('US EPA cleanup screening result is capped; narrow the parcel vicinity before relying on counts');
   }
 
+  for (const feature of input.features) {
+    const geometry = feature?.geometry;
+    const coordinates = geometry?.coordinates;
+    if (geometry?.type !== 'Point' || !Array.isArray(coordinates)
+      || coordinates.length < 2 || coordinates.length > 3
+      || !coordinates.every((value) => typeof value === 'number' && Number.isFinite(value))
+      || Math.abs(coordinates[0]) > 180 || Math.abs(coordinates[1]) > 90) {
+      throw new Error('US EPA cleanup screening returned missing or invalid point geometry; counts are unknown');
+    }
+  }
+
   const features = input.features
-    .filter((feature) => feature?.geometry?.type === 'Point')
     .map((feature) => ({
       type: 'Feature',
       geometry: feature.geometry,
