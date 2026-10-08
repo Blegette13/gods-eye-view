@@ -1,0 +1,49 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { fetchBdpParcelGrowthRadar } from './client.js';
+
+const parcel = {
+  property: {
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[
+        [-98.50, 29.40],
+        [-98.49, 29.40],
+        [-98.49, 29.41],
+        [-98.50, 29.41],
+        [-98.50, 29.40],
+      ]],
+    },
+  },
+};
+
+test('posts parcel geometry to Growth Radar', async () => {
+  const calls = [];
+  const metrics = { growth_radius_miles: 25, growth_score_ready: false };
+  const result = await fetchBdpParcelGrowthRadar(parcel, {
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ metrics }),
+      };
+    },
+  });
+  assert.equal(result, metrics);
+  assert.equal(calls[0].url, '/api/bdp/growth/screen');
+  assert.equal(calls[0].init.method, 'POST');
+});
+
+test('surfaces Growth Radar provider failures', async () => {
+  await assert.rejects(
+    () => fetchBdpParcelGrowthRadar(parcel, {
+      fetchImpl: async () => ({
+        ok: false,
+        status: 502,
+        json: async () => ({ message: 'growth source unavailable' }),
+      }),
+    }),
+    (error) => error.status === 502 && /unavailable/i.test(error.message),
+  );
+});

@@ -38,12 +38,21 @@
     "dev": "vite",
     "dev:secure": "./scripts/dev-secure.sh",
     "opensky:import": "./scripts/opensky-import-client.sh",
+    "bdp:db:up": "docker compose -f docker-compose.bdp.yml up -d",
+    "bdp:db:down": "docker compose -f docker-compose.bdp.yml down",
+    "bdp:db:logs": "docker compose -f docker-compose.bdp.yml logs -f bdp-postgis",
+    "bdp:rrc:download": "node scripts/bdp/rrc-download.mjs",
+    "bdp:rrc:import": "node scripts/bdp/rrc-import.mjs",
+    "bdp:tceq-water:download": "node scripts/bdp/tceq-water-download.mjs",
+    "bdp:tceq-water:import": "node scripts/bdp/tceq-water-import.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "test": "node scripts/run-unit-tests.mjs",
     "test:track": "node scripts/track-regression.mjs",
     "qa:map-source-tray": "node scripts/qa-map-source-tray.mjs",
-    "check:boundaries": "node scripts/check-package-boundaries.mjs"
+    "check:boundaries": "node scripts/check-package-boundaries.mjs",
+    "bdp:tceq-msw:download": "node scripts/bdp/tceq-msw-download.mjs",
+    "bdp:tceq-msw:import": "node scripts/bdp/tceq-msw-import.mjs"
   },
   "dependencies": {
     "@mapbox/vector-tile": "^3.0.0",
