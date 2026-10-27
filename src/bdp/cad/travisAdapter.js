@@ -1,7 +1,7 @@
 import { normalizeParcel, validateParcel } from '../parcels/parcelSchema.js';
 
 export const TRAVIS_COUNTY_FIPS = '48453';
-export const TRAVIS_PARCEL_LAYER_URL = 'https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD_Travis_County_Property/MapServer/3';
+export const TRAVIS_PARCEL_LAYER_URL = 'https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD/MapServer/0';
 const QUERY_URL = `${TRAVIS_PARCEL_LAYER_URL}/query`;
 const FIELDS = ['OBJECTID', 'PROP_ID', 'geo_id', 'py_owner_name', 'py_address', 'situs_address', 'legal_desc', 'tcad_acres', 'GIS_acres', 'market_value', 'assessed_val', 'appraised_val', 'imprv_homesite_val', 'imprv_non_homesite_val', 'land_homesite_val', 'land_non_homesite_val', 'deed_num', 'deed_date'].join(',');
 
