@@ -22,4 +22,19 @@ const sample = await json(`${TRAVIS_PARCEL_LAYER_URL}/query?${params}`);
 if (sample.type !== 'FeatureCollection' || sample.features?.length !== 1 || !normalizeTravisFeature(sample.features[0])) {
   throw new Error('Travis GIS sample did not produce a normalized parcel polygon');
 }
-console.log('[BDP:Travis] Official GIS metadata and one parcel GeoJSON query passed');
+// Prevent regressing to TCAD_Travis_County_Property, a county-owned-property subset.
+// A residential neighborhood in central Austin must yield parcel features.
+const neighborhood = new URLSearchParams({
+  where: '1=1',
+  geometry: '-97.715,30.265,-97.712,30.269',
+  geometryType: 'esriGeometryEnvelope',
+  inSR: '4326',
+  spatialRel: 'esriSpatialRelIntersects',
+  returnCountOnly: 'true',
+  f: 'json',
+});
+const nearby = await json(`${TRAVIS_PARCEL_LAYER_URL}/query?${neighborhood}`);
+if (!Number.isInteger(nearby.count) || nearby.count < 1) {
+  throw new Error('Travis GIS countywide coverage failed: no parcels in central Austin');
+}
+console.log('[BDP:Travis] Official countywide metadata, parcel sample, and Austin neighborhood coverage passed');
