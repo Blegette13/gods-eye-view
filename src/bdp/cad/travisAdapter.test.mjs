@@ -43,6 +43,9 @@ test('blank appraisal values remain unknown, including only GIS acreage', () => 
 test('county queries use official GeoJSON WGS84 service and bound results', () => {
   const parcel = new URL(buildTravisParcelLookupUrl('12345'));
   assert.equal(parcel.pathname, `${new URL(TRAVIS_PARCEL_LAYER_URL).pathname}/query`);
+  // TCAD_Travis_County_Property is only the county-owned subset, not all Travis parcels.
+  assert.match(TRAVIS_PARCEL_LAYER_URL, /\/TCAD\/MapServer\/0$/);
+  assert.doesNotMatch(TRAVIS_PARCEL_LAYER_URL, /TCAD_Travis_County_Property/);
   assert.equal(parcel.searchParams.get('where'), "PROP_ID=12345 OR geo_id='12345'");
   assert.equal(parcel.searchParams.get('f'), 'geojson');
   assert.equal(parcel.searchParams.get('outSR'), '4326');
