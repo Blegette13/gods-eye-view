@@ -83,3 +83,37 @@ test('capped, error and malformed responses fail instead of returning a safe-loo
     globalThis.fetch = prior;
   }
 });
+
+test('viewport keeps identifiable Travis parcels visible but reports every unidentified polygon', async () => {
+  const prior = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      type: 'FeatureCollection',
+      features: [feature({ PROP_ID: 10 }), feature({ PROP_ID: null }), feature({ PROP_ID: 11 })],
+    }) });
+    const parcels = await travisCadAdapter.fetchParcelsInBounds({ west: -97.8, south: 30.2, east: -97.7, north: 30.3 });
+    assert.deepEqual(parcels.map((parcel) => parcel.parcelId), ['10', '11']);
+    assert.deepEqual(parcels.viewportCoverage, { receivedCount: 3, omittedUnidentified: 1 });
+    assert.equal(Object.keys(parcels).includes('viewportCoverage'), false);
+    await assert.rejects(travisCadAdapter.fetchParcelsByOwner('SMITH'), /missing or invalid property ID/);
+  } finally {
+    globalThis.fetch = prior;
+  }
+});
+
+test('viewport fails closed for malformed shapes, duplicate IDs, and capped responses', async () => {
+  const prior = globalThis.fetch;
+  const bounds = { west: -97.8, south: 30.2, east: -97.7, north: 30.3 };
+  try {
+    for (const [features, extra] of [
+      [[feature({ PROP_ID: 1 }), { ...feature({ PROP_ID: null }), geometry: null }], {}],
+      [[feature({ PROP_ID: 1 }), feature({ PROP_ID: 1 })], {}],
+      [[feature({ PROP_ID: 1 })], { exceededTransferLimit: true }],
+    ]) {
+      globalThis.fetch = async () => ({ ok: true, json: async () => ({ type: 'FeatureCollection', features, ...extra }) });
+      await assert.rejects(travisCadAdapter.fetchParcelsInBounds(bounds), /geometry|repeats|truncated/);
+    }
+  } finally {
+    globalThis.fetch = prior;
+  }
+});
