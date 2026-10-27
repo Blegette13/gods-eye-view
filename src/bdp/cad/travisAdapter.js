@@ -80,18 +80,38 @@ export function buildTravisBoundsUrl({ west, south, east, north, limit = 500 }) 
   return queryUrl({ where: '1=1', geometry: coords.join(','), geometryType: 'esriGeometryEnvelope', inSR: '4326', spatialRel: 'esriSpatialRelIntersects', resultRecordCount: String(limitWithin(limit, 999, 500) + 1), orderByFields: 'OBJECTID' });
 }
 
-async function fetchFeatures(url, limit, { signal } = {}) {
+// Missing source identifiers are common in the countywide TCAD layer. Only a
+// viewport may show the *identified* subset, and must report omitted polygons.
+// Explicit parcel and owner lookups remain strict and fail closed.
+async function fetchFeatures(url, limit, { signal } = {}, { allowUnidentifiedViewport = false } = {}) {
   const response = await fetch(url, { signal });
   if (!response.ok) throw new Error(`Travis parcel service returned HTTP ${response.status}`);
   const data = await response.json();
   if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features) || data.exceededTransferLimit === true)
     throw new Error('Travis parcel service returned malformed or truncated GeoJSON');
   if (data.features.length > limit) throw new Error('Travis parcel result exceeds bounded request; narrow the search');
-  if (data.features.some((item) => !['Polygon', 'MultiPolygon'].includes(item?.geometry?.type) || !/^\d+$/.test(clean(item?.properties?.PROP_ID))))
-    throw new Error('Travis parcel result has missing geometry or property ID');
-  const parcels = data.features.map(normalizeTravisFeature);
+  if (data.features.some((item) => !['Polygon', 'MultiPolygon'].includes(item?.geometry?.type)))
+    throw new Error('Travis parcel result has missing or invalid polygon geometry');
+
+  const hasParcelId = (item) => /^\d+$/.test(clean(item?.properties?.PROP_ID));
+  const omittedUnidentified = data.features.filter((item) => !hasParcelId(item)).length;
+  if (omittedUnidentified && !allowUnidentifiedViewport)
+    throw new Error('Travis parcel result has missing or invalid property ID');
+
+  const parcels = data.features.filter(hasParcelId).map(normalizeTravisFeature);
+  if (parcels.some((parcel) => !parcel))
+    throw new Error('Travis parcel result could not be normalized or validated');
   if (new Set(parcels.map((parcel) => parcel.id)).size !== parcels.length)
     throw new Error('Travis parcel result repeats a property ID; geometry may be incomplete');
+
+  if (allowUnidentifiedViewport) {
+    // Non-enumerable metadata preserves the existing array-based layer contract
+    // while making partial coverage explicit to the layer and property panel.
+    Object.defineProperty(parcels, 'viewportCoverage', {
+      value: Object.freeze({ receivedCount: data.features.length, omittedUnidentified }),
+      enumerable: false,
+    });
+  }
   return parcels;
 }
 
@@ -110,7 +130,7 @@ export const travisCadAdapter = Object.freeze({
   },
   async fetchParcelsInBounds(bounds, options = {}) {
     const limit = limitWithin(options.limit, 999, 500);
-    return fetchFeatures(buildTravisBoundsUrl({ ...bounds, limit }), limit, options);
+    return fetchFeatures(buildTravisBoundsUrl({ ...bounds, limit }), limit, options, { allowUnidentifiedViewport: true });
   },
 });
 
