@@ -77,6 +77,7 @@ export function createCountyParcelLayer({
   let count = 0;
   let lastUpdate = null;
   let lastError = null;
+  let viewportCoverageWarning = '';
   let lastBoundsKey = '';
   let requestController = null;
   const parcelById = new Map();
@@ -114,6 +115,7 @@ export function createCountyParcelLayer({
     await replaceSnapshot(parcels, { signal });
     lastBoundsKey = '';
     lastUpdate = Date.now();
+    viewportCoverageWarning = '';
     status = parcels.length ? 'nominal' : 'empty';
     if (dataSource && parcels.length) {
       await viewer.flyTo(dataSource, { duration: 1.15 });
@@ -230,14 +232,14 @@ export function createCountyParcelLayer({
       const bounds = rectangleToBounds(rectangle);
 
       if (!isCloseEnough(bounds)) {
-        status = 'zoom-in';
+        status = viewportCoverageWarning ? 'degraded' : 'zoom-in';
         lastError = null;
         return true;
       }
 
       const key = boundsKey(bounds);
       if (key === lastBoundsKey && dataSource) {
-        status = 'nominal';
+        status = viewportCoverageWarning ? 'degraded' : 'nominal';
         return true;
       }
 
@@ -252,10 +254,22 @@ export function createCountyParcelLayer({
           limit: adapter.county === 'Bexar' ? 1000 : 500,
           signal: requestController.signal,
         });
+        const omitted = parcels.viewportCoverage?.omittedUnidentified || 0;
+        if (omitted) {
+          // A mapped polygon without a valid parcel ID is NOT a verified tract.
+          // Show identifiable parcels, but never imply the viewport is complete.
+          const warning = `PARTIAL: ${omitted} of ${parcels.viewportCoverage.receivedCount} source polygons lack valid parcel IDs and are not displayed; map coverage is incomplete.`;
+          for (const parcel of parcels) {
+            parcel.source.sourceNotice = [parcel.source.sourceNotice, warning].filter(Boolean).join(' ');
+          }
+        }
         await replaceSnapshot(parcels, { signal: requestController.signal });
+        viewportCoverageWarning = omitted
+          ? `PARTIAL · ${omitted} unidentified source polygons omitted; parcel coverage incomplete`
+          : '';
         lastBoundsKey = key;
         lastUpdate = Date.now();
-        status = 'nominal';
+        status = omitted ? 'degraded' : 'nominal';
         return true;
       } catch (error) {
         if (error?.name === 'AbortError') return false;
@@ -275,6 +289,8 @@ export function createCountyParcelLayer({
         status,
         source,
         lastUpdate,
+        loadingLabel: viewportCoverageWarning || undefined,
+        degraded: Boolean(viewportCoverageWarning),
         lastError,
         error: lastError,
         available: status !== 'unavailable',
