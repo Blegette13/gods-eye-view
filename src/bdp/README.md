@@ -29,24 +29,28 @@ All county layers feed the same normalized parcel,
 property card and unified intelligence request. Screen/Clear include all
 county layers, and switching county searches hides other property cards.
 
-The Travis adapter uses Travis County GIS's TCAD property layer, with bounded
-GeoJSON queries for owner, property ID and viewport. It maps published TCAD
-fields, preserving missing values as unknown and treating county GIS ownership,
-legal description, acreage, values and deed references as unverified source
-observations. A retrieval timestamp is not the date the CAD records changed.
-Partial/capped responses, missing polygon geometry and missing property IDs
-fail screening rather than producing a misleading subset. The separate county
-TCAD_public layer is described as monthly; that does not establish the
-currency of each record in this layer. Unit tests use representative published
-fields and mocked responses; BDP Validation also checks the live GIS metadata
-and a real parcel GeoJSON response. Browser rendering at deployment remains
-to be checked. Other counties remain unsupported until verified adapters are added.
+The Travis adapter uses Travis County GIS's **countywide** TCAD Parcels layer
+(`Boundaries_and_Jurisdictions/TCAD/MapServer/0`), which Travis County TNR
+describes as assembled from TCAD and updated monthly. GeoJSON property ID,
+owner, and viewport lookups use the published GIS attributes; owner, acreage,
+appraisal values, legal descriptions, and deed references remain unverified
+source observations. A successful retrieval does not establish each record's
+currency, title, or surveyed boundary. Capped/partial responses, malformed
+polygons, missing property IDs, and repeated IDs fail screening.
 
-Source catalog: https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD_Travis_County_Property/MapServer/3
-and https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD_public/MapServer/layers
-(metadata checked October 6, 2026). The title review links to the Travis
-County Clerk's real-property page for manual lookup; a CAD deed reference does
-not establish title.
+**Source correction (October 27, 2026):** The prior adapter pointed at
+`TCAD_Travis_County_Property/MapServer/3`. Its publisher's service description
+explicitly restricts that layer to **Travis County-owned properties**. Ordinary
+neighborhoods legitimately returned empty `features` arrays and displayed no
+selectable parcels. This is not the countywide parcel inventory. The corrected
+adapter uses the full TCAD layer and a live validator now checks that a
+residential neighborhood in central Austin returns at least one parcel.
+Neither a mapped boundary nor a GIS deed reference verifies legal title.
+
+Source: https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD/MapServer/0
+(official GIS layer and field metadata verified October 27, 2026).
+The title review links to the Travis County Clerk's real-property page for
+manual lookup, not a title clearance.
 
 Williamson is the third county pilot: `williamson parcel: ID` and
 `williamson owner: NAME` use Williamson County GIS's WCAD polygon layer. The
