@@ -190,7 +190,13 @@ test('mapped water overlap and short traffic distances do not imply verified ser
     await tick();
     const rows = find(card.root, (el) => el.className === 'bdp-property-row');
     const valueFor = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
-    assert.equal(valueFor('Legal access'), 'UNVERIFIED');
+    // Ownership/title also has a Legal access review task, which must remain
+    // UNKNOWN; check the TxDOT status without conflating the two rows.
+    const legalAccessValues = rows
+      .filter((el) => el.children[0].textContent === 'Legal access')
+      .map((el) => el.children[1].textContent);
+    assert.ok(legalAccessValues.includes('UNVERIFIED'));
+    assert.ok(legalAccessValues.some((value) => value.includes('UNKNOWN · Verify recorded access rights')));
     assert.equal(valueFor('Nearest road'), 'W ANNIE ST');
     assert.equal(valueFor('Nearest mapped AADT'), '2,409 / day');
     assert.equal(valueFor('AADT route / ID'), '1021254');
