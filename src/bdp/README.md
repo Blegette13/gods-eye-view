@@ -44,6 +44,20 @@ reported metric's coverage is correspondingly constrained or explicitly unknown.
 No USGS or TxDOT feed is considered restored without a passing live property
 screen and complete authoritative response.
 
+Follow-up 3DEP diagnostic: a prior Austin request without optional arguments
+returned an elevation statistics band, and a later `Slope Degrees` request
+**without** pixelSize returned one slope band (mean ~4.075 degrees for the
+**diagnostic sample polygon only**, not a selected parcel). Three other requests
+timed out. The terrain adapter therefore omits `pixelSize` and uses the
+ImageServer default resolution, omits `renderingRule` for raw elevation, and
+uses only `Slope Degrees` for slope. It does **not** claim the old 10 m sample
+resolution. Independent elevation/slope requests now retain any verified
+statistical band while marking missing companion evidence as `LIMITED`; if
+both fail, terrain stays `UNAVAILABLE`. Neither a diagnostic sample nor a
+partially returned band proves parcel-wide slope suitability, grading cost,
+drainage capacity, or surveying accuracy. Re-test on an actual Travis parcel
+before considering the terrain implementation verified in production.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
