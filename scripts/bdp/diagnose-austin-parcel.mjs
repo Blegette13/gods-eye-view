@@ -11,7 +11,9 @@ import {
   AUSTIN_SOURCE_LAYERS,
   austinParcelBounds,
   buildAustinParcelCandidateQueryUrl,
+  buildAustinJurisdictionAttributeQueryUrl,
   validateAustinCandidateCollection,
+  summarizeAustinJurisdictionCandidates,
 } from '../../src/bdp/entitlement/austinSourceContract.js';
 
 const id = process.argv[2] || '302959'; // Travis test parcel: 611 W Annie St
@@ -58,9 +60,17 @@ console.log('PARCEL ' + JSON.stringify({
 
 for (const [sourceName, source] of Object.entries(AUSTIN_SOURCE_LAYERS)) {
   try {
-    const url = buildAustinParcelCandidateQueryUrl(sourceName, parcel.property.geometry);
+    // Citywide jurisdiction polygons are huge; do not download or simplify
+    // them for a preliminary envelope. Attributes-only preserves a source hint
+    // but still cannot verify true parcel overlap or legal jurisdiction.
+    const attributesOnly = sourceName === 'jurisdiction';
+    const url = attributesOnly
+      ? buildAustinJurisdictionAttributeQueryUrl(parcel.property.geometry)
+      : buildAustinParcelCandidateQueryUrl(sourceName, parcel.property.geometry);
     const response = await fetchLimitedJson(url, sourceName);
-    const candidates = validateAustinCandidateCollection(sourceName, response);
+    const candidates = attributesOnly
+      ? summarizeAustinJurisdictionCandidates(response)
+      : validateAustinCandidateCollection(sourceName, response);
     const keys = source.fields;
     const observations = candidates.features.map(({properties}) =>
       Object.fromEntries(keys.map((field) => [field, properties[field] ?? null])));
@@ -74,6 +84,8 @@ for (const [sourceName, source] of Object.entries(AUSTIN_SOURCE_LAYERS)) {
       distinctSourceAttributes: unique.slice(0, 12),
       attributesCappedForDisplay: unique.length > 12,
       exactParcelOverlapCalculated: false,
+      geometryReturned: !attributesOnly,
+      legalJurisdictionVerified: false,
       sourceLayer: source.url,
     }, null, 2));
   } catch (error) {
@@ -84,4 +96,5 @@ for (const [sourceName, source] of Object.entries(AUSTIN_SOURCE_LAYERS)) {
   }
 }
 console.log('DONE · Candidate polygons are NOT parcel zoning, title, legal land use or verified ETOD eligibility.');
+console.log('Jurisdiction attributes are envelope candidates only. Full city polygons were NOT downloaded.');
 console.log('Next: PostGIS exact area intersections, all overlays, zoning law, and source-date review.');
