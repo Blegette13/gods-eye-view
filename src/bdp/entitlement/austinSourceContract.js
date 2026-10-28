@@ -166,8 +166,13 @@ export function validateAustinCandidateCollection(sourceName, response, { limit 
       || !Array.isArray(feature.geometry.coordinates) || feature.geometry.coordinates.length === 0) {
       throw new Error('Austin GIS candidate has missing polygon geometry or properties');
     }
-    // Validate ring topology and coordinate range without modifying the data.
-    austinParcelBounds(feature.geometry);
+    // Distinguish an oversized official GIS polygon from the TCAD parcel.
+    // Never bypass the complexity guard by silently simplifying boundaries.
+    try {
+      austinParcelBounds(feature.geometry);
+    } catch (error) {
+      throw new Error(`Austin ${sourceName} candidate polygon is invalid or too complex: ${error.message}`);
+    }
   }
   return Object.freeze({
     sourceName,
