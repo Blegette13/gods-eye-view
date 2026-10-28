@@ -386,9 +386,17 @@ function cemeteryRows(metrics) {
   ];
 }
 
-function entitlementRows(metrics) {
+function entitlementRows(metrics, { austinPreviewAvailable = false } = {}) {
   if (!metrics) return [row('Entitlement', 'No data returned')];
   if (metrics.regional_scope_status === 'not-screened-outside-pilot') {
+    if (austinPreviewAvailable) {
+      return [
+        row('San Antonio / Bexar pilot', 'NOT RUN · out of regional scope'),
+        row('Austin GIS', 'PRELIMINARY parcel intersections available below'),
+        row('Legal entitlement', 'UNKNOWN · zoning law and city jurisdiction not verified'),
+        row('Required review', 'Austin GIS is a separate geographic preview; confirm municipal jurisdiction, current ordinances, other overlays and permitted uses with the responsible authority.'),
+      ];
+    }
     return [row('Entitlement coverage', 'NOT SCREENED · regional pilot only'),
       row('Required review', metrics.regional_scope_note)];
   }
@@ -678,7 +686,7 @@ function appendScreeningResult(containers, screening) {
   ));
   containers.entitlement.replaceChildren(...(
     evidence.entitlement
-      ? entitlementRows(evidence.entitlement)
+      ? entitlementRows(evidence.entitlement, { austinPreviewAvailable: !!evidence.austinZoning })
       : [row('Entitlement', sourceErrorLabel(errors.entitlement, 'San Antonio entitlement GIS'))]
   ));
   containers.austinZoning.replaceChildren(...(evidence.austinZoning
