@@ -252,3 +252,52 @@ test('Travis County never invokes San Antonio-only providers or earns their cove
   assert.equal(result.redFlags.some((flag) => flag.source === 'City of San Antonio entitlement GIS screening'), false);
   assert.equal(result.redFlags.some((flag) => flag.source === 'City of San Antonio Growth Radar screening'), false);
 });
+
+test('Austin supplemental spatial preview stays outside scores and the 13-source coverage model', async () => {
+  const travis = { ...parcel, id: '48453:302959', countyFips: '48453', county: 'Travis' };
+  const loaders = Object.fromEntries(BDP_SCREENING_SOURCES.map(
+    (source) => [source + 'Loader', async () => null],
+  ));
+  loaders.austinZoningLoader = async () => ({
+    status: 'preliminary-spatial-evidence',
+    observations: [{ sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'SF-3-NP' }, parcelPercent: 100 }],
+    legalZoningVerified: false,
+    acquisitionRecommendation: null,
+  });
+  const result = await runBdpParcelScreening(travis, loaders);
+  assert.equal(result.evidence.austinZoning.status, 'preliminary-spatial-evidence');
+  assert.equal(result.evidence.austinZoning.legalZoningVerified, false);
+  assert.equal(result.evidence.entitlement.regional_scope_status, 'not-screened-outside-pilot');
+  assert.equal(result.score.components.entitlementZoning.status, 'unknown');
+  assert.equal(result.acquisitionBrief.buyRecommendation, null);
+  assert.equal(result.sourceCoveragePercent, 0);
+  assert.equal(Object.keys(result.sourceCoverage).length, 13);
+  assert.equal(result.sourceCoverage.austinZoning, undefined);
+});
+
+test('Travis Austin preview outage is isolated and never provides false entitlement coverage', async () => {
+  const travis = { ...parcel, id: '48453:302959', countyFips: '48453', county: 'Travis' };
+  const unavailable = Object.assign(new Error('Austin GIS down'), { status: 502 });
+  const loaders = Object.fromEntries(BDP_SCREENING_SOURCES.map(
+    (source) => [source + 'Loader', async () => null],
+  ));
+  loaders.austinZoningLoader = async () => { throw unavailable; };
+  const result = await runBdpParcelScreening(travis, loaders);
+  assert.equal(result.evidence.austinZoning, null);
+  assert.equal(result.errors.austinZoning.status, 502);
+  assert.equal(result.sourceCoveragePercent, 0);
+  assert.equal(result.score.components.entitlementZoning.status, 'unknown');
+  assert.equal(result.acquisitionBrief.buyRecommendation, null);
+  assert.ok(!result.succeededSources.includes('austinZoning'));
+  assert.ok(!result.failedSources.includes('austinZoning')); // supplementary, tracked via errors
+});
+
+test('Austin zoning loader is never called outside Travis County', async () => {
+  const loaders = Object.fromEntries(BDP_SCREENING_SOURCES.map(
+    (source) => [source + 'Loader', async () => null],
+  ));
+  loaders.austinZoningLoader = async () => { throw new Error('Austin must not run in Bexar'); };
+  const result = await runBdpParcelScreening(parcel, loaders);
+  assert.equal(result.evidence.austinZoning, null);
+  assert.equal(result.errors.austinZoning, null);
+});
