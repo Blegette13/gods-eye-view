@@ -58,6 +58,24 @@ partially returned band proves parcel-wide slope suitability, grading cost,
 drainage capacity, or surveying accuracy. Re-test on an actual Travis parcel
 before considering the terrain implementation verified in production.
 
+## TxDOT source pagination (October 27, 2026)
+
+The live Travis screening originally failed because TxDOT AADT returned a
+2,000-feature capped query. The new transportation adapter first obtains the
+complete ArcGIS object-ID inventory for the original bounded viewport, then
+fetches all records in 400-ID pages (four requests concurrently), verifying
+that every requested ID is present exactly once. It accepts the combined
+collection only after the inventory is complete, geometries are valid, and
+hard record/byte ceilings pass. If any page is capped, lost, duplicated, or
+oversized, the source stays **UNAVAILABLE** and no false no-traffic/access
+conclusion is calculated. The original screening buffer remains intact.
+Large PostGIS transportation SQL now streams to `psql --file -` to avoid
+the Windows `spawn ENAMETOOLONG` problem already observed with utilities.
+A verified bounded viewport is **not** proof of legal ingress/egress,
+right-of-way, driveway permits, current traffic, or road condition.
+Live Travis parcel screening and actual TxDOT response sizes remain to be
+verified before calling this source operational.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
