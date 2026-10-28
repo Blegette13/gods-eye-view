@@ -27,6 +27,18 @@ function formatMiles(meters) {
   return `${formatNumber(number / 1609.344, 2)} mi`;
 }
 
+// Two-decimal miles can round a genuine nearby feature to a misleading "0 mi".
+function formatNearbyDistance(meters) {
+  if (meters === null || meters === undefined || meters === '' || typeof meters === 'boolean') return '—';
+  const number = Number(meters);
+  if (!Number.isFinite(number) || number < 0) return '—';
+  if (number < 160.9344) {
+    const feet = number * 3.280839895;
+    return feet > 0 && feet < 1 ? '<1 ft' : `${formatNumber(feet, 0)} ft`;
+  }
+  return formatMiles(number);
+}
+
 function formatPercent(value) {
   if (value === null || value === undefined || value === '' || typeof value === 'boolean') return '—';
   const number = Number(value);
@@ -416,13 +428,15 @@ function transportationRows(metrics) {
     row('Road distance', formatDistanceFeetFromMeters(metrics.nearest_road_m)),
     row('Centerline on tract', metrics.road_centerline_intersects_parcel ? 'YES · MAPPED' : 'NO'),
     row('Roads ≤ 250 ft', String(metrics.road_centerlines_within_250_ft ?? '—')),
-    row('Nearest AADT', formatVehicles(metrics.nearest_aadt_current)),
-    row('AADT route', metrics.nearest_aadt_route || '—'),
-    row('AADT distance', formatMiles(metrics.nearest_aadt_m)),
+    row('Nearest mapped AADT', formatVehicles(metrics.nearest_aadt_current)),
+    row('AADT route / ID', metrics.nearest_aadt_route || '—'),
+    row('AADT distance', formatNearbyDistance(metrics.nearest_aadt_m)),
     row('Count station', metrics.nearest_station_id || '—'),
-    row('Station distance', formatMiles(metrics.nearest_station_m)),
+    row('Station distance', formatNearbyDistance(metrics.nearest_station_m)),
     row('Latest count year', metrics.nearest_station_latest_year ? String(metrics.nearest_station_latest_year) : '—'),
-    row('5-year change', formatPercent(metrics.nearest_station_5yr_change_percent)),
+    row('5-year change', metrics.nearest_station_5yr_change_percent == null
+      ? 'UNKNOWN · insufficient history' : formatPercent(metrics.nearest_station_5yr_change_percent)),
+    row('Traffic context', 'Nearest mapped AADT segment and count station may differ from the nearest road; neither verifies legal access.'),
   ];
 }
 
@@ -441,9 +455,10 @@ function utilityRows(metrics) {
 
   return [
     row('Water capacity', 'UNVERIFIED'),
-    row('Current water svc', metrics.water_service_source_status === 'unavailable'
+    row('Mapped water area', metrics.water_service_source_status === 'unavailable'
       ? 'UNKNOWN · SOURCE UNAVAILABLE' : formatPercent(metrics.water_service_overlap_percent)),
-    row('Water provider(s)', serviceNames || '—'),
+    row('Mapped provider(s)', serviceNames || '—'),
+    row('Water area meaning', 'GIS parcel overlap only · service connection, availability, and capacity unverified'),
     row('Water CCN · 2021 copy', metrics.water_ccn_source_status === 'unavailable'
       ? 'UNKNOWN · SOURCE UNAVAILABLE' : formatPercent(metrics.water_ccn_overlap_percent)),
     row('CCN utility', ccnUtilities || '—'),
