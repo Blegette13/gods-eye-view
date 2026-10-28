@@ -264,3 +264,47 @@ test('Travis Austin GIS preview displays overlapping polygons but never claims o
     globalThis.document = previous;
   }
 });
+
+test('mixed Austin GIS zones flag mapped boundary ambiguity and zero ETOD candidates remain unknown', async () => {
+  const old = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const travis = {
+      ...parcel,
+      id: '48453:703', county: 'Travis', countyFips: '48453', parcelId: '703',
+      property: { ...parcel.property, situsAddress: '703 PRESSLER ST AUSTIN 78703' },
+    };
+    const screened = response(travis);
+    screened.evidence.austinZoning = {
+      status: 'preliminary-spatial-evidence',
+      sourceCandidates: { zoning: 3, etodOverlay: 0 },
+      observations: [
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'MF-4-NP' },
+          intersectsParcel: true, parcelPercent: 0.1 },
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'SF-2-HD-NP' },
+          intersectsParcel: true, parcelPercent: 99.9 },
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'MF-4-NP' },
+          intersectsParcel: false, parcelPercent: 0 },
+      ],
+    };
+    card = createBdpPropertyCard({ screeningLoader: async () => screened });
+    card.show(travis);
+    await tick();
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const value = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.equal(value('Zoning GIS candidates'), '3');
+    assert.match(value('Zoning intersections'), /MF-4-NP · 0.1%/);
+    assert.match(value('Zoning intersections'), /SF-2-HD-NP · 99.9%/);
+    assert.match(value('Zoning boundary review'), /REQUIRED.*multiple mapped zoning polygons/);
+    assert.match(value('Small GIS zoning overlaps'), /MF-4-NP · 0.1%.*verify/);
+    assert.equal(value('ETOD GIS candidates'), '0');
+    assert.match(value('ETOD mapped overlap'), /UNKNOWN.*not ETOD clearance/);
+    assert.match(value('ETOD entitlement'), /UNVERIFIED/);
+    assert.match(value('Zoning determination'), /UNVERIFIED/);
+    assert.notEqual(value('Acquisition recommendation'), 'BUY');
+  } finally {
+    card?.destroy();
+    globalThis.document = old;
+  }
+});
