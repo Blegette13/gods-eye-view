@@ -231,6 +231,45 @@ ambiguous boundary path. The diagnostic does **not** yet feed the live
 property card, and no score/clearance or acquisition recommendation may
 change based on these preliminary geometry-only source relationships.
 
+### Austin jurisdiction envelope screen in the unified parcel panel (Step 37)
+
+A successful live jurisdiction diagnostic on Travis parcel `302959` (611 W
+Annie St) returned Austin ArcGIS jurisdiction OBJECTID `1326`, type
+`FULL`, details `FULL PURPOSE`, for both *intersects-envelope* and
+*query-envelope-within-target-polygon* relationships. This means the **GIS
+parcel envelope** is preliminarily mapped within one returned Austin
+jurisdiction feature. It is NOT verified legal jurisdiction, boundary-survey
+accuracy, ordinance applicability, zoning entitlement, or permit approval.
+
+The unified BDP screening response now returns separate supplementary
+`evidence.austinJurisdiction` / `errors.austinJurisdiction` for parcels
+identified as Travis County. It uses a City of Austin REST *attributes-only*
+query and works without a separate front-end request or local PostGIS. The
+original property panel includes `AUSTIN GIS / JURISDICTION SCREEN` with
+the mapped boundary relationship, candidates, and visible legal caveats.
+The existing `AUSTIN GIS / PRELIMINARY ZONING` remains a separate PostGIS
+polygon-overlap section. Either supplemental feed can fail independently.
+Neither contributes to source coverage, acquisition scoring or a buy verdict.
+
+Run after updating `bdp-development`:
+
+```powershell
+node --test src/bdp/entitlement/austinJurisdictionRelations.test.mjs server/providers/bdp-austin-jurisdiction.test.mjs src/bdp/intelligence/screeningSession.test.mjs src/bdp/ui/propertyCard.test.mjs
+npm.cmd run dev
+```
+
+The corresponding live diagnostic remains:
+
+```powershell
+node scripts/bdp/diagnose-austin-jurisdiction.mjs 302959
+```
+
+Still required: verify map currency, correct governing agency and city/ETJ
+legal jurisdiction; obtain authoritative zoning confirmation, all relevant
+overlays, property restrictions and applicable development regulations.
+Mapped jurisdiction does not establish buildability or vested development
+rights.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
