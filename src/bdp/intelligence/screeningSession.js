@@ -32,6 +32,7 @@ import { deriveCulturalFlags } from './culturalFlags.js';
 import { scoreEntitlementZoning } from './entitlementScore.js';
 import { deriveEntitlementFlags } from './entitlementFlags.js';
 import { deriveGrowthRadarFlags } from './growthRadarFlags.js';
+import { eligibleForSanAntonioPilot, unavailableRegionalPilotEvidence } from './regionScope.js';
 
 export const BDP_SCREENING_SOURCES = Object.freeze([
   'energy',
@@ -103,9 +104,15 @@ export async function runBdpParcelScreening(parcel, {
     growthRadar: growthRadarLoader,
   });
 
+  const regionSupported = eligibleForSanAntonioPilot(parcel);
   const settled = await Promise.allSettled(
     [
-      ...BDP_SCREENING_SOURCES.map((source) => Promise.resolve().then(() => loaders[source](parcel))),
+      ...BDP_SCREENING_SOURCES.map((source) => Promise.resolve().then(() => {
+        if (!regionSupported && ['entitlement', 'growthRadar'].includes(source)) {
+          return unavailableRegionalPilotEvidence(source);
+        }
+        return loaders[source](parcel);
+      })),
       Promise.resolve().then(() => developmentConstraintsLoader ? developmentConstraintsLoader(parcel) : null),
     ],
   );
