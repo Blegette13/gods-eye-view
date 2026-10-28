@@ -85,6 +85,7 @@ export async function runBdpParcelScreening(parcel, {
   growthRadarLoader = fetchBdpParcelGrowthRadar,
   // Optional unscored Travis GIS preview; no additional source coverage credit.
   austinZoningLoader = null,
+  austinJurisdictionLoader = null,
 } = {}) {
   if (!parcel?.property?.geometry) {
     throw new Error('Parcel geometry is required for BDP screening');
@@ -118,6 +119,8 @@ export async function runBdpParcelScreening(parcel, {
       Promise.resolve().then(() => developmentConstraintsLoader ? developmentConstraintsLoader(parcel) : null),
       Promise.resolve().then(() => austinZoningLoader && eligibleForAustinGisPilot(parcel)
         ? austinZoningLoader(parcel) : null),
+      Promise.resolve().then(() => austinJurisdictionLoader && eligibleForAustinGisPilot(parcel)
+        ? austinJurisdictionLoader(parcel) : null),
     ],
   );
 
@@ -137,6 +140,10 @@ export async function runBdpParcelScreening(parcel, {
   evidence.austinZoning = settledValue(austinResult);
   errors.austinZoning = austinResult.status === 'rejected'
     ? serializeError(austinResult.reason) : null;
+  const jurisdictionResult = settled[BDP_SCREENING_SOURCES.length + 2];
+  evidence.austinJurisdiction = settledValue(jurisdictionResult);
+  errors.austinJurisdiction = jurisdictionResult.status === 'rejected'
+    ? serializeError(jurisdictionResult.reason) : null;
   evidence.acquisitionEconomics = evaluateAcquisitionEconomics(parcel);
   evidence.ownershipTitle = buildOwnershipTitleReview(parcel, evidence);
 
