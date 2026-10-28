@@ -2,6 +2,7 @@ import {
   BDP_TERRAIN_API_BASE,
   build3depStatisticsUrl,
   normalizeTerrainParcelRequest,
+  normalizeArcgisBandStatistics,
   summarizeTerrainStatistics,
 } from '../../src/bdp/terrain/terrainContract.js';
 
@@ -56,12 +57,30 @@ async function fetchSmallJson(url) {
   return payload;
 }
 
-export async function screenBdpParcelTerrain(input) {
+export async function screenBdpParcelTerrain(input, { fetchJson = fetchSmallJson } = {}) {
   normalizeTerrainParcelRequest(input);
-  const [elevation, slope] = await Promise.all([
-    fetchSmallJson(build3depStatisticsUrl(input, { mode: 'elevation' })),
-    fetchSmallJson(build3depStatisticsUrl(input, { mode: 'slope' })),
+  const responses = await Promise.allSettled([
+    fetchJson(build3depStatisticsUrl(input, { mode: 'elevation' })),
+    fetchJson(build3depStatisticsUrl(input, { mode: 'slope' })),
   ]);
+  // A successful HTTP response can still contain an empty statistics array.
+  // Verify each source separately so a slow elevation request does not hide
+  // authentic slope measurements (and vice versa).
+  const usable = (result) => {
+    if (result.status !== 'fulfilled') return null;
+    try {
+      normalizeArcgisBandStatistics(result.value);
+      return result.value;
+    } catch {
+      return null;
+    }
+  };
+  const elevation = usable(responses[0]);
+  const slope = usable(responses[1]);
+  if (!elevation && !slope) {
+    throw responses.find((result) => result.status === 'rejected')?.reason
+      || new Error('USGS 3DEP returned no usable terrain evidence');
+  }
   return summarizeTerrainStatistics(elevation, slope);
 }
 
