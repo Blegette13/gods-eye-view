@@ -132,6 +132,38 @@ verify city/ETJ boundaries and overlay/regulatory applicability, and check
 data currency. Empty or capped GIS results stay UNKNOWN; mapped geometry is
 not a legal boundary survey or official zoning verification letter.
 
+### Austin PostGIS intersection diagnostic (Step 33)
+
+The Austin jurisdiction attributes-only source audit now returns a City of
+Austin FULL PURPOSE *envelope candidate* for TCAD property `302959`.
+The same test found two `SF-3-NP` zoning polygons and one `ETOD Overlay
+Eligibility` polygon. The first two sources have geometry suitable for a
+**read-only PostGIS polygon intersection diagnostic**, implemented as:
+
+```powershell
+node --test src/bdp/entitlement/austinParcelOverlap.test.mjs
+node scripts/bdp/diagnose-austin-overlap.mjs 302959
+```
+
+Run the second command in a local PowerShell session with `BDP_PG_SERVICE`
+and `PGSERVICEFILE` configured for the existing PostGIS database.
+The script downloads actual TCAD polygon geometry, complete bounded Austin
+zoning and ETOD candidate polygons, and sends a SQL query to PostGIS through
+stdin. EPSG:5070 is used for preliminary **area measurements**; results
+include each candidate's actual intersection area and proportion of the
+mapped parcel. Overlapping polygons must NOT be added together as though
+they were disjoint. Invalid polygons, capped queries and missing evidence
+fail without declaring zoning or land-use clearance.
+
+This is an **unverified GIS pilot**. It has not yet been integrated into the
+unified screening model/property panel. City jurisdiction still lacks a
+parcel-exact intersection because we cannot substitute the attributes-only
+envelope candidate for the huge official jurisdiction polygon. The TCAD
+boundary is not a legal survey, `Eligible` on the ETOD source is not a
+development approval, GIS source currency is unverified, and no land-use
+regulations or permit availability have been adjudicated. Acquisition
+recommendations must remain withheld where evidence is incomplete.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
