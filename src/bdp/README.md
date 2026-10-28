@@ -231,6 +231,18 @@ ambiguous boundary path. The diagnostic does **not** yet feed the live
 property card, and no score/clearance or acquisition recommendation may
 change based on these preliminary geometry-only source relationships.
 
+### Zoning map sliver display precision (Step 38)
+
+The Travis County 701 Pressler St field validation returned three positive
+mapped zoning polygon intersections, including a tiny SF-3-NP sliver which
+rounded to `0%` at one decimal place. The panel now displays positive
+shares smaller than `0.1%` as `<0.1%` rather than `0%`, and a near-100%
+share as `<100%` rather than implying exact full mapped coverage. These
+are display-only changes. All positive slivers remain flagged for zoning
+boundary review rather than being silently discarded; GIS overlaps are not
+a legal split-zoning finding. Run
+`node --test src/bdp/ui/propertyCard.test.mjs` to validate.
+
 ### Austin jurisdiction envelope screen in the unified parcel panel (Step 37)
 
 A successful live jurisdiction diagnostic on Travis parcel `302959` (611 W
