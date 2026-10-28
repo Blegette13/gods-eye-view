@@ -86,7 +86,12 @@ function normalizeCollection(input, { geometryType, label, fields }) {
       geometry: feature.geometry,
       properties: Object.fromEntries(fields.map((field) => [field, feature.properties?.[field] ?? null])),
     }));
-  return Object.freeze({ type: 'FeatureCollection', features });
+  return Object.freeze({
+    type: 'FeatureCollection',
+    features,
+    // Assigned only after the server verifies every requested ArcGIS object ID.
+    bdpFullObjectIdCoverage: input.bdpFullObjectIdCoverage === true,
+  });
 }
 
 export function normalizeTxdotRoadways(input) {
