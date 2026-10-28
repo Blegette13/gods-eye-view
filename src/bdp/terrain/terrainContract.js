@@ -4,7 +4,9 @@ export const USGS_3DEP_IMAGE_SERVER =
 export const USGS_3DEP_STATS_URL = `${USGS_3DEP_IMAGE_SERVER}/computeStatisticsHistograms`;
 export const TERRAIN_MAX_PARCEL_POSITIONS = 20_000;
 export const TERRAIN_MAX_PARCEL_SPAN_DEGREES = 1.5;
-export const TERRAIN_SCREENING_PIXEL_SIZE_METERS = 10;
+// The 3DEP ImageServer chooses its native resolution; until the server
+// reports a pixel size, BDP must not claim a fixed 10 m sampling resolution.
+export const TERRAIN_SCREENING_PIXEL_SIZE_METERS = null;
 
 function finiteNumber(value, label) {
   const number = Number(value);
@@ -104,16 +106,17 @@ export function normalizeTerrainParcelRequest(input = {}) {
 export function build3depStatisticsUrl(input, { mode = 'elevation' } = {}) {
   const request = normalizeTerrainParcelRequest(input);
   if (!['elevation', 'slope'].includes(mode)) throw new Error(`Unsupported terrain statistics mode: ${mode}`);
-  const renderingRule = mode === 'slope'
-    ? { rasterFunction: 'Slope Degrees' }
-    : { rasterFunction: 'None' };
   const params = new URLSearchParams({
     geometryType: 'esriGeometryPolygon',
     geometry: JSON.stringify(request.arcgisGeometry),
-    renderingRule: JSON.stringify(renderingRule),
-    pixelSize: `${TERRAIN_SCREENING_PIXEL_SIZE_METERS},${TERRAIN_SCREENING_PIXEL_SIZE_METERS}`,
     f: 'json',
   });
+  // Live 3DEP diagnostics: specifying 10,10 pixelSize returned empty
+  // statistics. Omitting it lets the service select its native resolution.
+  // Raw elevation needs no raster function; slopes require Slope Degrees.
+  if (mode === 'slope') {
+    params.set('renderingRule', JSON.stringify({ rasterFunction: 'Slope Degrees' }));
+  }
   return `${USGS_3DEP_STATS_URL}?${params.toString()}`;
 }
 
@@ -125,7 +128,10 @@ function finiteOrNull(value) {
 
 export function normalizeArcgisBandStatistics(payload) {
   const statistic = Array.isArray(payload?.statistics) ? payload.statistics[0] : null;
-  if (!statistic) throw new Error('USGS 3DEP returned no raster statistics');
+  if (!statistic || !Number.isFinite(Number(statistic.mean))
+    || !Number.isFinite(Number(statistic.count)) || Number(statistic.count) < 1) {
+    throw new Error('USGS 3DEP returned no usable raster statistics');
+  }
   return Object.freeze({
     min: finiteOrNull(statistic.min),
     max: finiteOrNull(statistic.max),
@@ -148,30 +154,34 @@ function terrainClass(meanSlope) {
 }
 
 export function summarizeTerrainStatistics(elevationPayload, slopePayload) {
-  const elevation = normalizeArcgisBandStatistics(elevationPayload);
-  const slope = normalizeArcgisBandStatistics(slopePayload);
-  const reliefMeters = Number.isFinite(elevation.min) && Number.isFinite(elevation.max)
+  const elevation = elevationPayload ? normalizeArcgisBandStatistics(elevationPayload) : null;
+  const slope = slopePayload ? normalizeArcgisBandStatistics(slopePayload) : null;
+  if (!elevation && !slope) throw new Error('USGS 3DEP returned no usable terrain evidence');
+  const reliefMeters = Number.isFinite(elevation?.min) && Number.isFinite(elevation?.max)
     ? elevation.max - elevation.min
     : null;
 
   return Object.freeze({
+    coverage_complete: Boolean(elevation && slope),
+    elevation_source_status: elevation ? 'returned' : 'unavailable',
+    slope_source_status: slope ? 'returned' : 'unavailable',
     elevation: Object.freeze({
-      minMeters: elevation.min,
-      maxMeters: elevation.max,
-      meanMeters: elevation.mean,
+      minMeters: elevation?.min ?? null,
+      maxMeters: elevation?.max ?? null,
+      meanMeters: elevation?.mean ?? null,
       reliefMeters,
-      minFeet: metersToFeet(elevation.min),
-      maxFeet: metersToFeet(elevation.max),
-      meanFeet: metersToFeet(elevation.mean),
+      minFeet: metersToFeet(elevation?.min),
+      maxFeet: metersToFeet(elevation?.max),
+      meanFeet: metersToFeet(elevation?.mean),
       reliefFeet: metersToFeet(reliefMeters),
     }),
     slope: Object.freeze({
-      minDegrees: slope.min,
-      maxDegrees: slope.max,
-      meanDegrees: slope.mean,
-      standardDeviation: slope.standardDeviation,
+      minDegrees: slope?.min ?? null,
+      maxDegrees: slope?.max ?? null,
+      meanDegrees: slope?.mean ?? null,
+      standardDeviation: slope?.standardDeviation ?? null,
     }),
-    terrainClass: terrainClass(slope.mean),
+    terrainClass: terrainClass(slope?.mean),
     screeningPixelSizeMeters: TERRAIN_SCREENING_PIXEL_SIZE_METERS,
   });
 }
