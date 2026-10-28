@@ -10,9 +10,15 @@ function upstreamFailure(message) {
   return Object.assign(new Error(message), { code: 'TXDOT_UPSTREAM_FAILED' });
 }
 
-async function requestJson(url, label, { fetchImpl, maxBytes }) {
+async function requestJson(url, label, { fetchImpl, maxBytes, formParams = null }) {
+  const post = formParams instanceof URLSearchParams;
   const response = await fetchImpl(url, {
-    headers: { accept: 'application/json,application/geo+json' },
+    method: post ? 'POST' : 'GET',
+    headers: {
+      accept: 'application/json,application/geo+json',
+      ...(post ? { 'content-type': 'application/x-www-form-urlencoded;charset=UTF-8' } : {}),
+    },
+    ...(post ? { body: formParams.toString() } : {}),
     signal: AbortSignal.timeout(SOURCE_TIMEOUT_MS),
   });
   if (!response.ok) throw upstreamFailure(`${label} request failed (HTTP ${response.status})`);
@@ -80,12 +86,18 @@ export async function fetchCompleteTxdotCollection(urlText, label, normalize, {
   for (let index = 0; index < pages.length; index += CONCURRENT_PAGES) {
     const group = pages.slice(index, index + CONCURRENT_PAGES);
     const responses = await Promise.all(group.map(async (pageIds) => {
-      const pageUrl = new URL(original);
-      pageUrl.searchParams.set('objectIds', pageIds.join(','));
-      pageUrl.searchParams.set('resultRecordCount', String(PAGE_SIZE));
-      pageUrl.searchParams.set('f', 'geojson');
-      const payload = await requestJson(pageUrl, label, {
-        fetchImpl, maxBytes: MAX_SOURCE_BYTES,
+      // A 200-ID GET URL returned HTTP 404 from the public gateway at
+      // ~2,227 characters, while 10 IDs (535 chars) succeeded. ArcGIS layer
+      // /query supports POST, so send long ID batches as form data, not URLs.
+      // Retain every original spatial constraint and field selection.
+      const pageParams = new URLSearchParams(original.searchParams);
+      pageParams.set('objectIds', pageIds.join(','));
+      pageParams.set('resultRecordCount', String(PAGE_SIZE));
+      pageParams.set('f', 'geojson');
+      const endpoint = new URL(original);
+      endpoint.search = '';
+      const payload = await requestJson(endpoint, label, {
+        fetchImpl, maxBytes: MAX_SOURCE_BYTES, formParams: pageParams,
       });
       if (payload?.type !== 'FeatureCollection' || !Array.isArray(payload.features)
         || payload.exceededTransferLimit === true || payload.features.length !== pageIds.length) {
