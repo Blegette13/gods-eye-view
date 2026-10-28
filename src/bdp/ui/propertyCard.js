@@ -2,6 +2,7 @@ import { ACQUISITION_COST_FIELDS, evaluateAcquisitionEconomics } from '../econom
 import { fetchBdpParcelIntelligence } from '../intelligence/client.js';
 import { buildOwnershipTitleReview, TITLE_REVIEW_REFERENCES } from '../title/ownershipReview.js';
 import { eligibleForAustinGisPilot } from '../intelligence/regionScope.js';
+import { AUSTIN_REGULATORY_REFERENCES, buildAustinRegulatoryReview } from '../entitlement/austinRegulatoryReview.js';
 
 function formatMoney(value) {
   if (value === null || value === undefined || value === '' || typeof value === 'boolean') return '—';
@@ -440,6 +441,59 @@ function entitlementRows(metrics, { austinPreviewAvailable = false } = {}) {
 }
 
 
+function austinRegulatoryReferenceRow(label, key, title) {
+  const url = AUSTIN_REGULATORY_REFERENCES[key];
+  if (!url || !Object.values(AUSTIN_REGULATORY_REFERENCES).includes(url)) {
+    return row(label, 'Official source link not configured');
+  }
+  const element = row(label, '');
+  const link = document.createElement('a');
+  link.href = url;
+  link.textContent = title;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  element.children[1].replaceChildren(link);
+  return element;
+}
+
+function austinRegulatoryRows(evidence) {
+  const report = buildAustinRegulatoryReview({
+    austinZoning: evidence.austinZoning,
+    austinJurisdiction: evidence.austinJurisdiction,
+  });
+  const codes = report.zoningCodeCandidates;
+  const zoningAvailable = evidence.austinZoning?.status === 'preliminary-spatial-evidence';
+  return [
+    row('Regulatory status', 'RESEARCH REQUIRED · no verified zoning rights or buildability'),
+    row('GIS zoning candidates', codes.length
+      ? codes.join('; ') + ' · UNVERIFIED'
+      : 'UNKNOWN · no positive mapped zoning classifications confirmed by this screen'),
+    row('Multiple GIS classes', codes.length > 1
+      ? 'REVIEW REQUIRED · multiple mapped classifications, including small boundary slivers'
+      : 'UNKNOWN · no confirmation of exclusive legally controlling district'),
+    row('Neighborhood plan indicator', report.neighborhoodPlanIndicator
+      ? 'GIS CODE INCLUDES NP · verify adopted neighborhood plan and parcel ordinances'
+      : 'UNKNOWN · missing NP suffix does not establish no neighborhood restrictions'),
+    row('Historic review indicator', report.historicDesignationIndicator
+      ? 'GIS CODE INCLUDES H/HD · verify historic district and review requirements'
+      : 'UNKNOWN · check all official historic overlays even without H/HD suffix'),
+    row('Permitted uses', 'UNKNOWN · read current § 25-2-491 and parcel-specific ordinances'),
+    row('Setbacks / height / density', 'UNKNOWN · read current § 25-2-492, combining districts and applicable amendments'),
+    row('Applicable ordinances', 'UNKNOWN · official property zoning and ordinance history not yet retrieved'),
+    row('Buildability / feasibility', 'NOT DETERMINED · survey, legal use, regulatory review and constraints outstanding'),
+    row('Regulatory evidence coverage', zoningAvailable
+      ? 'GIS candidate codes only · NO legal/regulatory clearance'
+      : 'UNKNOWN · Austin zoning GIS preview unavailable or not screened'),
+    austinRegulatoryReferenceRow('Official property profile', 'propertyProfile', 'Open Austin Property Profile'),
+    austinRegulatoryReferenceRow('Formal zoning verification', 'zoningVerification', 'Austin Planning verification process'),
+    austinRegulatoryReferenceRow('Zoning & combining districts', 'zoningResources', 'Official zoning resources'),
+    austinRegulatoryReferenceRow('Current development code', 'landDevelopmentCode', 'Permitted use and site standards'),
+    austinRegulatoryReferenceRow('Annexation / jurisdiction', 'addressingVerification', 'Official jurisdiction lookup'),
+    ...(report.historicDesignationIndicator
+      ? [austinRegulatoryReferenceRow('Historic preservation', 'historicPreservation', 'Official historic preservation resources')] : []),
+  ];
+}
+
 function austinJurisdictionRows(metrics) {
   if (!metrics) return [
     row('Mapped jurisdiction', 'UNKNOWN · no municipal GIS relationship evidence'),
@@ -745,6 +799,7 @@ function appendScreeningResult(containers, screening) {
       ? 'UNAVAILABLE · ArcGIS jurisdiction screening failed; legal jurisdiction UNKNOWN'
       : 'NOT SCREENED · mapped jurisdiction unavailable'),
       row('Legal jurisdiction', 'UNVERIFIED · confirm with responsible authority')]));
+  containers.austinRegulatory.replaceChildren(...austinRegulatoryRows(evidence));
   containers.transportation.replaceChildren(...(
     evidence.transportation
       ? transportationRows(evidence.transportation)
@@ -870,6 +925,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       entitlement: document.createElement('div'),
       austinZoning: document.createElement('div'),
       austinJurisdiction: document.createElement('div'),
+      austinRegulatory: document.createElement('div'),
       transportation: document.createElement('div'),
       utilities: document.createElement('div'),
       waterRights: document.createElement('div'),
@@ -892,6 +948,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     containers.entitlement.append(row('Entitlement', 'Loading…'));
     containers.austinZoning.append(row('Austin zoning GIS', 'Loading preliminary intersections…'));
     containers.austinJurisdiction.append(row('Austin GIS jurisdiction', 'Loading preliminary envelope relationships…'));
+    containers.austinRegulatory.append(row('Austin regulations', 'Legal review required; authoritative sources linked below…'));
     containers.transportation.append(row('TxDOT screening', 'Loading…'));
     containers.utilities.append(row('Utilities', 'Loading…'));
     containers.waterRights.append(row('TCEQ water rights', 'Loading…'));
@@ -910,6 +967,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       ...(eligibleForAustinGisPilot(parcel) ? [
         sectionHeading('AUSTIN GIS / JURISDICTION SCREEN'), containers.austinJurisdiction,
         sectionHeading('AUSTIN GIS / PRELIMINARY ZONING'), containers.austinZoning,
+        sectionHeading('AUSTIN / REGULATORY REVIEW'), containers.austinRegulatory,
       ] : []),
       sectionHeading('ACCESS / TXDOT TRAFFIC'), containers.transportation,
       sectionHeading('UTILITIES / INFRASTRUCTURE'), containers.utilities,
