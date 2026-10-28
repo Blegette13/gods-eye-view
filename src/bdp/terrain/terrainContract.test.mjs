@@ -31,7 +31,9 @@ test('builds elevation and slope statistics URLs against USGS 3DEP', () => {
   const slope = new URL(build3depStatisticsUrl(parcel, { mode: 'slope' }));
   assert.equal(elevation.searchParams.get('geometryType'), 'esriGeometryPolygon');
   assert.equal(elevation.searchParams.get('f'), 'json');
-  assert.equal(JSON.parse(elevation.searchParams.get('renderingRule')).rasterFunction, 'None');
+  assert.equal(elevation.searchParams.has('renderingRule'), false);
+  assert.equal(elevation.searchParams.has('pixelSize'), false);
+  assert.equal(slope.searchParams.has('pixelSize'), false);
   assert.equal(JSON.parse(slope.searchParams.get('renderingRule')).rasterFunction, 'Slope Degrees');
 });
 
@@ -44,5 +46,26 @@ test('summarizes elevation and slope statistics into tract metrics', () => {
   assert.ok(summary.elevation.meanFeet > 360 && summary.elevation.meanFeet < 370);
   assert.equal(summary.slope.meanDegrees, 6);
   assert.equal(summary.terrainClass, 'moderate');
-  assert.equal(summary.screeningPixelSizeMeters, 10);
+  assert.equal(summary.screeningPixelSizeMeters, null);
+  assert.equal(summary.coverage_complete, true);
+});
+
+test('partial 3DEP response preserves real slope without inventing an elevation or sample size', () => {
+  const slope = { statistics: [{ min: 0, max: 65, mean: 4.075, count: 172215 }] };
+  const result = summarizeTerrainStatistics(null, slope);
+  assert.equal(result.coverage_complete, false);
+  assert.equal(result.elevation_source_status, 'unavailable');
+  assert.equal(result.slope_source_status, 'returned');
+  assert.equal(result.elevation.meanFeet, null);
+  assert.equal(result.elevation.reliefFeet, null);
+  assert.equal(result.slope.meanDegrees, 4.075);
+  assert.equal(result.terrainClass, 'gentle');
+  assert.equal(result.screeningPixelSizeMeters, null);
+});
+
+test('terrain refuses zero count, missing mean, and fully absent statistics', () => {
+  const valid = { statistics: [{ min: 10, max: 12, mean: 11, count: 10 }] };
+  assert.throws(() => summarizeTerrainStatistics(null, null), /no usable terrain evidence/);
+  assert.throws(() => summarizeTerrainStatistics({ statistics: [] }, valid), /no usable raster statistics/);
+  assert.throws(() => summarizeTerrainStatistics({ statistics: [{ mean: 3, count: 0 }] }, valid), /no usable raster statistics/);
 });
