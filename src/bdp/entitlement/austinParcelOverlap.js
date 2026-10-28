@@ -113,6 +113,7 @@ export function summarizeAustinOverlapQuery(result) {
     if (!['zoning', 'etodOverlay'].includes(entry.sourceName)
       || entry.sourceGeometryValid !== true
       || typeof entry.intersectsParcel !== 'boolean'
+      || area === null || area === undefined || pct === null || pct === undefined
       || !Number.isFinite(Number(area)) || Number(area) < 0
       || !Number.isFinite(Number(pct)) || Number(pct) < 0 || Number(pct) > 100.0001) {
       throw new Error('Austin PostGIS returned an invalid source measurement; retain UNKNOWN');
@@ -129,6 +130,11 @@ export function summarizeAustinOverlapQuery(result) {
     status: 'preliminary-spatial-evidence',
     parcelAreaM2: Number(result.parcelAreaM2),
     observations,
+    sourceCandidatePresence: Object.freeze({
+      zoning: observations.some((item) => item.sourceName === 'zoning'),
+      etodOverlay: observations.some((item) => item.sourceName === 'etodOverlay'),
+    }),
+    emptySourceMeansUnknown: true, // no GIS candidates is not a legal clearance
     sourceTotalsNotSummed: true, // overlapping polygons can double-count
     legalZoningVerified: false,
     legalJurisdictionVerified: false,
