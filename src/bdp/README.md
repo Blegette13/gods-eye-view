@@ -174,9 +174,17 @@ independent client request. The original God's Eye View interface adds
 **AUSTIN GIS / PRELIMINARY ZONING** only for the Travis pilot.
 
 The section discloses polygon overlap shares, but omits zero-area envelope
-candidates from the list of positive intersections. It explicitly reports
-jurisdiction, source currency, legal entitlement, and ETOD adoption as
-**UNVERIFIED**. The ETOD `Eligible` attribute is not an adopted density
+candidates from the list of positive intersections. When multiple zoning
+polygons intersect a mapped parcel, the panel now requires a **boundary
+review** (particularly for GIS slivers under 1%, such as the 703 Pressler
+Street pilot observation of 0.1% MF-4-NP and 99.9% SF-2-HD-NP).
+Do not automatically discard the smaller sliver or treat it as legally
+applicable without an official parcel/zoning boundary review. Zero ETOD
+candidates are **UNKNOWN**, not a declaration that no ETOD rules apply.
+The Bexar/San Antonio entitlement pilot is explicitly labeled out of scope
+for an Austin/Travis parcel even when the Austin GIS preview succeeds.
+The pilot reports jurisdiction, source currency, legal entitlement,
+and ETOD adoption as **UNVERIFIED**. The ETOD `Eligible` attribute is not an adopted density
 bonus or development permit; official zoning must be checked in Austin's
 Property Profile/with Austin Planning. No Austin preview result contributes
 score-model coverage, red-flag clearance, buy recommendation or the 13-source
