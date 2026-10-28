@@ -29,6 +29,21 @@ zoning implementation. Expand with verified local jurisdiction polygon sources,
 service metadata, data currency, and appropriate permitting/county review before
 assigning regional land-use screens beyond this pilot.
 
+## Live-source troubleshooting (October 27, 2026)
+
+The first end-to-end Travis property session returned three isolated source failures:
+`terrain`: USGS 3DEP replied without raster statistics (no slope or elevation
+result can be inferred); `transportation`: TxDOT AADT returned a capped
+candidate set (proximity metrics are withheld rather than treating incomplete
+rows as all roads); and `utilities`: Windows `psql --command` exceeded its
+process argument limit (`spawn ENAMETOOLONG`) when supplied embedded GIS
+geometry. The utility provider now pipes SQL into `psql --file -` with bounded
+output and timeouts; this needs live verification against the local PostGIS
+container. Do not reduce GIS query extent merely to avoid limits unless the
+reported metric's coverage is correspondingly constrained or explicitly unknown.
+No USGS or TxDOT feed is considered restored without a passing live property
+screen and complete authoritative response.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
