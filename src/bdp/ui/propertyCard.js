@@ -3,6 +3,7 @@ import { fetchBdpParcelIntelligence } from '../intelligence/client.js';
 import { buildOwnershipTitleReview, TITLE_REVIEW_REFERENCES } from '../title/ownershipReview.js';
 import { eligibleForAustinGisPilot } from '../intelligence/regionScope.js';
 import { AUSTIN_REGULATORY_REFERENCES, buildAustinRegulatoryReview } from '../entitlement/austinRegulatoryReview.js';
+import { buildAustinRegulatoryDueDiligence } from '../entitlement/austinRegulatoryDueDiligence.js';
 
 function formatMoney(value) {
   if (value === null || value === undefined || value === '' || typeof value === 'boolean') return '—';
@@ -456,6 +457,35 @@ function austinRegulatoryReferenceRow(label, key, title) {
   return element;
 }
 
+function austinDueDiligenceDetails(evidence) {
+  const queue = buildAustinRegulatoryDueDiligence({
+    austinZoning: evidence.austinZoning,
+    austinJurisdiction: evidence.austinJurisdiction,
+  });
+  const panel = document.createElement('details');
+  const summary = document.createElement('summary');
+  summary.textContent = `Next evidence requests (${queue.openCount} outstanding)`;
+  panel.append(summary);
+  for (const item of queue.tasks) {
+    const entry = row(
+      `${item.priority.toUpperCase()} · ${item.title}`,
+      `UNVERIFIED · ${item.requirement}`,
+    );
+    entry.dataset.bdpVerificationState = item.state;
+    entry.dataset.bdpVerificationId = item.id;
+    if (item.sourceKey && item.sourceUrl === AUSTIN_REGULATORY_REFERENCES[item.sourceKey]) {
+      const link = document.createElement('a');
+      link.textContent = ' Open official reference';
+      link.href = item.sourceUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      entry.children[1].append(link);
+    }
+    panel.append(entry);
+  }
+  return panel;
+}
+
 function austinRegulatoryRows(evidence) {
   const report = buildAustinRegulatoryReview({
     austinZoning: evidence.austinZoning,
@@ -465,6 +495,7 @@ function austinRegulatoryRows(evidence) {
   const zoningAvailable = evidence.austinZoning?.status === 'preliminary-spatial-evidence';
   return [
     row('Regulatory status', 'RESEARCH REQUIRED · no verified zoning rights or buildability'),
+    austinDueDiligenceDetails(evidence),
     row('GIS zoning candidates', codes.length
       ? codes.join('; ') + ' · UNVERIFIED'
       : 'UNKNOWN · no positive mapped zoning classifications confirmed by this screen'),
@@ -488,7 +519,7 @@ function austinRegulatoryRows(evidence) {
     austinRegulatoryReferenceRow('Formal zoning verification', 'zoningVerification', 'Austin Planning verification process'),
     austinRegulatoryReferenceRow('Zoning & combining districts', 'zoningResources', 'Official zoning resources'),
     austinRegulatoryReferenceRow('Current development code', 'landDevelopmentCode', 'Permitted use and site standards'),
-    austinRegulatoryReferenceRow('Annexation / jurisdiction', 'addressingVerification', 'Official jurisdiction lookup'),
+    austinRegulatoryReferenceRow('City address check', 'addressingVerification', 'Austin address verification (not legal jurisdiction)'),
     ...(report.historicDesignationIndicator
       ? [austinRegulatoryReferenceRow('Historic preservation', 'historicPreservation', 'Official historic preservation resources')] : []),
   ];
