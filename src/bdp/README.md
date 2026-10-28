@@ -204,6 +204,33 @@ geometry, every zoning overlay, current legal zoning status, boundary survey
 accuracy, or permitted development density. Keep acquisitions withheld where
 source facts or legal review are missing.
 
+### Austin jurisdiction spatial-relation diagnostic (Step 36)
+
+The God’s Eye / BDP Travis pilot now includes a read-only jurisdiction
+**envelope relationship** diagnostic that uses Austin's official
+`Shared/JurisdictionsFill/MapServer/0` layer without downloading its enormous
+full-city polygon. ArcGIS performs `esriSpatialRelIntersects` and
+`esriSpatialRelWithin` comparisons against the **bounding envelope**
+of a full TCAD parcel. A single GIS feature matching both relationships
+suggests the entire *envelope* may be within a mapped jurisdiction; multiple
+candidates trigger boundary review. This does **not** establish legally
+controlling city/ETJ jurisdiction, surveyed parcel boundaries, effective
+annexation status, permitted uses, or a precise PostGIS area share. In
+particular, no source layer attributes may be treated as current municipal
+authority without agency verification.
+
+Run:
+```powershell
+node --test src/bdp/entitlement/austinJurisdictionRelations.test.mjs
+node scripts/bdp/diagnose-austin-jurisdiction.mjs 302959
+```
+
+The first diagnostic property is 611 W Annie St; the second live source
+validation should be a parcel close to a city/ETJ border to exercise the
+ambiguous boundary path. The diagnostic does **not** yet feed the live
+property card, and no score/clearance or acquisition recommendation may
+change based on these preliminary geometry-only source relationships.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
