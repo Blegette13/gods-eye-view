@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { eligibleForSanAntonioPilot, unavailableRegionalPilotEvidence } from './regionScope.js';
+import { eligibleForSanAntonioPilot, eligibleForAustinGisPilot, unavailableRegionalPilotEvidence } from './regionScope.js';
 
 test('San Antonio pilot runs for Bexar parcels, not Travis or unknown county', () => {
   assert.equal(eligibleForSanAntonioPilot({ id: '48029:123' }), true);
@@ -22,4 +22,13 @@ test('regional sources explicitly disclose unsupported coverage without fabricat
     assert.equal(evidence.mtp_crossing_count, undefined);
   }
   assert.throws(() => unavailableRegionalPilotEvidence('flood'), /Unsupported/);
+});
+
+test('Austin pilot only loads for Travis parcels and never declares municipal jurisdiction', () => {
+  assert.equal(eligibleForAustinGisPilot({ county: 'Travis', countyFips: '48453' }), true);
+  assert.equal(eligibleForAustinGisPilot({ id: '48453:302959' }), true);
+  assert.equal(eligibleForAustinGisPilot({ county: 'Bexar', countyFips: '48029' }), false);
+  assert.equal(eligibleForAustinGisPilot({ county: 'Bexar', id: '48453:302959' }), false);
+  assert.equal(eligibleForAustinGisPilot({ county: 'Travis', id: '48029:123' }), false);
+  assert.equal(eligibleForAustinGisPilot({}), false);
 });
