@@ -55,7 +55,7 @@ function formatPercent(value) {
 function formatMappedIntersectionPercent(value) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100) return '—';
   if (value > 0 && value < 0.1) return '<0.1%';
-  if (value > 99.95 && value < 100) return '<100%';
+  if (value >= 99.95 && value < 100) return '<100%';
   return formatPercent(value);
 }
 
