@@ -301,3 +301,57 @@ test('Austin zoning loader is never called outside Travis County', async () => {
   assert.equal(result.evidence.austinZoning, null);
   assert.equal(result.errors.austinZoning, null);
 });
+
+test('Austin municipal envelope evidence is independent of zoning, scores and core feed coverage', async () => {
+  const travis = { ...parcel, id: '48453:302959', countyFips: '48453', county: 'Travis' };
+  const loaders = Object.fromEntries(BDP_SCREENING_SOURCES.map(
+    (source) => [source + 'Loader', async () => null],
+  ));
+  loaders.austinJurisdictionLoader = async () => ({
+    status: 'single-gis-feature-contains-parcel-envelope',
+    candidateJurisdictions: [
+      { id: 1326, cityName: 'CITY OF AUSTIN', type: 'FULL', specifics: 'FULL PURPOSE' },
+    ],
+    legalJurisdictionVerified: false,
+    parcelWideControllingJurisdiction: null,
+    acquisitionRecommendation: null,
+  });
+  loaders.austinZoningLoader = async () => { throw new Error('PostGIS temporarily unavailable'); };
+  const result = await runBdpParcelScreening(travis, loaders);
+  assert.equal(result.evidence.austinJurisdiction.status, 'single-gis-feature-contains-parcel-envelope');
+  assert.equal(result.evidence.austinJurisdiction.legalJurisdictionVerified, false);
+  assert.equal(result.evidence.austinZoning, null);
+  assert.ok(result.errors.austinZoning.message.includes('PostGIS temporarily unavailable'));
+  assert.equal(result.errors.austinJurisdiction, null);
+  assert.equal(result.score.components.entitlementZoning.status, 'unknown');
+  assert.equal(result.acquisitionBrief.buyRecommendation, null);
+  assert.equal(result.sourceCoveragePercent, 0);
+  assert.equal(Object.keys(result.sourceCoverage).length, 13);
+  assert.equal(result.sourceCoverage.austinJurisdiction, undefined);
+  assert.ok(!result.succeededSources.includes('austinJurisdiction'));
+  assert.ok(!result.failedSources.includes('austinJurisdiction'));
+});
+
+test('Austin GIS jurisdiction failure is isolated and cannot be credited as evidence', async () => {
+  const travis = { ...parcel, id: '48453:302959', countyFips: '48453', county: 'Travis' };
+  const loaders = Object.fromEntries(BDP_SCREENING_SOURCES.map(
+    (source) => [source + 'Loader', async () => null],
+  ));
+  loaders.austinJurisdictionLoader = async () => { throw new Error('Austin ArcGIS unavailable'); };
+  const result = await runBdpParcelScreening(travis, loaders);
+  assert.equal(result.evidence.austinJurisdiction, null);
+  assert.match(result.errors.austinJurisdiction.message, /unavailable/);
+  assert.equal(result.score.components.entitlementZoning.status, 'unknown');
+  assert.equal(result.acquisitionBrief.buyRecommendation, null);
+  assert.equal(result.sourceCoveragePercent, 0);
+});
+
+test('Austin GIS jurisdiction provider is not contacted for Bexar parcel', async () => {
+  const loaders = Object.fromEntries(BDP_SCREENING_SOURCES.map(
+    (source) => [source + 'Loader', async () => null],
+  ));
+  loaders.austinJurisdictionLoader = async () => { throw new Error('wrong county'); };
+  const result = await runBdpParcelScreening(parcel, loaders);
+  assert.equal(result.evidence.austinJurisdiction, null);
+  assert.equal(result.errors.austinJurisdiction, null);
+});
