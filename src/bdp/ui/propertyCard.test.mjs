@@ -293,6 +293,9 @@ test('mixed Austin GIS zones flag mapped boundary ambiguity and zero ETOD candid
     await tick();
     const rows = find(card.root, (el) => el.className === 'bdp-property-row');
     const value = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.equal(value('San Antonio / Bexar pilot'), 'NOT RUN · out of regional scope');
+    assert.match(value('Austin GIS'), /PRELIMINARY/);
+    assert.match(value('Legal entitlement'), /UNKNOWN/);
     assert.equal(value('Zoning GIS candidates'), '3');
     assert.match(value('Zoning intersections'), /MF-4-NP · 0.1%/);
     assert.match(value('Zoning intersections'), /SF-2-HD-NP · 99.9%/);
