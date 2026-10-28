@@ -384,3 +384,81 @@ test('Austin jurisdiction outage leaves explicit UNKNOWN rather than full-purpos
     globalThis.document = old;
   }
 });
+
+test('Austin regulatory review links official references but cannot infer development rights', async () => {
+  const old = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const travis = {
+      ...parcel, id: '48453:702', countyFips: '48453', county: 'Travis',
+      parcelId: '702', property: { ...parcel.property, situsAddress: '701 PRESSLER ST' },
+    };
+    const screened = response(travis);
+    screened.evidence.austinZoning = {
+      status: 'preliminary-spatial-evidence',
+      observations: [
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'SF-2-HD-NP' },
+          intersectsParcel: true, parcelPercent: 99.8 },
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'MF-4-NP' },
+          intersectsParcel: true, parcelPercent: 0.05 },
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'SF-3-NP' },
+          intersectsParcel: true, parcelPercent: 0.007 },
+      ],
+    };
+    card = createBdpPropertyCard({ screeningLoader: async () => screened });
+    card.show(travis);
+    await tick();
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const value = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.match(card.root.textContent, /AUSTIN \/ REGULATORY REVIEW/);
+    assert.match(value('Regulatory status'), /no verified zoning rights/);
+    assert.match(value('GIS zoning candidates'), /SF-2-HD-NP/);
+    assert.match(value('GIS zoning candidates'), /MF-4-NP/);
+    assert.match(value('Multiple GIS classes'), /REVIEW REQUIRED/);
+    assert.match(value('Neighborhood plan indicator'), /GIS CODE INCLUDES NP/);
+    assert.match(value('Historic review indicator'), /GIS CODE INCLUDES H\/HD/);
+    assert.match(value('Permitted uses'), /UNKNOWN/);
+    assert.match(value('Setbacks \/ height \/ density'), /UNKNOWN/);
+    assert.match(value('Buildability \/ feasibility'), /NOT DETERMINED/);
+    const links = find(card.root, (el) => el.tagName === 'a');
+    const zoningVerification = links.find((el) => el.textContent === 'Austin Planning verification process');
+    assert.equal(zoningVerification.href,
+      'https://www.austintexas.gov/development-services/zoning-verification');
+    assert.equal(zoningVerification.target, '_blank');
+    assert.equal(zoningVerification.rel, 'noopener noreferrer');
+    assert.ok(links.some((el) => el.textContent === 'Official historic preservation resources'));
+  } finally {
+    card?.destroy();
+    globalThis.document = old;
+  }
+});
+
+test('Austin regulatory review does not turn missing GIS evidence into no-zoning or buildable status', async () => {
+  const old = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const travis = {
+      ...parcel, id: '48453:1234', countyFips: '48453', county: 'Travis',
+    };
+    const screened = response(travis);
+    screened.evidence.austinZoning = null;
+    screened.evidence.austinJurisdiction = null;
+    screened.errors.austinZoning = { message: 'GIS offline', status: 502 };
+    card = createBdpPropertyCard({ screeningLoader: async () => screened });
+    card.show(travis);
+    await tick();
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const value = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.match(value('GIS zoning candidates'), /UNKNOWN/);
+    assert.match(value('Neighborhood plan indicator'), /UNKNOWN/);
+    assert.match(value('Historic review indicator'), /UNKNOWN/);
+    assert.match(value('Regulatory evidence coverage'), /UNKNOWN/);
+    assert.match(value('Buildability \/ feasibility'), /NOT DETERMINED/);
+    assert.match(value('Applicable ordinances'), /UNKNOWN/);
+  } finally {
+    card?.destroy();
+    globalThis.document = old;
+  }
+});
