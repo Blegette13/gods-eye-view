@@ -17,6 +17,7 @@ import { screenBdpParcelWaterRights } from './bdp-water-rights.js';
 import { screenBdpParcelCemeteries } from './bdp-cultural.js';
 import { screenBdpParcelEntitlement } from './bdp-entitlement.js';
 import { screenBdpParcelGrowth } from './bdp-growth.js';
+import { screenBdpParcelAustinZoning } from './bdp-austin-zoning.js';
 
 const MAX_BODY_BYTES = 1_000_000;
 
@@ -121,6 +122,9 @@ export async function screenBdpParcelIntelligence(parcelInput) {
     growthRadarLoader: screened(async (candidate) => (
       await screenBdpParcelGrowth(parcelGeometryInput(candidate))
     ).metrics),
+    austinZoningLoader: screened((candidate) => (
+      screenBdpParcelAustinZoning(parcelGeometryInput(candidate))
+    )),
   });
 }
 
