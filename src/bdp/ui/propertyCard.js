@@ -441,7 +441,7 @@ function austinZoningRows(metrics) {
       ? zoning.map((item) => `${label(item)} · ${formatPercent(item.parcelPercent)} of mapped parcel`).join('; ')
       : 'UNKNOWN · no positive polygon overlap identified'),
     row('ETOD GIS candidates', String(metrics.sourceCandidates?.etodOverlay ?? '—')),
-    row('ETOD eligible-area overlap', etod.length
+    row('ETOD mapped overlap', etod.length
       ? etod.map((item) => `${label(item)} · ${formatPercent(item.parcelPercent)} of mapped parcel`).join('; ')
       : 'UNKNOWN · no positive polygon overlap identified'),
     row('ETOD entitlement', 'UNVERIFIED · eligibility layer does not grant density bonuses or approvals'),
