@@ -26,6 +26,16 @@ export function describeBdpSourceCoverage(source, metrics, error) {
     return Object.freeze({ source, label, status: 'unknown', detail: 'No source evidence returned.' });
   }
 
+  // A region-specific provider not applied to this parcel is missing evidence,
+  // not a successfully returned zero-result GIS screening.
+  if (metrics.regional_scope_status === 'not-screened-outside-pilot'
+    && ['entitlement', 'growthRadar'].includes(source)) {
+    return Object.freeze({
+      source, label, status: 'unknown',
+      detail: metrics.regional_scope_note || 'Regional source was not applicable; use jurisdiction-specific evidence.',
+    });
+  }
+
   const limitations = [];
   if ((['flood', 'msw'].includes(source) && metrics.coverage_complete !== true)
     || metrics.coverage_complete === false) {
