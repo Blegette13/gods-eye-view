@@ -351,6 +351,53 @@ boundaries. Remaining implementation priority: verified, dated, parcel-linked
 ordinance evidence and an auditable manual review ledger before any site
 standards or capacity calculations.
 
+### Step 41 — append-only regulatory evidence ledger foundation
+
+The expanded Austin regulatory checklist was visually verified on **701 Pressler
+Street** with ten outstanding requests and properly labeled official links.
+The next layer adds a **PostgreSQL evidence journal**; it does not yet add a
+document uploader or a task-completion control to God's Eye View.
+
+`src/bdp/regulatory/evidenceLedger.js` defines a strictly validated
+parcel+task+provenance event (official/document URL, title, date if known,
+optional SHA-256, research notes and entering reviewer). Events are always
+`unverified`; no current evidence entry is an official zoning
+determination, legal jurisdiction clearance, permit approval, or proof of
+buildability. Recording a document **does not close its checklist task**.
+Correction notes are appended as new events instead of modifying history.
+
+`src/bdp/ingestion/sql/regulatoryEvidenceLedger.sql` creates ONLY a new
+`bdp_regulatory_evidence_events` table, indexes, and append-only write
+guard. It does not rewrite existing parcel GIS or screening tables. The
+guard rejects UPDATE/DELETE; however, database owners/superusers can
+bypass DB triggers, so stronger role separation, authentication, external
+archive/backups and document fingerprints are required before claiming
+tamper-proof review history. This is a research journal, NOT a certified
+compliance repository. Source URLs must not contain authentication tokens,
+confidential documents, or personal information.
+
+In PowerShell after updating branch `bdp-development`:
+
+```powershell
+node --test src/bdp/regulatory/evidenceLedger.test.mjs src/bdp/entitlement/austinRegulatoryDueDiligence.test.mjs
+psql "service=bdp" -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/regulatoryEvidenceLedger.sql
+psql "service=bdp" -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/regulatoryEvidenceLedgerSmoke.sql
+psql "service=bdp" -c "SELECT COUNT(*) AS evidence_events FROM bdp_regulatory_evidence_events;"
+```
+
+Run the SQL commands in the PowerShell tab that already has the working BDP
+`PGSERVICEFILE` and database password. Smoke tests use a ROLLBACK-only
+synthetic fixture and leave no new evidence record (identity sequences may
+advance). The final row count may be zero; this is expected and means no
+research evidence has been entered. An existing database backup is advisable
+before changing its schema.
+
+**Next required implementation**: a separately authenticated, parcel-bound
+document intake workflow with secure storage, a read-only journal view in
+God's Eye, explicit reviewer identity/authorization, document effective
+dates and replacement records. No automatic model-score, development
+capacity or purchase-decision changes may be made from submitted documents.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
