@@ -8,6 +8,8 @@ export const TXDOT_AADT_HISTORY_LAYER_URL =
   'https://services.arcgis.com/KTcxiTD9dsQw4r7Z/ArcGIS/rest/services/TxDOT_5_Year_Statewide_AADT_Traffic_Counts/FeatureServer/0';
 
 const SOURCE_MAX_FEATURES = 2_000;
+// Only server-verified, complete object-ID paging may exceed a single response.
+export const TXDOT_MAX_VERIFIED_FEATURES = 12_000;
 const ROAD_QUERY_PAD_DEGREES = 0.08;
 const HISTORY_QUERY_PAD_DEGREES = 0.12;
 
@@ -69,14 +71,17 @@ function normalizeCollection(input, { geometryType, label, fields }) {
   if (!input || input.type !== 'FeatureCollection' || !Array.isArray(input.features)) {
     throw new Error(`${label} returned malformed GeoJSON`);
   }
-  if (input.features.length >= SOURCE_MAX_FEATURES) {
-    throw new Error(`${label} screening result is capped; narrow the parcel vicinity before relying on proximity metrics`);
+  if (input.exceededTransferLimit === true
+    || (input.bdpFullObjectIdCoverage === true
+      ? input.features.length > TXDOT_MAX_VERIFIED_FEATURES
+      : input.features.length >= SOURCE_MAX_FEATURES)) {
+    throw new Error(`${label} screening result is capped; complete source features are required for proximity metrics`);
   }
-  const features = input.features
-    .filter((feature) => feature?.geometry?.type === geometryType || (
-      geometryType === 'MultiLineString' && feature?.geometry?.type === 'LineString'
-    ))
-    .map((feature) => ({
+  if (input.features.some((feature) => feature?.geometry?.type !== geometryType
+    && !(geometryType === 'MultiLineString' && feature?.geometry?.type === 'LineString'))) {
+    throw new Error(`${label} has malformed or missing geometry; cannot claim complete coverage`);
+  }
+  const features = input.features.map((feature) => ({
       type: 'Feature',
       geometry: feature.geometry,
       properties: Object.fromEntries(fields.map((field) => [field, feature.properties?.[field] ?? null])),
