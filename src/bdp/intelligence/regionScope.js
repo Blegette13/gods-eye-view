@@ -31,3 +31,20 @@ export function unavailableRegionalPilotEvidence(source) {
     regional_scope_note: `Only the Bexar County San Antonio ${label} pilot is implemented. No locally applicable ${label} records were evaluated for this parcel. Obtain jurisdiction-specific evidence before making a land decision.`,
   });
 }
+
+/**
+ * Austin GIS spatial PREVIEW eligibility, not a City of Austin jurisdiction
+ * verdict. Limit requests to Travis County parcel records and keep county
+ * conflicts as a veto. Jurisdiction still requires independent verification.
+ */
+export function eligibleForAustinGisPilot(parcel) {
+  const countyName = String(parcel?.county || parcel?.jurisdiction?.county || '').trim().toLowerCase();
+  const fips = String(parcel?.countyFips || '').trim();
+  const prefix = String(parcel?.id || '').trim().split(':')[0];
+  if (countyName && !['travis', 'travis county'].includes(countyName)) return false;
+  if (fips && !['48453', '453'].includes(fips)) return false;
+  if (/^\d{3,5}$/.test(prefix) && !['48453', '453'].includes(prefix)) return false;
+  return ['travis', 'travis county'].includes(countyName)
+    || ['48453', '453'].includes(fips)
+    || ['48453', '453'].includes(prefix);
+}
