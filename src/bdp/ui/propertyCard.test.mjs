@@ -413,6 +413,18 @@ test('Austin regulatory review links official references but cannot infer develo
     const value = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
     assert.match(card.root.textContent, /AUSTIN \/ REGULATORY REVIEW/);
     assert.match(value('Regulatory status'), /no verified zoning rights/);
+    const openReview = find(card.root, (el) => el.tagName === 'summary'
+      && el.textContent.startsWith('Next evidence requests'))[0];
+    assert.match(openReview.textContent, /10 outstanding/);
+    const verificationRows = rows.filter((el) => el.dataset.bdpVerificationState);
+    assert.equal(verificationRows.length, 10);
+    assert.ok(verificationRows.every((el) =>
+      el.dataset.bdpVerificationState === 'verification-required'
+      && el.children[1].textContent.includes('UNVERIFIED')));
+    assert.ok(verificationRows.some((el) =>
+      el.dataset.bdpVerificationId === 'resolve-zoning-boundary'));
+    assert.ok(verificationRows.some((el) =>
+      el.dataset.bdpVerificationId === 'check-historic-restrictions'));
     assert.match(value('GIS zoning candidates'), /SF-2-HD-NP/);
     assert.match(value('GIS zoning candidates'), /MF-4-NP/);
     assert.match(value('Multiple GIS classes'), /REVIEW REQUIRED/);
@@ -455,6 +467,11 @@ test('Austin regulatory review does not turn missing GIS evidence into no-zoning
     assert.match(value('Neighborhood plan indicator'), /UNKNOWN/);
     assert.match(value('Historic review indicator'), /UNKNOWN/);
     assert.match(value('Regulatory evidence coverage'), /UNKNOWN/);
+    const reviewItems = rows.filter((el) => el.dataset.bdpVerificationState);
+    assert.ok(reviewItems.length >= 7);
+    assert.ok(reviewItems.every((el) => el.dataset.bdpVerificationState === 'verification-required'));
+    assert.ok(reviewItems.some((el) => el.dataset.bdpVerificationId === 'verify-zoning-designation'));
+    assert.ok(reviewItems.some((el) => el.dataset.bdpVerificationId === 'verify-legal-jurisdiction'));
     assert.match(value('Buildability \/ feasibility'), /NOT DETERMINED/);
     assert.match(value('Applicable ordinances'), /UNKNOWN/);
   } finally {
