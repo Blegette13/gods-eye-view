@@ -22,7 +22,10 @@ async function probe(stage, url, init = {}) {
   try {
     const response = await fetch(url, {
       ...init,
-      headers: { accept: 'application/json,application/geo+json' },
+      headers: {
+        accept: 'application/json,application/geo+json',
+        ...(init.headers || {}),
+      },
       signal: AbortSignal.timeout(20_000),
     });
     const raw = await response.text();
@@ -90,5 +93,26 @@ for (const count of [10, 200, 400]) {
   url.searchParams.set('f', 'geojson');
   const res = await probe(`roadway-geometry-first-${Math.min(count, ids.length)}-ids`, url);
   if (res && !res.response.ok) break;
+}
+// Long GET URLs (>2,200 characters) returned HTTP 404/HTML, while 10 IDs
+// returned valid GeoJSON. Test the ArcGIS-supported POST form-body equivalent
+// without printing any source geometry or owner/parcel data.
+for (const count of [200, 400]) {
+  const params = new URLSearchParams(baseUrl.searchParams);
+  params.set('objectIds', ids.slice(0, count).join(','));
+  params.set('resultRecordCount', String(count));
+  params.set('f', 'geojson');
+  const endpoint = new URL(baseUrl);
+  endpoint.search = '';
+  const result = await probe(`roadway-geometry-post-first-${Math.min(count, ids.length)}-ids`, endpoint, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+    body: params.toString(),
+  });
+  if (!result?.response.ok || !Array.isArray(result.body?.features)
+    || result.body.features.length !== Math.min(count, ids.length)) {
+    console.log('POST batch was incomplete; no full TxDOT screening can be claimed.');
+    break;
+  }
 }
 console.log('Diagnostic complete. A response without ALL requested IDs cannot establish complete coverage.');
