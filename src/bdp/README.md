@@ -95,6 +95,23 @@ Austin itself warns that simplified zoning-by-address datasets omit
 overlays and multiple zoning; users should consult official Property Profile
 and the city for zoning determinations.
 
+### Austin jurisdiction discovery safeguard
+
+The first live parcel envelope test on TCAD parcel `302959` (611 W Annie
+St) returned **two zoning polygon candidates** with `SF-3-NP` attributes
+and one `ETOD Overlay Eligibility / Subdistrict 2` candidate. These are
+NOT parcel intersection results. The **jurisdiction** candidate originally
+failed the 50,000-coordinate guard because a citywide GIS polygon is vastly
+larger than the tiny test parcel. That guard must not be removed to force
+success. Instead the jurisdiction pilot now queries **attributes-only**
+(`returnGeometry=false; f=json`) for candidates intersecting the parcel
+envelope. It returns no geometry and records
+`unverified-envelope-attribute-candidates`; it does **not** establish
+parcel-wide city limits, legal zoning jurisdiction, or percent overlap. Zoning
+and ETOD candidate queries still retain their polygon geometries for future
+PostGIS exact intersection screening. All GIS source data remains
+unverified for legal entitlements.
+
 ### Travis County parcel-wide source candidates
 
 The Austin point discovery validated live jurisdiction, zoning, and ETOD
