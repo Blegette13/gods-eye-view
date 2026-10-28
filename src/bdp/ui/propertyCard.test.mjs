@@ -276,6 +276,10 @@ test('mixed Austin GIS zones flag mapped boundary ambiguity and zero ETOD candid
       property: { ...parcel.property, situsAddress: '703 PRESSLER ST AUSTIN 78703' },
     };
     const screened = response(travis);
+    screened.evidence.entitlement = {
+      regional_scope_status: 'not-screened-outside-pilot',
+      regional_scope_note: 'Only the Bexar / San Antonio pilot has official zoning metrics.',
+    };
     screened.evidence.austinZoning = {
       status: 'preliminary-spatial-evidence',
       sourceCandidates: { zoning: 3, etodOverlay: 0 },
