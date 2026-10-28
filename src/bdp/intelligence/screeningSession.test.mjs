@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { runBdpParcelScreening } from './screeningSession.js';
+import { BDP_SCREENING_SOURCES, runBdpParcelScreening } from './screeningSession.js';
 
 const parcel = {
   id: '48029:123',
@@ -227,4 +227,28 @@ test('partial utilities and unresolved regional mapping remain explicit gaps wit
     assert.equal(gap.status, 'unknown');
     assert.equal(gap.detail, result.sourceCoverage[source].detail);
   }
+});
+
+test('Travis County never invokes San Antonio-only providers or earns their coverage credit', async () => {
+  const travis = { ...parcel, id: '48453:123', countyFips: '48453', county: 'Travis' };
+  const options = Object.fromEntries(BDP_SCREENING_SOURCES.map(
+    (source) => [`${source}Loader`, async () => null],
+  ));
+  options.entitlementLoader = async () => { throw new Error('San Antonio entitlement must not be called'); };
+  options.growthRadarLoader = async () => { throw new Error('San Antonio growth must not be called'); };
+
+  const result = await runBdpParcelScreening(travis, options);
+  assert.equal(result.evidence.entitlement.regional_scope_status, 'not-screened-outside-pilot');
+  assert.equal(result.evidence.growthRadar.regional_scope_status, 'not-screened-outside-pilot');
+  assert.equal(result.sourceCoverage.entitlement.status, 'unknown');
+  assert.equal(result.sourceCoverage.growthRadar.status, 'unknown');
+  assert.equal(result.score.components.entitlementZoning.status, 'unknown');
+  assert.equal(result.sourceCoveragePercent, 0);
+  assert.deepEqual(result.failedSources, []);
+  assert.ok(result.unknownSources.includes('entitlement'));
+  assert.ok(result.unknownSources.includes('growthRadar'));
+  assert.ok(result.acquisitionBrief.gaps.some((gap) => gap.id === 'source:entitlement'));
+  assert.ok(result.acquisitionBrief.gaps.some((gap) => gap.id === 'source:growthRadar'));
+  assert.equal(result.redFlags.some((flag) => flag.source === 'City of San Antonio entitlement GIS screening'), false);
+  assert.equal(result.redFlags.some((flag) => flag.source === 'City of San Antonio Growth Radar screening'), false);
 });
