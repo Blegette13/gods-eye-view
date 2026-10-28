@@ -288,8 +288,8 @@ test('mixed Austin GIS zones flag mapped boundary ambiguity and zero ETOD candid
           intersectsParcel: true, parcelPercent: 0.1 },
         { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'SF-2-HD-NP' },
           intersectsParcel: true, parcelPercent: 99.9 },
-        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'MF-4-NP' },
-          intersectsParcel: false, parcelPercent: 0 },
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'SF-3-NP' },
+          intersectsParcel: true, parcelPercent: 0.009 },
       ],
     };
     card = createBdpPropertyCard({ screeningLoader: async () => screened });
@@ -303,8 +303,10 @@ test('mixed Austin GIS zones flag mapped boundary ambiguity and zero ETOD candid
     assert.equal(value('Zoning GIS candidates'), '3');
     assert.match(value('Zoning intersections'), /MF-4-NP · 0.1%/);
     assert.match(value('Zoning intersections'), /SF-2-HD-NP · 99.9%/);
+    assert.match(value('Zoning intersections'), /SF-3-NP · <0.1% of mapped parcel/);
+    assert.doesNotMatch(value('Zoning intersections'), /SF-3-NP · 0%/);
     assert.match(value('Zoning boundary review'), /REQUIRED.*multiple mapped zoning polygons/);
-    assert.match(value('Small GIS zoning overlaps'), /MF-4-NP · 0.1%.*verify/);
+    assert.match(value('Small GIS zoning overlaps'), /MF-4-NP · 0.1%.*SF-3-NP · <0.1%.*verify/);
     assert.equal(value('ETOD GIS candidates'), '0');
     assert.match(value('ETOD mapped overlap'), /UNKNOWN.*not ETOD clearance/);
     assert.match(value('ETOD entitlement'), /UNVERIFIED/);
