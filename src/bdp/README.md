@@ -282,6 +282,39 @@ overlays, property restrictions and applicable development regulations.
 Mapped jurisdiction does not establish buildability or vested development
 rights.
 
+### Austin regulatory source and review workflow (Step 39)
+
+This read-only phase adds `AUSTIN / REGULATORY REVIEW` to the existing
+God's Eye property panel for Travis County parcels. It derives a **research
+queue only** from previously retrieved Austin GIS zoning codes and mapped
+jurisdiction candidates. If any mapped zoning suffix contains `NP` or
+`H/HD`, the panel calls for neighborhood-plan / historic-review research;
+lack of a suffix is **not clearance**. If multiple classification codes have
+positive polygon overlap (including tiny slivers), the panel requires review
+of the actual governing boundary and ordinances.
+
+Authoritative City of Austin links are provided for Property Profile, formal
+zoning verification, zoning resources / combining districts, the Land
+Development Code (including sections 25-2-491 and 25-2-492), address /
+jurisdiction verification and historic preservation. **The app does not fetch
+or assert the regulations themselves** and does not infer allowed uses,
+dwelling-unit counts, setbacks, height, density or buildability. Effective
+ordinances, property-specific conditions, source currency, recorded surveys,
+official zoning verification and relevant overlays remain unverified.
+Acquisition recommendations and the 13-source model are unaffected.
+
+Local tests after `git pull --ff-only origin bdp-development`:
+
+```powershell
+node --test src/bdp/entitlement/austinRegulatoryReview.test.mjs src/bdp/ui/propertyCard.test.mjs
+```
+
+Reload 701 Pressler St in God's Eye View to inspect the new manual research
+section. This is intentionally **not** automated legal code interpretation;
+that requires authoritative, versioned ordinance evidence and a confirmed
+controlling jurisdiction before parcel-specific development rules can be
+evaluated.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
