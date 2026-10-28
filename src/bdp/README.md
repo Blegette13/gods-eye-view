@@ -57,6 +57,15 @@ responses continue to fail closed. Exact parcel and owner searches also retain
 strict identifier validation. A partial viewport does not imply complete parcel
 coverage.
 
+Parcel rendering: Cesium disables native polygon outlines on terrain-clamped
+GeoJSON. County parcel polygons now keep their original fill/selection geometry,
+but explicit ground-clamped LineString features trace exterior/interior rings
+and MultiPolygon parts. Boundary features preserve the original `bdpParcelId`
+for selection; they are visualization only, not a source, a new legal boundary,
+or a new parcel record. Live browser visibility/picking must be checked after
+each renderer change.
+
+
 
 Source: https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD/MapServer/0
 (official GIS layer and field metadata verified October 27, 2026).
