@@ -1,6 +1,7 @@
 import * as Cesium from 'cesium';
 import bexarCadAdapter from '../cad/bexarAdapter.js';
 import { createBdpPropertyCard } from '../ui/propertyCard.js';
+import { parcelGeoJsonWithBoundaries } from './parcelGeojson.js';
 
 const MAX_VIEW_SPAN_DEGREES = 0.12;
 const QUERY_INTERVAL_MS = 30_000;
@@ -26,30 +27,6 @@ function isCloseEnough(bounds) {
   if (!bounds) return false;
   return (bounds.east - bounds.west) <= MAX_VIEW_SPAN_DEGREES
     && (bounds.north - bounds.south) <= MAX_VIEW_SPAN_DEGREES;
-}
-
-function parcelFeature(parcel) {
-  return {
-    type: 'Feature',
-    id: parcel.id,
-    geometry: parcel.property.geometry,
-    properties: {
-      bdpParcelId: parcel.id,
-      parcelId: parcel.parcelId,
-      owner: parcel.owner?.name || '',
-      acres: parcel.property?.acres,
-      county: parcel.county,
-    },
-  };
-}
-
-function featureCollection(parcels) {
-  return {
-    type: 'FeatureCollection',
-    features: parcels
-      .filter((parcel) => parcel.property?.geometry)
-      .map(parcelFeature),
-  };
 }
 
 function propertyValue(entity, key) {
@@ -87,12 +64,17 @@ export function createCountyParcelLayer({
 
   async function replaceSnapshot(parcels, { signal } = {}) {
     assertActive(signal);
-    const next = await Cesium.GeoJsonDataSource.load(featureCollection(parcels), {
+    const next = await Cesium.GeoJsonDataSource.load(parcelGeoJsonWithBoundaries(parcels), {
       clampToGround: true,
       stroke: Cesium.Color.fromCssColorString('#f2f2f2').withAlpha(0.82),
       fill: Cesium.Color.fromCssColorString('#ffffff').withAlpha(0.055),
-      strokeWidth: 1.5,
+      strokeWidth: 2,
     });
+    // Terrain-clamped polygon outlines are unsupported in Cesium; separate
+    // GeoJSON LineStrings provide visible, pickable ground-clamped borders.
+    for (const entity of next.entities.values) {
+      if (entity.polygon) entity.polygon.outline = false;
+    }
     next.name = name;
     assertActive(signal);
     next.show = enabled;
