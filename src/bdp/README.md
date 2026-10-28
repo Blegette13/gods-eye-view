@@ -76,6 +76,25 @@ right-of-way, driveway permits, current traffic, or road condition.
 Live Travis parcel screening and actual TxDOT response sizes remain to be
 verified before calling this source operational.
 
+## Austin / Travis entitlement discovery (October 28, 2026)
+
+Read-only source discovery is now available via
+`node scripts/bdp/diagnose-austin-zoning.mjs`. It probes **City of Austin**
+GIS sources used by the official Property Profile: jurisdiction boundaries
+(`Shared/JurisdictionsFill/MapServer/0`), zoning polygons
+(`Shared/Zoning_1/MapServer/0`), and the ETOD overlay
+(`Shared/Zoning_2/MapServer/14`). The pilot tests only a representative
+**point** near central Austin. It does NOT add Austin zoning to the unified
+property-intelligence model, and cannot be interpreted as a parcel-wide
+zoning determination or current permitted uses. Empty point results are
+**UNKNOWN**, multiple point hits are **AMBIGUOUS**, and a capped response is
+**INCOMPLETE**. Until all parcel geometry, jurisdiction boundary overlaps,
+overlay constraints, city permitting authority, source currency, and land-use
+regulations have been checked, score and recommendation stay withheld.
+Austin itself warns that simplified zoning-by-address datasets omit
+overlays and multiple zoning; users should consult official Property Profile
+and the city for zoning determinations.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
