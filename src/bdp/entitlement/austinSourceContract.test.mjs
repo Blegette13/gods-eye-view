@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { AUSTIN_SOURCE_LAYERS, buildAustinPointQueryUrl, summarizeAustinPointResponse } from './austinSourceContract.js';
+import { AUSTIN_SOURCE_LAYERS, buildAustinPointQueryUrl, summarizeAustinPointResponse, austinParcelBounds, buildAustinParcelCandidateQueryUrl, validateAustinCandidateCollection } from './austinSourceContract.js';
 
 test('Austin GIS source registry includes city jurisdiction, actual zoning and named overlay', () => {
   assert.match(AUSTIN_SOURCE_LAYERS.jurisdiction.url, /maps\.austintexas\.gov.*JurisdictionsFill/);
@@ -43,4 +43,62 @@ test('multiple classifications, capped results and malformed data fail conservat
   }).status, 'incomplete');
   assert.throws(() => summarizeAustinPointResponse('zoning', { error: { message: 'fail' } }), /valid ArcGIS/);
   assert.throws(() => summarizeAustinPointResponse('zoning', { features: [{ properties: {} }] }), /missing attributes/);
+});
+
+
+const parcelShape = {
+  type: 'Polygon', coordinates: [[
+    [-97.759, 30.246], [-97.757, 30.246], [-97.757, 30.248],
+    [-97.759, 30.248], [-97.759, 30.246],
+  ]],
+};
+
+test('parcels must use bounded geometry candidates, never pretend one point covers the tract', () => {
+  const url = buildAustinParcelCandidateQueryUrl('zoning', parcelShape);
+  assert.equal(url.searchParams.get('geometryType'), 'esriGeometryEnvelope');
+  assert.equal(url.searchParams.get('inSR'), '4326');
+  assert.equal(url.searchParams.get('outSR'), '4326');
+  assert.equal(url.searchParams.get('returnGeometry'), 'true');
+  assert.equal(url.searchParams.get('f'), 'geojson');
+  assert.equal(url.searchParams.get('resultRecordCount'), '100');
+  assert.equal(url.searchParams.get('geometry'), '-97.759,30.246,-97.757,30.248');
+  assert.deepEqual([...austinParcelBounds(parcelShape)], [-97.759, 30.246, -97.757, 30.248]);
+  assert.throws(() => buildAustinParcelCandidateQueryUrl('zoning', null), /Full Polygon/);
+  assert.throws(() => buildAustinParcelCandidateQueryUrl('zoning', parcelShape, {limit: 900}), /limit/);
+});
+
+test('multipart parcel extents include both polygons and reject malformed rings', () => {
+  const second = { type: 'Polygon', coordinates: [[
+    [-97.755, 30.244], [-97.754, 30.244], [-97.754, 30.245],
+    [-97.755, 30.245], [-97.755, 30.244],
+  ]] };
+  assert.deepEqual(austinParcelBounds({
+    type: 'MultiPolygon', coordinates: [parcelShape.coordinates, second.coordinates],
+  }), [-97.759, 30.244, -97.754, 30.248]);
+  assert.throws(() => austinParcelBounds({
+    type: 'Polygon', coordinates: [[[-97.759, 30.246], [-97.757, 30.246], [-97.757, 30.248], [-97.759, 30.248]]],
+  }), /closed/);
+});
+
+test('an empty candidate result remains UNKNOWN, and capped or malformed results are rejected', () => {
+  const empty = validateAustinCandidateCollection('zoning', {
+    type: 'FeatureCollection', features: [],
+  });
+  assert.equal(empty.status, 'unknown-no-envelope-candidates');
+  assert.equal(empty.exactOverlapCalculated, false);
+  const match = validateAustinCandidateCollection('zoning', {
+    type: 'FeatureCollection',
+    features: [{ type: 'Feature', geometry: parcelShape, properties: { ZONING_ZTYPE: 'SF-3' } }],
+  });
+  assert.equal(match.status, 'unverified-envelope-candidates');
+  assert.equal(match.exactOverlapCalculated, false);
+  assert.throws(() => validateAustinCandidateCollection('zoning', {
+    type: 'FeatureCollection', features: [], exceededTransferLimit: true,
+  }), /truncated/);
+  assert.throws(() => validateAustinCandidateCollection('zoning', {
+    type: 'FeatureCollection', features: [{ geometry: null, properties: {} }],
+  }), /geometry/);
+  assert.throws(() => validateAustinCandidateCollection('zoning', {
+    type: 'FeatureCollection', features: Array.from({length:100}, ()=>({ type:'Feature', geometry: parcelShape, properties: {} })),
+  }), /truncated/);
 });
