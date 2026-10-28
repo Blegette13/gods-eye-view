@@ -214,3 +214,53 @@ test('mapped water overlap and short traffic distances do not imply verified ser
     globalThis.document = previous;
   }
 });
+
+test('Travis Austin GIS preview displays overlapping polygons but never claims official zoning or ETOD approval', async () => {
+  const previous = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const travis = {
+      ...parcel, county: 'Travis', countyFips: '48453', parcelId: '302959',
+      id: '48453:302959',
+      property: { acres: null, situsAddress: '611 W ANNIE ST', geometry: {
+        type: 'Polygon', coordinates: [[[-97.757,30.247],[-97.756,30.247],
+          [-97.756,30.248],[-97.757,30.248],[-97.757,30.247]]],
+      } },
+    };
+    const screened = response(travis);
+    screened.evidence.austinZoning = {
+      status: 'preliminary-spatial-evidence',
+      sourceCandidates: { zoning: 2, etodOverlay: 1 },
+      observations: [
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'SF-3-NP' },
+          intersectsParcel: false, parcelPercent: 0 },
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'SF-3-NP' },
+          intersectsParcel: true, parcelPercent: 100 },
+        { sourceName: 'etodOverlay', attributes: { ZONING_OVERLAY_NAME: 'ETOD Overlay Eligibility',
+          ZONING_OVERLAY_SUB_NAME: 'Subdistrict 2', ZONING_STATUS: 'Eligible' },
+          intersectsParcel: true, parcelPercent: 100 },
+      ],
+      legalZoningVerified: false, jurisdictionExactOverlapVerified: false,
+      etodAdoptionVerified: false, acquisitionRecommendation: null,
+    };
+    card = createBdpPropertyCard({ screeningLoader: async () => screened });
+    card.show(travis);
+    await tick();
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const value = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.match(card.root.textContent, /AUSTIN GIS \/ PRELIMINARY ZONING/);
+    assert.match(value('GIS evidence'), /NOT LEGAL ZONING/);
+    assert.equal(value('Zoning GIS candidates'), '2');
+    assert.match(value('Zoning intersections'), /SF-3-NP · 100% of mapped parcel/);
+    assert.doesNotMatch(value('Zoning intersections'), /0%/);
+    assert.match(value('ETOD eligible-area overlap'), /Subdistrict 2/);
+    assert.match(value('ETOD entitlement'), /UNVERIFIED/);
+    assert.match(value('Jurisdiction'), /UNVERIFIED/);
+    assert.match(value('Zoning determination'), /UNVERIFIED/);
+    assert.notEqual(value('Acquisition recommendation'), 'BUY');
+  } finally {
+    card?.destroy();
+    globalThis.document = previous;
+  }
+});
