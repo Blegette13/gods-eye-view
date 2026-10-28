@@ -254,7 +254,7 @@ test('Travis Austin GIS preview displays overlapping polygons but never claims o
     assert.equal(value('Zoning GIS candidates'), '2');
     assert.match(value('Zoning intersections'), /SF-3-NP · 100% of mapped parcel/);
     assert.doesNotMatch(value('Zoning intersections'), /· 0% of mapped parcel/);
-    assert.match(value('ETOD eligible-area overlap'), /Subdistrict 2/);
+    assert.match(value('ETOD mapped overlap'), /Subdistrict 2/);
     assert.match(value('ETOD entitlement'), /UNVERIFIED/);
     assert.match(value('Jurisdiction'), /UNVERIFIED/);
     assert.match(value('Zoning determination'), /UNVERIFIED/);
