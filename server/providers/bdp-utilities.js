@@ -1,5 +1,4 @@
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { queryPostgisJsonStdin } from './bdp-psql.js';
 import {
   buildUtilityParcelMetricsSql,
   buildPuctSewerMetricsSql,
@@ -12,17 +11,11 @@ import {
   normalizeWaterServiceAreas,
 } from '../../src/bdp/utilities/utilityContract.js';
 
-const execFileAsync = promisify(execFile);
 const API_BASE = '/api/bdp/utilities';
 const MAX_BODY_BYTES = 1_000_000;
 const MAX_SOURCE_RESPONSE_BYTES = 18 * 1024 * 1024;
 const QUERY_TIMEOUT_MS = 20_000;
 const SOURCE_TIMEOUT_MS = 15_000;
-
-function configuredService() {
-  const service = String(process.env.BDP_PG_SERVICE || '').trim();
-  return /^[A-Za-z0-9_.-]+$/.test(service) ? service : null;
-}
 
 function sendJson(response, status, payload) {
   const body = JSON.stringify(payload);
@@ -41,37 +34,16 @@ async function readJsonBody(request) {
     if (size > MAX_BODY_BYTES) throw new Error('Request body is too large');
     chunks.push(chunk);
   }
-  const text = Buffer.concat(chunks).toString('utf8');
-  if (!text.trim()) throw new Error('JSON request body is required');
-  return JSON.parse(text);
+  const body = Buffer.concat(chunks).toString('utf8');
+  if (!body.trim()) throw new Error('JSON request body is required');
+  return JSON.parse(body);
 }
 
-async function queryPostgisJson(sql) {
-  const service = configuredService();
-  if (!service) {
-    const error = new Error('BDP PostGIS is not configured');
-    error.code = 'BDP_POSTGIS_NOT_CONFIGURED';
-    throw error;
-  }
-
-  const { stdout } = await execFileAsync('psql', [
-    `service=${service}`,
-    '-v',
-    'ON_ERROR_STOP=1',
-    '--tuples-only',
-    '--no-align',
-    '--command',
-    sql,
-  ], {
-    cwd: process.cwd(),
-    env: process.env,
-    encoding: 'utf8',
-    maxBuffer: MAX_SOURCE_RESPONSE_BYTES,
-    timeout: QUERY_TIMEOUT_MS,
+function queryPostgisJson(sql) {
+  return queryPostgisJsonStdin(sql, {
+    timeoutMs: QUERY_TIMEOUT_MS,
+    maxOutputBytes: MAX_SOURCE_RESPONSE_BYTES,
   });
-
-  const text = String(stdout || '').trim();
-  return text ? JSON.parse(text) : null;
 }
 
 async function fetchGeoJson(url, label, normalize) {
