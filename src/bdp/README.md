@@ -10,6 +10,25 @@ This directory contains BDP Land Co-specific land intelligence capabilities laye
 4. Preserve source provenance and last-verified timestamps on every parcel record.
 5. Treat legal, title, mineral, water, environmental, and entitlement outputs as decision support, not final professional determinations.
 
+## Regional feed applicability
+
+The initial **City of San Antonio** zoning/ETJ/future-land-use and Growth Radar
+providers are **Bexar County pilot-only**. Parcel intelligence now skips both
+providers for Travis, Williamson, Hays, Dallas, Harris, and any other parcel
+without a positive Bexar county identity. It records `not-screened-outside-pilot`
+instead of implying that zero San Antonio intersections clear the tract. These
+screens count as **UNKNOWN evidence gaps**, contribute nothing to feed-response
+or score-model coverage, and generate no San Antonio-specific red flags for
+out-of-pilot counties. The property panel explicitly directs the user to local
+jurisdiction records. Bexar county eligibility does not establish whether a
+parcel is inside San Antonio or its ETJ; the regional provider must evaluate
+that footprint, and zoning remains unverified until independently checked.
+
+This is an applicability guard, **not** an Austin, Travis County, or statewide
+zoning implementation. Expand with verified local jurisdiction polygon sources,
+service metadata, data currency, and appropriate permitting/county review before
+assigning regional land-use screens beyond this pilot.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
