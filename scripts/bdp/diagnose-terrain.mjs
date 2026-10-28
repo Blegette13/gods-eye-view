@@ -21,19 +21,21 @@ const input = {
   },
 };
 
+// Isolate which optional ArcGIS parameter suppresses otherwise valid data.
+// The source metadata uses Web Mercator metres, but optional pixelSize and
+// renderingRule may not be jointly supported by this ImageServer operation.
 const cases = [
-  { name: 'current-elevation', mode: 'elevation' },
-  { name: 'current-slope', mode: 'slope' },
-  { name: 'default-elevation-without-optional-rules', mode: 'elevation', omitOptional: true },
+  { name: 'elevation-default', mode: 'elevation', omitRenderingRule: true, omitPixelSize: true },
+  { name: 'elevation-pixelSize-only', mode: 'elevation', omitRenderingRule: true },
+  { name: 'elevation-renderingRule-only', mode: 'elevation', omitPixelSize: true },
+  { name: 'slope-renderingRule-only', mode: 'slope', omitPixelSize: true },
 ];
 
 console.log('USGS 3DEP terrain diagnostic · Austin sample geometry · read only');
 for (const entry of cases) {
   const url = new URL(build3depStatisticsUrl(input, { mode: entry.mode }));
-  if (entry.omitOptional) {
-    url.searchParams.delete('renderingRule');
-    url.searchParams.delete('pixelSize');
-  }
+  if (entry.omitRenderingRule) url.searchParams.delete('renderingRule');
+  if (entry.omitPixelSize) url.searchParams.delete('pixelSize');
 
   try {
     const response = await fetch(url, {
@@ -48,7 +50,9 @@ for (const entry of cases) {
       httpStatus: response.status,
       responseKeys: body && typeof body === 'object' ? Object.keys(body).slice(0, 15) : [],
       statisticsEntries: statistics.length,
-      firstStatisticFields: statistics.length ? Object.keys(statistics[0]) : [],
+      firstStatisticSummary: statistics.length ? Object.fromEntries(
+        ['min', 'max', 'mean', 'count'].map((key) => [key, statistics[0]?.[key] ?? null]),
+      ) : null,
       error: body?.error ? {
         code: body.error.code ?? null,
         message: String(body.error.message || '').slice(0, 260),
