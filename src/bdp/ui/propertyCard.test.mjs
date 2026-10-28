@@ -196,7 +196,7 @@ test('mapped water overlap and short traffic distances do not imply verified ser
     assert.equal(valueFor('AADT route / ID'), '1021254');
     assert.equal(valueFor('AADT distance'), '5 ft');
     assert.equal(valueFor('Station distance'), '157 ft');
-    assert.equal(valueFor('5-year change'), 'UNKNOWN · insufficient history');
+    assert.equal(valueFor('5-year change'), 'UNKNOWN · no verified trend');
     assert.match(valueFor('Traffic context'), /may differ from the nearest road/);
     assert.equal(valueFor('Mapped water area'), '100%');
     assert.equal(valueFor('Mapped provider(s)'), 'CITY OF AUSTIN WATER & WASTEWATER');
