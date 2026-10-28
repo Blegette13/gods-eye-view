@@ -23,7 +23,9 @@ function flag({ id, severity, title, detail, evidence = {} }) {
 }
 
 export function deriveEntitlementFlags(metrics) {
-  if (!metrics) return Object.freeze([]);
+  if (!metrics || metrics.regional_scope_status === 'not-screened-outside-pilot') {
+    return Object.freeze([]);
+  }
 
   const flags = [];
   const jurisdiction = String(metrics.jurisdiction_screen || '');
