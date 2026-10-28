@@ -435,7 +435,7 @@ function transportationRows(metrics) {
     row('Station distance', formatNearbyDistance(metrics.nearest_station_m)),
     row('Latest count year', metrics.nearest_station_latest_year ? String(metrics.nearest_station_latest_year) : '—'),
     row('5-year change', metrics.nearest_station_5yr_change_percent == null
-      ? 'UNKNOWN · insufficient history' : formatPercent(metrics.nearest_station_5yr_change_percent)),
+      ? 'UNKNOWN · no verified trend' : formatPercent(metrics.nearest_station_5yr_change_percent)),
     row('Traffic context', 'Nearest mapped AADT segment and count station may differ from the nearest road; neither verifies legal access.'),
   ];
 }
