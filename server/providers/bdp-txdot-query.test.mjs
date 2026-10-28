@@ -8,6 +8,14 @@ import {
 
 const BASE = 'https://example.org/arcgis/rest/services/AADT/FeatureServer/0/query?geometry=-97.8,30.2,-97.7,30.3&geometryType=esriGeometryEnvelope&resultRecordCount=2000&outFields=OBJECTID,AADT_CUR&f=geojson';
 
+function queryParams(url, options = {}) {
+  if (options.method === 'POST') {
+    assert.equal(new URL(url).search, '');
+    assert.match(options.headers?.['content-type'] || '', /application\/x-www-form-urlencoded/i);
+    return new URLSearchParams(options.body);
+  }
+  return new URL(url).searchParams;
+}
 function mockResponse(payload) {
   return {
     ok: true,
@@ -37,17 +45,20 @@ const sampleParcel = {
 test('retrieves all 2,001 matching AADT records without treating the 2,000 limit as complete', async () => {
   const ids = Array.from({ length: 2001 }, (_, n) => n + 1);
   let requestedPages = 0;
-  const fakeFetch = async (u) => {
-    const url = new URL(u);
-    if (url.searchParams.get('returnIdsOnly') === 'true') {
-      assert.equal(url.searchParams.get('f'), 'json');
-      assert.equal(url.searchParams.has('resultRecordCount'), false);
+  const fakeFetch = async (u, options) => {
+    const params = queryParams(u, options);
+    if (params.get('returnIdsOnly') === 'true') {
+      assert.equal(options.method, 'GET');
+      assert.equal(params.get('f'), 'json');
+      assert.equal(params.has('resultRecordCount'), false);
       return mockResponse({ objectIdFieldName: 'OBJECTID', objectIds: ids });
     }
     requestedPages += 1;
-    const pageIds = url.searchParams.get('objectIds').split(',').map(Number);
+    assert.equal(options.method, 'POST');
+    const pageIds = params.get('objectIds').split(',').map(Number);
     assert.ok(pageIds.length <= 400);
-    assert.equal(url.searchParams.get('f'), 'geojson');
+    assert.equal(params.get('f'), 'geojson');
+    assert.equal(params.get('geometry'), '-97.8,30.2,-97.7,30.3');
     return mockResponse({ type: 'FeatureCollection', features: pageIds.map(line) });
   };
   const result = await fetchCompleteTxdotCollection(BASE, 'AADT', normalizeTxdotAadt, {
@@ -79,8 +90,8 @@ test('rejects oversized ID inventory before fetching any AADT geometry', async (
 
 test('rejects missing pages, duplicated IDs, and missing geometry rather than implying zero traffic', async () => {
   for (const scenario of ['missing-id', 'duplicate-id', 'bad-geometry']) {
-    const mockFetch = async (u) => {
-      const query = new URL(u).searchParams;
+    const mockFetch = async (u, options) => {
+      const query = queryParams(u, options);
       if (query.get('returnIdsOnly') === 'true') {
         return mockResponse({ objectIdFieldName: 'OBJECTID', objectIds: [1, 2] });
       }
@@ -103,5 +114,31 @@ test('zero-result ID inventory is an empty geometry set, not a failed source', a
     fetchImpl: async () => mockResponse({ objectIdFieldName: 'OBJECTID', objectIds: [] }),
   });
   assert.equal(result.features.length, 0);
+  assert.equal(result.bdpFullObjectIdCoverage, true);
+});
+
+test('geometry pages avoid oversized query URLs and preserve all original spatial filters', async () => {
+  const ids = Array.from({ length: 400 }, (_, i) => 100000 + i);
+  let pageCalls = 0;
+  const fakeFetch = async (url, options) => {
+    const params = queryParams(url, options);
+    if (options.method === 'GET') {
+      return mockResponse({ objectIdFieldName: 'OBJECTID', objectIds: ids });
+    }
+    pageCalls += 1;
+    assert.equal(options.method, 'POST');
+    assert.ok(new URL(url).toString().length < 2000);
+    assert.ok(options.body.length > 2000);
+    assert.equal(params.get('geometryType'), 'esriGeometryEnvelope');
+    assert.equal(params.get('returnGeometry'), null); // BASE fixture omits optional flag.
+    assert.equal(params.get('outFields'), 'OBJECTID,AADT_CUR');
+    const pageIds = params.get('objectIds').split(',').map(Number);
+    return mockResponse({ type: 'FeatureCollection', features: pageIds.map(line) });
+  };
+  const result = await fetchCompleteTxdotCollection(BASE, 'AADT', normalizeTxdotAadt, {
+    fetchImpl: fakeFetch,
+  });
+  assert.equal(pageCalls, 1);
+  assert.equal(result.features.length, 400);
   assert.equal(result.bdpFullObjectIdCoverage, true);
 });
