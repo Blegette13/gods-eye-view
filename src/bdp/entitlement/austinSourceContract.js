@@ -178,3 +178,58 @@ export function validateAustinCandidateCollection(sourceName, response, { limit 
     features: response.features,
   });
 }
+
+
+/**
+ * Austin's jurisdiction polygons can cover an entire city and contain tens
+ * of thousands of vertices. Downloading the entire geometry for a parcel-sized
+ * envelope risks oversized responses and falsely "fixing" the problem by
+ * simplifying the authoritative border.
+ *
+ * Retrieve attributes only for jurisdiction DISCOVERY; this is not an exact
+ * parcel intersection and cannot establish a zoning jurisdiction or its share.
+ * Do not pass these records into PostGIS area calculations.
+ */
+export function buildAustinJurisdictionAttributeQueryUrl(geometry, { limit = 100 } = {}) {
+  const url = buildAustinParcelCandidateQueryUrl('jurisdiction', geometry, { limit });
+  url.searchParams.set('returnGeometry', 'false');
+  url.searchParams.set('f', 'json');
+  url.searchParams.delete('outSR');
+  return url;
+}
+
+export function summarizeAustinJurisdictionCandidates(response, { limit = 100 } = {}) {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500
+    || !response || response.error || !Array.isArray(response.features)
+    || response.exceededTransferLimit === true || response.features.length >= limit) {
+    throw new Error('Austin jurisdiction attribute candidates are missing, capped or malformed');
+  }
+  const source = AUSTIN_SOURCE_LAYERS.jurisdiction;
+  const features = response.features.map((feature) => {
+    if (!feature?.attributes || typeof feature.attributes !== 'object'
+      || Array.isArray(feature.attributes)) {
+      throw new Error('Austin jurisdiction candidate lacks attributes');
+    }
+    const properties = Object.fromEntries(source.fields.map((field) => {
+      const value = feature.attributes[field];
+      if (value === null || value === undefined) return [field, null];
+      if (typeof value !== 'string' && typeof value !== 'number') {
+        throw new Error('Austin jurisdiction candidate has invalid attribute value');
+      }
+      return [field, value];
+    }));
+    return Object.freeze({ properties });
+  });
+  return Object.freeze({
+    sourceName: 'jurisdiction',
+    candidateCount: features.length,
+    status: features.length
+      ? 'unverified-envelope-attribute-candidates'
+      : 'unknown-no-envelope-candidates',
+    exactOverlapCalculated: false,
+    geometryReturned: false,
+    // These values ONLY come from polygons whose bounding boxes meet a parcel
+    // envelope. They cannot establish municipal/ETJ jurisdiction or its area.
+    features: Object.freeze(features),
+  });
+}
