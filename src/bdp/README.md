@@ -315,6 +315,42 @@ that requires authoritative, versioned ordinance evidence and a confirmed
 controlling jurisdiction before parcel-specific development rules can be
 evaluated.
 
+### Step 40 — Austin outstanding regulatory evidence queue
+
+The verified Step 39 UI for the Travis County 701 Pressler St sample showed
+mapped `SF-2-HD-NP`, `MF-4-NP`, and `SF-3-NP` zoning GIS candidate
+codes. This release adds **Next evidence requests** (collapsed by default) in
+the existing `AUSTIN / REGULATORY REVIEW` section. The queue explicitly
+requires official jurisdiction review, formal zoning verification, parcel
+ordinances, all overlays, relevant historic / neighborhood plan research,
+the current permitted-use chart, site rules and survey/title documents.
+Multiple positive GIS classification codes also trigger an explicit boundary
+reconciliation task.
+
+Tasks are regenerated for the selected parcel and remain
+`verification-required` until an independently evidenced review workflow is
+implemented; no task can be auto-cleared by GIS fetch success. The panel
+provides City of Austin links to gather the requested official documents.
+The queue is deliberately collapsed to preserve the original God's Eye
+parcel UI and is separate from the 13-core-source coverage denominator and
+any acquisition recommendation.
+
+The update also improves contrast on official links (cyan instead of dark
+browser-default blue) and correctly labels Austin address verification as
+an address check rather than legal jurisdiction verification.
+
+Check:
+
+```powershell
+node --test src/bdp/entitlement/austinRegulatoryReview.test.mjs src/bdp/entitlement/austinRegulatoryDueDiligence.test.mjs src/bdp/ui/propertyCard.test.mjs
+```
+
+A passing test does not certify applicable regulations, approved development
+rights, the completeness of all overlays, historic designation, or zoning
+boundaries. Remaining implementation priority: verified, dated, parcel-linked
+ordinance evidence and an auditable manual review ledger before any site
+standards or capacity calculations.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
