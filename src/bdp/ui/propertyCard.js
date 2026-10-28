@@ -389,7 +389,8 @@ function cemeteryRows(metrics) {
 function entitlementRows(metrics) {
   if (!metrics) return [row('Entitlement', 'No data returned')];
   if (metrics.regional_scope_status === 'not-screened-outside-pilot') {
-    return [row('Entitlement coverage', 'NOT SCREENED'), row('Required review', metrics.regional_scope_note)];
+    return [row('Entitlement coverage', 'NOT SCREENED · regional pilot only'),
+      row('Required review', metrics.regional_scope_note)];
   }
 
   const jurisdiction = String(metrics.jurisdiction_screen || 'unresolved')
@@ -427,6 +428,14 @@ function austinZoningRows(metrics) {
     && item.intersectsParcel === true);
   const zoning = positive.filter((item) => item.sourceName === 'zoning');
   const etod = positive.filter((item) => item.sourceName === 'etodOverlay');
+  // A very small second zoning intersection is a boundary-review trigger,
+  // not proof of a legally split-zoned parcel or of a mapping error.
+  const tinyZones = zoning.filter((item) => item.parcelPercent < 1);
+  const boundaryReview = zoning.length > 1
+    ? 'REQUIRED · multiple mapped zoning polygons intersect; confirm boundaries with Austin Planning'
+    : zoning.length === 1
+      ? 'UNVERIFIED · one mapped zoning class intersects; official zoning still needs review'
+      : 'REQUIRED · no positive mapped zoning intersection; official zoning UNKNOWN';
   const label = (item) => item.sourceName === 'zoning'
     ? String(item.attributes?.ZONING_ZTYPE || 'Unspecified zoning class')
     : [item.attributes?.ZONING_OVERLAY_NAME, item.attributes?.ZONING_OVERLAY_SUB_NAME,
@@ -440,10 +449,14 @@ function austinZoningRows(metrics) {
     row('Zoning intersections', zoning.length
       ? zoning.map((item) => `${label(item)} · ${formatPercent(item.parcelPercent)} of mapped parcel`).join('; ')
       : 'UNKNOWN · no positive polygon overlap identified'),
+    row('Zoning boundary review', boundaryReview),
+    ...(tinyZones.length ? [row('Small GIS zoning overlaps',
+      tinyZones.map((item) => `${label(item)} · ${formatPercent(item.parcelPercent)}`).join('; ')
+        + ' · verify if this is boundary precision or an actual classification change')] : []),
     row('ETOD GIS candidates', String(metrics.sourceCandidates?.etodOverlay ?? '—')),
     row('ETOD mapped overlap', etod.length
       ? etod.map((item) => `${label(item)} · ${formatPercent(item.parcelPercent)} of mapped parcel`).join('; ')
-      : 'UNKNOWN · no positive polygon overlap identified'),
+      : 'UNKNOWN · no intersecting candidate in this GIS response; not ETOD clearance'),
     row('ETOD entitlement', 'UNVERIFIED · eligibility layer does not grant density bonuses or approvals'),
     row('Zoning determination', 'UNVERIFIED · verify current ordinances, overlays, restrictions and adopted use rules'),
     row('GIS limitation', 'Spatial intersections do not establish permitted uses, development rights or legal jurisdiction.'),
