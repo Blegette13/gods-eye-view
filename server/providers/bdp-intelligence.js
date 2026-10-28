@@ -58,6 +58,7 @@ function providerStatus(error) {
       'THC_CEMETERY_UPSTREAM_FAILED',
       'ENTITLEMENT_UPSTREAM_FAILED',
       'GROWTH_UPSTREAM_FAILED',
+      'AUSTIN_GIS_UPSTREAM_FAILED',
     ].includes(error?.code)
     || ['TimeoutError', 'AbortError'].includes(error?.name)
   ) return 502;
