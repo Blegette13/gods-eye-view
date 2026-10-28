@@ -95,6 +95,26 @@ Austin itself warns that simplified zoning-by-address datasets omit
 overlays and multiple zoning; users should consult official Property Profile
 and the city for zoning determinations.
 
+### Travis County parcel-wide source candidates
+
+The Austin point discovery validated live jurisdiction, zoning, and ETOD
+layer responses at a representative **point**, not a parcel. For the next
+stage, run `node scripts/bdp/diagnose-austin-parcel.mjs 302959` to retrieve
+the real TCAD polygon and query all three official Austin polygon layers
+against its **bounding envelope**. This deliberately retrieves candidate
+polygons with GIS geometries (GeoJSON), validates them, reports source
+attribute diversity and limits, but **does not assign a zoning classification
+or development rights**. An envelope can include polygons that never touch
+the actual tract, and the ETOD source may explicitly return an *eligibility*
+status instead of adopted zoning. Do not confuse it with automatic entitlement.
+
+Before attaching any Austin evidence to the unified property panel, use
+PostGIS to intersect complete source polygons against the complete TCAD
+parcel geometry, disclose every area share and conflicting classification,
+verify city/ETJ boundaries and overlay/regulatory applicability, and check
+data currency. Empty or capped GIS results stay UNKNOWN; mapped geometry is
+not a legal boundary survey or official zoning verification letter.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
