@@ -254,6 +254,25 @@
   line-height: 1.45;
 }
 
+/* Official record links must remain legible in the dark God’s Eye HUD.
+   Browser-default dark blue has insufficient contrast on this panel. */
+#bdp-property-card .bdp-property-value a {
+  color: #83e7ff;
+  text-decoration-color: rgba(131, 231, 255, 0.7);
+  text-underline-offset: 2px;
+}
+
+#bdp-property-card .bdp-property-value a:hover,
+#bdp-property-card .bdp-property-value a:focus-visible {
+  color: #ffffff;
+  text-decoration-color: #ffffff;
+}
+
+#bdp-property-card .bdp-property-value a:focus-visible {
+  outline: 2px solid #83e7ff;
+  outline-offset: 2px;
+}
+
 .bdp-property-section-heading {
   display: flex;
   align-items: center;
