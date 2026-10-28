@@ -290,6 +290,9 @@ function economicsRows(metrics) {
 
 function growthRows(metrics) {
   if (!metrics) return [row('Growth Radar', 'No data returned')];
+  if (metrics.regional_scope_status === 'not-screened-outside-pilot') {
+    return [row('Regional coverage', 'NOT SCREENED'), row('Required review', metrics.regional_scope_note)];
+  }
   return [
     row('Coverage', 'SAN ANTONIO PLANNING SOURCES · 25-MILE VICINITY'),
     row('Growth score', 'WITHHELD · PLANNING CONTEXT ONLY'),
@@ -372,6 +375,9 @@ function cemeteryRows(metrics) {
 
 function entitlementRows(metrics) {
   if (!metrics) return [row('Entitlement', 'No data returned')];
+  if (metrics.regional_scope_status === 'not-screened-outside-pilot') {
+    return [row('Entitlement coverage', 'NOT SCREENED'), row('Required review', metrics.regional_scope_note)];
+  }
 
   const jurisdiction = String(metrics.jurisdiction_screen || 'unresolved')
     .replaceAll('-', ' ')
