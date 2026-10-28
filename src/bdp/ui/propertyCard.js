@@ -47,6 +47,18 @@ function formatPercent(value) {
   return `${formatNumber(number, 1)}%`;
 }
 
+/**
+ * Display mapped GIS intersection shares without rounding a nonzero sliver
+ * to zero (or nearly-full coverage to an unjustified 100%).
+ * This is presentation precision, NOT a spatial tolerance or legal verdict.
+ */
+function formatMappedIntersectionPercent(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100) return '—';
+  if (value > 0 && value < 0.1) return '<0.1%';
+  if (value > 99.95 && value < 100) return '<100%';
+  return formatPercent(value);
+}
+
 function formatAcres(value) {
   if (value === null || value === undefined || value === '' || typeof value === 'boolean') return '—';
   const number = Number(value);
@@ -488,15 +500,15 @@ function austinZoningRows(metrics) {
     row('Source currency', 'UNVERIFIED'),
     row('Zoning GIS candidates', String(metrics.sourceCandidates?.zoning ?? '—')),
     row('Zoning intersections', zoning.length
-      ? zoning.map((item) => `${label(item)} · ${formatPercent(item.parcelPercent)} of mapped parcel`).join('; ')
+      ? zoning.map((item) => `${label(item)} · ${formatMappedIntersectionPercent(item.parcelPercent)} of mapped parcel`).join('; ')
       : 'UNKNOWN · no positive polygon overlap identified'),
     row('Zoning boundary review', boundaryReview),
     ...(tinyZones.length ? [row('Small GIS zoning overlaps',
-      tinyZones.map((item) => `${label(item)} · ${formatPercent(item.parcelPercent)}`).join('; ')
+      tinyZones.map((item) => `${label(item)} · ${formatMappedIntersectionPercent(item.parcelPercent)}`).join('; ')
         + ' · verify if this is boundary precision or an actual classification change')] : []),
     row('ETOD GIS candidates', String(metrics.sourceCandidates?.etodOverlay ?? '—')),
     row('ETOD mapped overlap', etod.length
-      ? etod.map((item) => `${label(item)} · ${formatPercent(item.parcelPercent)} of mapped parcel`).join('; ')
+      ? etod.map((item) => `${label(item)} · ${formatMappedIntersectionPercent(item.parcelPercent)} of mapped parcel`).join('; ')
       : 'UNKNOWN · no intersecting candidate in this GIS response; not ETOD clearance'),
     row('ETOD entitlement', 'UNVERIFIED · eligibility layer does not grant density bonuses or approvals'),
     row('Zoning determination', 'UNVERIFIED · verify current ordinances, overlays, restrictions and adopted use rules'),
