@@ -57,3 +57,14 @@ test('ledger has exactly one immutable row per requested feed and does not count
   assert.ok(Object.isFrozen(ledger));
   assert.ok(Object.values(ledger).every(Object.isFrozen));
 });
+
+test('out-of-pilot regional evidence is unknown, never a returned feed', () => {
+  for (const source of ['entitlement', 'growthRadar']) {
+    const result = describeBdpSourceCoverage(source, {
+      regional_scope_status: 'not-screened-outside-pilot',
+      regional_scope_note: 'Obtain jurisdiction-specific evidence.',
+    });
+    assert.equal(result.status, 'unknown');
+    assert.match(result.detail, /jurisdiction-specific/);
+  }
+});
