@@ -159,3 +159,52 @@ test('late acquisition briefs cannot cross parcel selections and failed requests
     console.warn = previousWarn;
   }
 });
+
+test('mapped water overlap and short traffic distances do not imply verified service or road access', async () => {
+  const previous = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const result = response(parcel);
+    result.evidence.transportation = {
+      nearest_road_name: 'W ANNIE ST',
+      nearest_road_m: 7,
+      road_centerline_intersects_parcel: false,
+      road_centerlines_within_250_ft: 3,
+      nearest_aadt_current: 2409,
+      nearest_aadt_route: '1021254',
+      nearest_aadt_m: 1.5,
+      nearest_station_id: '227UR680',
+      nearest_station_m: 48,
+      nearest_station_latest_year: 2025,
+      nearest_station_5yr_change_percent: null,
+    };
+    result.evidence.utilities = {
+      water_service_source_status: 'returned',
+      water_service_overlap_percent: 100,
+      water_service_names: ['CITY OF AUSTIN WATER & WASTEWATER'],
+      water_ccn_source_status: 'unavailable',
+    };
+    card = createBdpPropertyCard({ screeningLoader: async () => result });
+    card.show(parcel);
+    await tick();
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const valueFor = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.equal(valueFor('Legal access'), 'UNVERIFIED');
+    assert.equal(valueFor('Nearest road'), 'W ANNIE ST');
+    assert.equal(valueFor('Nearest mapped AADT'), '2,409 / day');
+    assert.equal(valueFor('AADT route / ID'), '1021254');
+    assert.equal(valueFor('AADT distance'), '5 ft');
+    assert.equal(valueFor('Station distance'), '157 ft');
+    assert.equal(valueFor('5-year change'), 'UNKNOWN · insufficient history');
+    assert.match(valueFor('Traffic context'), /may differ from the nearest road/);
+    assert.equal(valueFor('Mapped water area'), '100%');
+    assert.equal(valueFor('Mapped provider(s)'), 'CITY OF AUSTIN WATER & WASTEWATER');
+    assert.match(valueFor('Water area meaning'), /capacity unverified/);
+    assert.equal(valueFor('Water capacity'), 'UNVERIFIED');
+    assert.equal(valueFor('Current water svc'), undefined);
+  } finally {
+    card?.destroy();
+    globalThis.document = previous;
+  }
+});
