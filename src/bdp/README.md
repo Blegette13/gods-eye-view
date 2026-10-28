@@ -46,6 +46,17 @@ selectable parcels. This is not the countywide parcel inventory. The corrected
 adapter uses the full TCAD layer and a live validator now checks that a
 residential neighborhood in central Austin returns at least one parcel.
 Neither a mapped boundary nor a GIS deed reference verifies legal title.
+A current countywide neighborhood request returned 72 GIS polygons with valid
+geometry but six records lacking a numeric `PROP_ID`. Viewport mapping now
+retains the 66 identifiable parcels while labeling the feed DEGRADED / PARTIAL,
+showing omitted counts, and attaching the coverage limitation to displayed
+property source notes. The six unidentified polygons are not assumed safe,
+silently treated as absent land, given fabricated IDs, or used for acquisition
+screening. Invalid geometry, duplicate identifiable IDs, and truncated/capped
+responses continue to fail closed. Exact parcel and owner searches also retain
+strict identifier validation. A partial viewport does not imply complete parcel
+coverage.
+
 
 Source: https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD/MapServer/0
 (official GIS layer and field metadata verified October 27, 2026).
