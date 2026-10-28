@@ -73,7 +73,7 @@ export function createRegulatoryEvidenceEvent(input) {
  */
 export function summarizeRegulatoryEvidence(events = []) {
   if (!Array.isArray(events)) throw new TypeError('Evidence entries must be an array');
-  const eventsByTask = {};
+  const eventsByTask = Object.create(null);
   for (const event of events) {
     if (event?.verificationState !== 'unverified' || !TASK_PATTERN.test(String(event.taskId || ''))) {
       throw new Error('Unrecognized evidence record');
