@@ -58,7 +58,12 @@ async function probe(stage, url, init = {}) {
 }
 
 console.log('TxDOT public roadway GIS diagnostic · Austin sample · read only');
-await probe('layer-metadata', new URL(baseUrl.pathname.replace(/\\/query$/, '') + '?f=json', baseUrl.origin));
+const metadataUrl = new URL(baseUrl);
+metadataUrl.pathname = metadataUrl.pathname.endsWith('/query')
+  ? metadataUrl.pathname.slice(0, -'/query'.length)
+  : metadataUrl.pathname;
+metadataUrl.search = '?f=json';
+await probe('layer-metadata', metadataUrl);
 
 const idsUrl = new URL(baseUrl);
 idsUrl.searchParams.set('returnIdsOnly', 'true');
