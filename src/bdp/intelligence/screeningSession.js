@@ -32,7 +32,7 @@ import { deriveCulturalFlags } from './culturalFlags.js';
 import { scoreEntitlementZoning } from './entitlementScore.js';
 import { deriveEntitlementFlags } from './entitlementFlags.js';
 import { deriveGrowthRadarFlags } from './growthRadarFlags.js';
-import { eligibleForSanAntonioPilot, unavailableRegionalPilotEvidence } from './regionScope.js';
+import { eligibleForSanAntonioPilot, eligibleForAustinGisPilot, unavailableRegionalPilotEvidence } from './regionScope.js';
 
 export const BDP_SCREENING_SOURCES = Object.freeze([
   'energy',
@@ -83,6 +83,8 @@ export async function runBdpParcelScreening(parcel, {
   cemeteriesLoader = fetchBdpParcelCemeteries,
   entitlementLoader = fetchBdpParcelEntitlement,
   growthRadarLoader = fetchBdpParcelGrowthRadar,
+  // Optional unscored Travis GIS preview; no additional source coverage credit.
+  austinZoningLoader = null,
 } = {}) {
   if (!parcel?.property?.geometry) {
     throw new Error('Parcel geometry is required for BDP screening');
@@ -114,6 +116,8 @@ export async function runBdpParcelScreening(parcel, {
         return loaders[source](parcel);
       })),
       Promise.resolve().then(() => developmentConstraintsLoader ? developmentConstraintsLoader(parcel) : null),
+      Promise.resolve().then(() => austinZoningLoader && eligibleForAustinGisPilot(parcel)
+        ? austinZoningLoader(parcel) : null),
     ],
   );
 
@@ -129,6 +133,10 @@ export async function runBdpParcelScreening(parcel, {
   const derived = settled[BDP_SCREENING_SOURCES.length];
   evidence.developmentConstraints = settledValue(derived);
   errors.developmentConstraints = derived.status === 'rejected' ? serializeError(derived.reason) : null;
+  const austinResult = settled[BDP_SCREENING_SOURCES.length + 1];
+  evidence.austinZoning = settledValue(austinResult);
+  errors.austinZoning = austinResult.status === 'rejected'
+    ? serializeError(austinResult.reason) : null;
   evidence.acquisitionEconomics = evaluateAcquisitionEconomics(parcel);
   evidence.ownershipTitle = buildOwnershipTitleReview(parcel, evidence);
 
