@@ -315,3 +315,70 @@ test('mixed Austin GIS zones flag mapped boundary ambiguity and zero ETOD candid
     globalThis.document = old;
   }
 });
+
+test('Austin jurisdiction GIS preview shows mapped full-purpose envelope without legal clearance', async () => {
+  const old = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const travis = {
+      ...parcel, id: '48453:302959', countyFips: '48453', county: 'Travis',
+      parcelId: '302959',
+      property: { ...parcel.property, situsAddress: '611 W ANNIE ST' },
+    };
+    const screened = response(travis);
+    screened.evidence.austinJurisdiction = {
+      status: 'single-gis-feature-contains-parcel-envelope',
+      intersectsCandidateCount: 1,
+      envelopeContainingCandidateCount: 1,
+      candidateJurisdictions: [
+        { id: 1326, cityName: 'CITY OF AUSTIN', type: 'FULL', specifics: 'FULL PURPOSE' },
+      ],
+      envelopeContainingJurisdictions: [
+        { id: 1326, cityName: 'CITY OF AUSTIN', type: 'FULL', specifics: 'FULL PURPOSE' },
+      ],
+      legalJurisdictionVerified: false,
+      parcelWideControllingJurisdiction: null,
+      acquisitionRecommendation: null,
+    };
+    card = createBdpPropertyCard({ screeningLoader: async () => screened });
+    card.show(travis);
+    await tick();
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const value = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.match(card.root.textContent, /AUSTIN GIS \/ JURISDICTION SCREEN/);
+    assert.match(value('Mapped jurisdiction'), /PRELIMINARY.*CITY OF AUSTIN.*FULL PURPOSE/);
+    assert.equal(value('GIS candidate count'), '1');
+    assert.match(value('Envelope containment'), /ONE mapped jurisdiction feature/);
+    assert.match(value('Legal jurisdiction'), /UNVERIFIED/);
+    assert.match(value('Jurisdiction source date'), /UNVERIFIED/);
+    assert.notEqual(value('Acquisition recommendation'), 'BUY');
+  } finally {
+    card?.destroy();
+    globalThis.document = old;
+  }
+});
+
+test('Austin jurisdiction outage leaves explicit UNKNOWN rather than full-purpose clearance', async () => {
+  const old = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const travis = {
+      ...parcel, id: '48453:302959', countyFips: '48453', county: 'Travis',
+    };
+    const screened = response(travis);
+    screened.evidence.austinJurisdiction = null;
+    screened.errors.austinJurisdiction = { message: 'upstream failed', status: 502 };
+    card = createBdpPropertyCard({ screeningLoader: async () => screened });
+    card.show(travis);
+    await tick();
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const value = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.match(value('Mapped jurisdiction'), /UNAVAILABLE.*UNKNOWN/);
+    assert.match(value('Legal jurisdiction'), /UNVERIFIED/);
+  } finally {
+    card?.destroy();
+    globalThis.document = old;
+  }
+});
