@@ -164,6 +164,38 @@ development approval, GIS source currency is unverified, and no land-use
 regulations or permit availability have been adjudicated. Acquisition
 recommendations must remain withheld where evidence is incomplete.
 
+### Travis pilot: Austin spatial evidence in the unified property card (Step 34)
+
+The **existing** BDP unified parcel screening request now optionally collects
+`evidence.austinZoning` for parcels whose recorded county identity is Travis,
+using the verified PostGIS parcel/zoning and ETOD overlap code. It does **not**
+replace the San Antonio entitlement/Growth Radar pilots or create a new
+independent client request. The original God's Eye View interface adds
+**AUSTIN GIS / PRELIMINARY ZONING** only for the Travis pilot.
+
+The section discloses polygon overlap shares, but omits zero-area envelope
+candidates from the list of positive intersections. It explicitly reports
+jurisdiction, source currency, legal entitlement, and ETOD adoption as
+**UNVERIFIED**. The ETOD `Eligible` attribute is not an adopted density
+bonus or development permit; official zoning must be checked in Austin's
+Property Profile/with Austin Planning. No Austin preview result contributes
+score-model coverage, red-flag clearance, buy recommendation or the 13-source
+feed-response denominator. Provider failure is isolated and shows unavailable
+preview rather than a guessed or favorable zoning outcome.
+
+To test this stage (local PostGIS must be configured in the Vite server's
+PowerShell environment):
+
+```powershell
+node --test src/bdp/entitlement/austinParcelOverlap.test.mjs src/bdp/intelligence/regionScope.test.mjs src/bdp/intelligence/screeningSession.test.mjs server/providers/bdp-austin-zoning.test.mjs src/bdp/ui/propertyCard.test.mjs
+npm.cmd run dev
+```
+
+This code has not independently established full City of Austin jurisdiction
+geometry, every zoning overlay, current legal zoning status, boundary survey
+accuracy, or permitted development density. Keep acquisitions withheld where
+source facts or legal review are missing.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
