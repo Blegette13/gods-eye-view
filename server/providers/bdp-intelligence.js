@@ -18,6 +18,7 @@ import { screenBdpParcelCemeteries } from './bdp-cultural.js';
 import { screenBdpParcelEntitlement } from './bdp-entitlement.js';
 import { screenBdpParcelGrowth } from './bdp-growth.js';
 import { screenBdpParcelAustinZoning } from './bdp-austin-zoning.js';
+import { screenBdpParcelAustinJurisdiction } from './bdp-austin-jurisdiction.js';
 
 const MAX_BODY_BYTES = 1_000_000;
 
@@ -125,6 +126,9 @@ export async function screenBdpParcelIntelligence(parcelInput) {
     ).metrics),
     austinZoningLoader: screened((candidate) => (
       screenBdpParcelAustinZoning(parcelGeometryInput(candidate))
+    )),
+    austinJurisdictionLoader: screened((candidate) => (
+      screenBdpParcelAustinJurisdiction(parcelGeometryInput(candidate))
     )),
   });
 }
