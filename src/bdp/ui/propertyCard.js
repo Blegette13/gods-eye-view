@@ -428,6 +428,39 @@ function entitlementRows(metrics, { austinPreviewAvailable = false } = {}) {
 }
 
 
+function austinJurisdictionRows(metrics) {
+  if (!metrics) return [
+    row('Mapped jurisdiction', 'UNKNOWN · no municipal GIS relationship evidence'),
+    row('Legal jurisdiction', 'UNVERIFIED · responsible authority review required'),
+  ];
+  const candidates = Array.isArray(metrics.candidateJurisdictions)
+    ? metrics.candidateJurisdictions : [];
+  const containing = Array.isArray(metrics.envelopeContainingJurisdictions)
+    ? metrics.envelopeContainingJurisdictions : [];
+  const label = (item) => [item.cityName, item.specifics || item.type].filter(Boolean).join(' · ');
+  const fullyContained = metrics.status === 'single-gis-feature-contains-parcel-envelope'
+    && containing.length === 1 && candidates.length === 1
+    && containing[0].id === candidates[0].id;
+  const mappedStatus = fullyContained
+    ? `PRELIMINARY · GIS parcel envelope within ${label(containing[0])}`
+    : candidates.length > 1
+      ? 'REVIEW REQUIRED · multiple mapped jurisdiction features touch parcel envelope'
+      : 'UNKNOWN · GIS jurisdiction envelope not fully classified';
+  return [
+    row('Mapped jurisdiction', mappedStatus),
+    row('GIS candidate count', String(metrics.intersectsCandidateCount ?? '—')),
+    row('Envelope containment', fullyContained
+      ? 'ONE mapped jurisdiction feature contains the full parcel bounding envelope'
+      : 'NOT ESTABLISHED · mapped boundary ambiguity or no complete envelope match'),
+    ...(candidates.length > 1
+      ? [row('Potential jurisdictions', candidates.map(label).join('; '))] : []),
+    row('Legal jurisdiction', 'UNVERIFIED · no legally controlling city/ETJ determination'),
+    row('Boundary evidence', 'County parcel GIS / Austin ArcGIS · not a property boundary survey'),
+    row('Jurisdiction source date', 'UNVERIFIED'),
+    row('Jurisdiction review', 'Confirm annexation, current city/ETJ authority, recorded boundaries and applicable regulations before land decisions.'),
+  ];
+}
+
 function austinZoningRows(metrics) {
   if (!metrics) return [row('Austin GIS preview', 'UNKNOWN · no parcel intersection evidence')];
   const observations = Array.isArray(metrics.observations) ? metrics.observations : [];
@@ -694,6 +727,12 @@ function appendScreeningResult(containers, screening) {
     : [row('Austin GIS preview', errors.austinZoning
       ? 'UNAVAILABLE · source/database screening failed; legal zoning UNKNOWN'
       : 'NOT SCREENED · local pilot evidence unavailable')]));
+  containers.austinJurisdiction.replaceChildren(...(evidence.austinJurisdiction
+    ? austinJurisdictionRows(evidence.austinJurisdiction)
+    : [row('Mapped jurisdiction', errors.austinJurisdiction
+      ? 'UNAVAILABLE · ArcGIS jurisdiction screening failed; legal jurisdiction UNKNOWN'
+      : 'NOT SCREENED · mapped jurisdiction unavailable'),
+      row('Legal jurisdiction', 'UNVERIFIED · confirm with responsible authority')]));
   containers.transportation.replaceChildren(...(
     evidence.transportation
       ? transportationRows(evidence.transportation)
@@ -818,6 +857,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       cemeteries: document.createElement('div'),
       entitlement: document.createElement('div'),
       austinZoning: document.createElement('div'),
+      austinJurisdiction: document.createElement('div'),
       transportation: document.createElement('div'),
       utilities: document.createElement('div'),
       waterRights: document.createElement('div'),
@@ -839,6 +879,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     containers.cemeteries.append(row('THC cemeteries', 'Loading…'));
     containers.entitlement.append(row('Entitlement', 'Loading…'));
     containers.austinZoning.append(row('Austin zoning GIS', 'Loading preliminary intersections…'));
+    containers.austinJurisdiction.append(row('Austin GIS jurisdiction', 'Loading preliminary envelope relationships…'));
     containers.transportation.append(row('TxDOT screening', 'Loading…'));
     containers.utilities.append(row('Utilities', 'Loading…'));
     containers.waterRights.append(row('TCEQ water rights', 'Loading…'));
@@ -855,6 +896,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       sectionHeading('DEVELOPMENT / MAPPED CONSTRAINTS'), containers.developmentConstraints,
       sectionHeading('ENTITLEMENT / ZONING'), containers.entitlement,
       ...(eligibleForAustinGisPilot(parcel) ? [
+        sectionHeading('AUSTIN GIS / JURISDICTION SCREEN'), containers.austinJurisdiction,
         sectionHeading('AUSTIN GIS / PRELIMINARY ZONING'), containers.austinZoning,
       ] : []),
       sectionHeading('ACCESS / TXDOT TRAFFIC'), containers.transportation,
