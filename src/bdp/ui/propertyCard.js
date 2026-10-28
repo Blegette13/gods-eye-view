@@ -1,6 +1,7 @@
 import { ACQUISITION_COST_FIELDS, evaluateAcquisitionEconomics } from '../economics/acquisitionEconomics.js';
 import { fetchBdpParcelIntelligence } from '../intelligence/client.js';
 import { buildOwnershipTitleReview, TITLE_REVIEW_REFERENCES } from '../title/ownershipReview.js';
+import { eligibleForAustinGisPilot } from '../intelligence/regionScope.js';
 
 function formatMoney(value) {
   if (value === null || value === undefined || value === '' || typeof value === 'boolean') return '—';
@@ -417,6 +418,38 @@ function entitlementRows(metrics) {
   ];
 }
 
+
+function austinZoningRows(metrics) {
+  if (!metrics) return [row('Austin GIS preview', 'UNKNOWN · no parcel intersection evidence')];
+  const observations = Array.isArray(metrics.observations) ? metrics.observations : [];
+  const positive = observations.filter((item) =>
+    Number.isFinite(item.parcelPercent) && item.parcelPercent > 0
+    && item.intersectsParcel === true);
+  const zoning = positive.filter((item) => item.sourceName === 'zoning');
+  const etod = positive.filter((item) => item.sourceName === 'etodOverlay');
+  const label = (item) => item.sourceName === 'zoning'
+    ? String(item.attributes?.ZONING_ZTYPE || 'Unspecified zoning class')
+    : [item.attributes?.ZONING_OVERLAY_NAME, item.attributes?.ZONING_OVERLAY_SUB_NAME,
+      item.attributes?.ZONING_STATUS].filter(Boolean).join(' · ') || 'Unspecified overlay';
+  return [
+    row('GIS evidence', 'PRELIMINARY · NOT LEGAL ZONING'),
+    row('Parcel geometry', 'County GIS polygon · NOT A SURVEY'),
+    row('Jurisdiction', 'UNVERIFIED · exact city/ETJ intersection pending'),
+    row('Source currency', 'UNVERIFIED'),
+    row('Zoning GIS candidates', String(metrics.sourceCandidates?.zoning ?? '—')),
+    row('Zoning intersections', zoning.length
+      ? zoning.map((item) => `${label(item)} · ${formatPercent(item.parcelPercent)} of mapped parcel`).join('; ')
+      : 'UNKNOWN · no positive polygon overlap identified'),
+    row('ETOD GIS candidates', String(metrics.sourceCandidates?.etodOverlay ?? '—')),
+    row('ETOD eligible-area overlap', etod.length
+      ? etod.map((item) => `${label(item)} · ${formatPercent(item.parcelPercent)} of mapped parcel`).join('; ')
+      : 'UNKNOWN · no positive polygon overlap identified'),
+    row('ETOD entitlement', 'UNVERIFIED · eligibility layer does not grant density bonuses or approvals'),
+    row('Zoning determination', 'UNVERIFIED · verify current ordinances, overlays, restrictions and adopted use rules'),
+    row('GIS limitation', 'Spatial intersections do not establish permitted uses, development rights or legal jurisdiction.'),
+  ];
+}
+
 function transportationRows(metrics) {
   if (!metrics) return [row('TxDOT screening', 'No metrics returned')];
   const roadLabel = [metrics.nearest_road_name, metrics.nearest_road_system]
@@ -635,6 +668,11 @@ function appendScreeningResult(containers, screening) {
       ? entitlementRows(evidence.entitlement)
       : [row('Entitlement', sourceErrorLabel(errors.entitlement, 'San Antonio entitlement GIS'))]
   ));
+  containers.austinZoning.replaceChildren(...(evidence.austinZoning
+    ? austinZoningRows(evidence.austinZoning)
+    : [row('Austin GIS preview', errors.austinZoning
+      ? 'UNAVAILABLE · source/database screening failed; legal zoning UNKNOWN'
+      : 'NOT SCREENED · local pilot evidence unavailable')]));
   containers.transportation.replaceChildren(...(
     evidence.transportation
       ? transportationRows(evidence.transportation)
@@ -758,6 +796,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       msw: document.createElement('div'),
       cemeteries: document.createElement('div'),
       entitlement: document.createElement('div'),
+      austinZoning: document.createElement('div'),
       transportation: document.createElement('div'),
       utilities: document.createElement('div'),
       waterRights: document.createElement('div'),
@@ -778,6 +817,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     containers.msw.append(row('TCEQ MSW', 'Loading…'));
     containers.cemeteries.append(row('THC cemeteries', 'Loading…'));
     containers.entitlement.append(row('Entitlement', 'Loading…'));
+    containers.austinZoning.append(row('Austin zoning GIS', 'Loading preliminary intersections…'));
     containers.transportation.append(row('TxDOT screening', 'Loading…'));
     containers.utilities.append(row('Utilities', 'Loading…'));
     containers.waterRights.append(row('TCEQ water rights', 'Loading…'));
@@ -793,6 +833,9 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       sectionHeading('GROWTH RADAR'), containers.growthRadar,
       sectionHeading('DEVELOPMENT / MAPPED CONSTRAINTS'), containers.developmentConstraints,
       sectionHeading('ENTITLEMENT / ZONING'), containers.entitlement,
+      ...(eligibleForAustinGisPilot(parcel) ? [
+        sectionHeading('AUSTIN GIS / PRELIMINARY ZONING'), containers.austinZoning,
+      ] : []),
       sectionHeading('ACCESS / TXDOT TRAFFIC'), containers.transportation,
       sectionHeading('UTILITIES / INFRASTRUCTURE'), containers.utilities,
       sectionHeading('SURFACE WATER RIGHTS / TCEQ'), containers.waterRights,
@@ -808,7 +851,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
 
     const disclaimer = document.createElement('p');
     disclaimer.className = 'bdp-property-disclaimer';
-    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. TxDOT roadway proximity does not prove legal access/frontage. Utility service areas/CCNs do not prove capacity, taps, extension cost or electric service; archived transmission mapping does not prove current line/easement conditions. TCEQ water-right points do not prove that a right belongs to the parcel owner, conveys with the tract, or provides available supply. TCEQ MSW coordinates may be a gate, benchmark, centroid, or other point and do not prove exact waste boundaries or parcel contamination. San Antonio zoning, ETJ and Future Land Use GIS are planning screens and do not establish legal entitlement, vested rights, density, overlays or permitted development. THC cemetery geometry is public screening data and is not a boundary survey; exact archeological site locations are restricted and are not publicly screened, so absence from this interface is not archeological clearance. FEMA, RRC, NWI, EPA cleanup, TCEQ MSW, THC public cultural data, TxDOT, utility GIS, TCEQ water-right GIS, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, utility, water-right, traffic/ROW, engineering and permitting due diligence remains required.';
+    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. TxDOT roadway proximity does not prove legal access/frontage. Utility service areas/CCNs do not prove capacity, taps, extension cost or electric service; archived transmission mapping does not prove current line/easement conditions. TCEQ water-right points do not prove that a right belongs to the parcel owner, conveys with the tract, or provides available supply. TCEQ MSW coordinates may be a gate, benchmark, centroid, or other point and do not prove exact waste boundaries or parcel contamination. Austin parcel zoning/ETOD GIS intersections are a Travis pilot and do not establish official zoning, city jurisdiction, adoption of density bonuses or permitted uses. San Antonio zoning, ETJ and Future Land Use GIS are planning screens and do not establish legal entitlement, vested rights, density, overlays or permitted development. THC cemetery geometry is public screening data and is not a boundary survey; exact archeological site locations are restricted and are not publicly screened, so absence from this interface is not archeological clearance. FEMA, RRC, NWI, EPA cleanup, TCEQ MSW, THC public cultural data, TxDOT, utility GIS, TCEQ water-right GIS, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, utility, water-right, traffic/ROW, engineering and permitting due diligence remains required.';
     body.append(disclaimer);
 
     collapse.addEventListener('click', () => {
