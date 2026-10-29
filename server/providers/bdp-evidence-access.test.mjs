@@ -32,8 +32,13 @@ test('no trust resolver means no evidence service can be constructed', () => {
   assert.throws(() => createScopedRegulatoryEvidenceService(), /resolver/);
   assert.throws(() => createScopedRegulatoryEvidenceService({
     resolveAuthenticatedIdentity: async () => null,
-    query: 'not a database adapter',
-  }), /query adapter/);
+    readQuery: 'not a database adapter',
+    appendQuery: async () => { throw new Error('must not append'); },
+  }), /readQuery and appendQuery/);
+  assert.throws(() => createScopedRegulatoryEvidenceService({
+    resolveAuthenticatedIdentity: async () => null,
+    readQuery: async () => { throw new Error('must not read'); },
+  }), /readQuery and appendQuery/);
 });
 
 test('unauthorized and cross-parcel reads cannot touch PostgreSQL', async () => {
@@ -41,7 +46,8 @@ test('unauthorized and cross-parcel reads cannot touch PostgreSQL', async () => 
   const service = createScopedRegulatoryEvidenceService({
     resolveAuthenticatedIdentity: async (session) =>
       session === 'valid-server-session' ? principal : null,
-    query: async () => { calls++; return emptyIndex; },
+    readQuery: async () => { calls++; return emptyIndex; },
+    appendQuery: async () => { throw new Error('unexpected append'); },
   });
   await assert.rejects(service.readIndex(null, scope), /access denied/);
   await assert.rejects(service.readIndex('valid-server-session', {
@@ -57,7 +63,8 @@ test('authorized read returns validated metadata and never inferred clearance', 
   let calls = 0;
   const service = createScopedRegulatoryEvidenceService({
     resolveAuthenticatedIdentity: async () => principal,
-    query: async (sql, opts) => {
+    appendQuery: async () => { throw new Error('unexpected append'); },
+    readQuery: async (sql, opts) => {
       calls++;
       assert.match(sql, /county_fips = '48453' AND parcel_id = '302959'/);
       assert.doesNotMatch(sql, /source_url|entered_by|notes/);
@@ -77,7 +84,8 @@ test('reader cannot append; researcher can insert only an unverified, scoped not
   const service = createScopedRegulatoryEvidenceService({
     resolveAuthenticatedIdentity: async (session) =>
       session === 'reader' ? { ...principal, roles: ['evidence-reader'] } : principal,
-    query: async (sql, opts) => {
+    readQuery: async () => { throw new Error('unexpected read'); },
+    appendQuery: async (sql, opts) => {
       calls++;
       assert.match(sql, /SELECT public\.bdp_evidence_append_unverified\(/);
       assert.doesNotMatch(sql, /INSERT INTO bdp_regulatory_evidence_events/);
@@ -101,7 +109,8 @@ test('untrusted approval fields fail without contacting the database', async () 
   let calls = 0;
   const service = createScopedRegulatoryEvidenceService({
     resolveAuthenticatedIdentity: async () => principal,
-    query: async () => { calls++; return receipt; },
+    readQuery: async () => { throw new Error('unexpected read'); },
+    appendQuery: async () => { calls++; return receipt; },
   });
   for (const patch of [
     { legalClearance: true },
@@ -120,7 +129,8 @@ test('appending snapshots event fields before awaited identity resolution', asyn
     resolveAuthenticatedIdentity: () => new Promise((resolve) => {
       releaseIdentity = resolve;
     }),
-    query: async (sql) => {
+    readQuery: async () => { throw new Error('unexpected read'); },
+    appendQuery: async (sql) => {
       assert.match(sql, /SELECT public\.bdp_evidence_append_unverified\(/);
       assert.doesNotMatch(sql, /INSERT INTO bdp_regulatory_evidence_events/);
       return receipt;
@@ -137,9 +147,8 @@ test('appending snapshots event fields before awaited identity resolution', asyn
 test('malformed database read/append receipts are rejected without claiming approval', async () => {
   const service = createScopedRegulatoryEvidenceService({
     resolveAuthenticatedIdentity: async () => principal,
-    query: async (sql) => sql.includes('bdp_evidence_append_unverified')
-      ? { ...receipt, verificationState: 'verified' }
-      : { ...emptyIndex, legalClearance: true },
+    readQuery: async () => ({ ...emptyIndex, legalClearance: true }),
+    appendQuery: async () => ({ ...receipt, verificationState: 'verified' }),
   });
   await assert.rejects(service.readIndex('researcher', scope), /Malformed/);
   await assert.rejects(service.appendEvent('researcher', input), /failed parcel\/provenance/);
