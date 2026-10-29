@@ -1,5 +1,6 @@
 import './godsEyeUi.css';
 import './landSearch.css';
+import './persistentSearch.css';
 import './layerPreset.css';
 import { parseBdpLandSearch } from './landSearch.js';
 import { BDP_LAYER_STATE_REGISTRY } from '../config/layerRegistry.js';
