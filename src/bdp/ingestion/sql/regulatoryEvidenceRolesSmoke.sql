@@ -44,8 +44,29 @@ BEGIN
       'public.bdp_evidence_append_unverified(jsonb)', 'EXECUTE') THEN
     RAISE EXCEPTION 'Appender cannot invoke restricted unverified RPC';
   END IF;
+  IF NOT pg_catalog.has_column_privilege('bdp_evidence_owner',
+      'public.bdp_regulatory_evidence_events', 'notes', 'INSERT')
+    OR NOT pg_catalog.has_column_privilege('bdp_evidence_owner',
+      'public.bdp_regulatory_evidence_events', 'recorded_at', 'SELECT')
+    OR pg_catalog.has_column_privilege('bdp_evidence_owner',
+      'public.bdp_regulatory_evidence_events', 'notes', 'SELECT')
+    OR pg_catalog.has_table_privilege('bdp_evidence_owner',
+      'public.bdp_regulatory_evidence_events', 'UPDATE')
+    OR pg_catalog.has_table_privilege('bdp_evidence_owner',
+      'public.bdp_regulatory_evidence_events', 'DELETE') THEN
+    RAISE EXCEPTION 'SECURITY DEFINER owner has unexpected base-table privileges';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_roles r ON p.proowner = r.oid
+    WHERE p.oid = 'public.bdp_evidence_append_unverified(jsonb)'::regprocedure
+      AND r.rolname = 'bdp_evidence_owner'
+  ) THEN
+    RAISE EXCEPTION 'Restricted append function is not owned by bdp_evidence_owner';
+  END IF;
   IF EXISTS (SELECT 1 FROM pg_catalog.pg_roles
-    WHERE rolname IN ('bdp_evidence_reader', 'bdp_evidence_appender') AND rolcanlogin) THEN
+    WHERE rolname IN ('bdp_evidence_reader', 'bdp_evidence_appender', 'bdp_evidence_owner') AND rolcanlogin) THEN
     RAISE EXCEPTION 'Evidence group roles must be NOLOGIN';
   END IF;
   RAISE NOTICE 'BDP least-privilege metadata and RPC grant checks passed';
