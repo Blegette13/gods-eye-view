@@ -65,6 +65,39 @@ All property views consume **one normalized selection and unified intelligence r
 | **P2.7** | Resume Step 52: real identity provider + server identity/role binding and PostgreSQL RLS controls. | Independent authorization tests and operator/parcel isolation gates; no trust in client-submitted role/session. |
 | **P2.8** | Expand vetted county/state adapters and production hardening. | County-by-county source, currency, licensing and validity gates; automated regression and integration checks. |
 
+## Phase 2 incremental implementation log
+
+### P2.1 — neutral shell and unified search (committed; local verification pending)
+
+The existing `#location-search` DOM input is moved into a permanently displayed search bar by `src/bdp/ui/persistentSearch.js`. It is not cloned or substituted: native address/coordinate geocoding, county search commands, cancellation and the underlying property panel retain their existing owners. A temporary descriptive title replaces visible company-specific labels. No software brand/trademark is claimed.
+
+### P2.3 — land-only operational mode, first cleanup wave (committed; local verification pending)
+
+- `src/bdp/config/workspacePolicy.js` classifies **all 16 upstream data layer IDs** as legacy and leaves **all 17 BDP land layer IDs** available.
+- `src/standalone/data.js` registers the data manager's existing visibility guard **before** `styleManager.attachDataManager` can restore saved/share state. Attempts to enable a legacy layer are refused for every origin (including restored links, scene tools, scripts and manual toggles); disabling is allowed. The original upstream registry, encoded URL tokens, registered module IDs and cleanup paths remain unchanged.
+- `src/bdp/ui/workspace.css` hides aircraft/cockpit, radio/context, CCTV, scene controls, style instruments, upstream layer rows and the legacy mission launcher from the land workspace. This visibility-only CSS is paired with the actual data-manager guard; hiding a control by itself never stops a feed.
+- `src/standalone/startupChrome.js` skips constructing the old first-run mission dialog and its keyboard event handlers while **preserving provider key setup and map loading**.
+- `src/bdp/config/workspacePolicy.test.mjs` covers every upstream ID and all restore origins. New UI/mount tests already cover preservation of the original search input.
+
+**Scope limit:** legacy modules are still bundled/registered, and some ancillary infrastructure (voice, scene, CCTV providers, keyboard/cockpit controls) still exists in source. This is an operational **quarantine**, not a dependency-safe deletion, commercial data-license resolution, or proof that all legacy network/process work has stopped. Further disable/removal must be done provider-by-provider after import/route/teardown and restored-state audits. Browser regression is required before calling this finished.
+
+### Local acceptance sequence (Windows PowerShell in existing checkout)
+
+```powershell
+git checkout bdp-development
+git pull --ff-only origin bdp-development
+node --test src/bdp/config/workspacePolicy.test.mjs src/bdp/ui/landSearch.test.mjs src/bdp/ui/persistentSearch.test.mjs
+npm.cmd test
+npm.cmd run format:check
+npm.cmd run check:boundaries
+npm.cmd run build
+npm.cmd run dev
+```
+
+Use the terminal's printed local URL. In the browser: confirm the map and legally required attribution, persistent search in a clean session and after reload, and a visible land-only MAP LAYERS panel. Confirm **`travis parcel: 302959`** and another supported county query behave as expected, and try ordinary address/coordinates separately. Check the property panel still shows missing/regional/unavailable source evidence as unknown; no scores or permissions should be inferred from empty results. Inspect the browser console for failed registrations and attempt an old share link containing `flights`/other legacy layer tokens: the source may remain in stored state, but the layer must not enable or fetch. Browser inspection of network requests can identify **additional** provider activity outside the data manager for the next cleanup wave. Do not expose database secrets or API keys in screenshots.
+
+Local tests/production build and real browser behavior **have not been run from the GitHub connector**. Until the operator performs these checks, the modifications are provisional and do not certify Step 51 security isolation.
+
 ## Non-negotiable regression checklist
 
 1. Cesium viewer, map stack and attribution render without legacy tracking layers.
