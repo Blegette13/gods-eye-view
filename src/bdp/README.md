@@ -749,6 +749,64 @@ legal due diligence. God's Eye View's original Cesium experience, Vite
 routes and parcel-screening pipeline remain unchanged. No legal-clearance
 or BUY decision can be inferred from this new infrastructure.
 
+### Step 48 — read-only evidence security posture audit (pre-authentication)
+
+**Step 47 was confirmed on the local Windows/PostGIS setup:** the RLS
+migration committed successfully. The rollback-only smoke test confirmed
+that a restricted reader saw the granted parcel but not an expired grant,
+and that an appender could add an unverified record to the authorized
+parcel but could neither append to another parcel nor SELECT the base
+table. The smoke test ended in `ROLLBACK` so its fake logins, grants and
+synthetic evidence did not persist.
+
+Before introducing real operator logins or browser-accessible evidence
+routes, Step 48 adds a strictly read-only **posture audit**:
+
+- `src/bdp/ingestion/sql/auditRegulatoryEvidenceSecurity.sql`: runs a
+  `BEGIN READ ONLY` transaction and checks for all four NOLOGIN group
+  roles (with no elevated role capabilities), enabled evidence RLS,
+  required parcel-scoped policies and ACL function, owner separation of
+  the security-definer routines, restricted evidence/ACL privileges, and
+  the current **aggregate** counts of active and expired parcel grants.
+  It ends with `ROLLBACK` and does not print individual operator IDs,
+  document URLs or private evidence.
+- `src/bdp/ingestion/sql/auditRegulatoryEvidenceSecurity.test.mjs`:
+  static checks of audit safety and coverage. These are not a substitute
+  for executing the audit against the local PostgreSQL database.
+
+Run the **static** checks first (no database connection needed):
+
+```powershell
+cd "$HOME\\gods-eye-view"
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/sql/auditRegulatoryEvidenceSecurity.test.mjs
+```
+
+Then, from the same PowerShell window with the existing local `service=bdp`
+administrator connection, run the read-only SQL:
+
+```powershell
+psql "service=bdp" -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/auditRegulatoryEvidenceSecurity.sql
+```
+
+Expected messages include `BDP Step 48 audit PASS`, the aggregate grant
+counts, and `ROLLBACK`. Any SQL exception, missing policy or unexpected
+role privilege is a **failed audit**: stop and investigate instead of
+deploying browser access. The original God's Eye/Cesium interface,
+existing parcel adapters and evidence records remain unchanged.
+
+The audit is a configuration-health check, **not** proof that user
+authentication is implemented or that every possible exploit is blocked.
+Next architecture decision: select a trusted identity provider and a
+per-operator PostgreSQL login/connection strategy compatible with
+Step 47's `SESSION_USER` enforcement. Do not reuse a pooled owner/
+superuser connection for all operators: PostgreSQL RLS cannot enforce
+per-user grants if every request is the same database login. Secure login,
+short-lived sessions, CSRF defense, credential lifecycle, least-privilege
+database role grants, session-bound connections, logging and independent
+penetration/security review remain necessary before a production evidence
+API. The code continues to withhold legal/regulatory clearance.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
