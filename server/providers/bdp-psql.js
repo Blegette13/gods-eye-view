@@ -5,7 +5,12 @@ const DEFAULT_TIMEOUT_MS = 20_000;
 const MAX_ERROR_BYTES = 64 * 1024;
 
 /**
- * Execute a read-only, JSON-returning PostGIS query using psql stdin.
+ * Execute a JSON-returning PostGIS SQL statement using psql stdin.
+ *
+ * The low-level runner has no SQL permission enforcement. Most BDP callers
+ * perform read-only GIS queries; Step 43's LOCAL operator-only evidence-intake
+ * CLI explicitly invokes a validated append-only INSERT. NEVER expose this
+ * generic SQL runner to an unauthenticated remote/browser API.
  *
  * On Windows, putting large GeoJSON literals into execFile's --command
  * argument can exceed the command-line limit (spawn ENAMETOOLONG).
