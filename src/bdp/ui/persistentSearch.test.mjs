@@ -65,6 +65,10 @@ test('promotes the same native input, never clones it, and is idempotent', () =>
   assert.equal(bar.attrs.role, 'search');
   assert.equal(search.attrs['aria-describedby'], 'land-search-hint land-search-status');
   assert.equal(root.getElementById('land-search-status').attrs.role, 'status');
+  const hint = root.getElementById('land-search-hint').textContent;
+  assert.match(hint, /Travis parcel: \[parcel ID\]/);
+  assert.match(hint, /Travis owner: \[name\]/);
+  assert.doesNotMatch(hint, /302959/, 'search example must not point to a specific property');
   assert.equal(mountPersistentLandSearch(root), true);
   assert.equal(root.body.children.filter((node) => node.id === 'land-search-bar').length, 1);
 });
