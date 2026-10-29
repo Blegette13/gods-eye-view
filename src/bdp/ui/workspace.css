@@ -33,6 +33,16 @@ body[data-bdp-product='land-development-os'] #loading-screen .loader-logo {
   display: none !important;
 }
 
+/* Land exploration must use the full map viewport, not the legacy
+ * surveillance scope / celestial keyhole. The JS availability gate prevents
+ * mask rendering and restoration; this scoped CSS provides a first-paint
+ * safety net, including during hot reload or restored legacy share links.
+ * Never hide Cesium's map or provider attribution. */
+body[data-bdp-product='land-development-os'] #scope-mask,
+body[data-bdp-product='land-development-os'] .celestial-ring-overlay {
+  display: none !important;
+}
+
 /* The upstream data manager still owns and refreshes the complete registry.
  * Present only the land-intelligence rows; retain internal IDs and source
  * contracts without migrating durable state or introducing a second manager.
