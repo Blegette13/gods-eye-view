@@ -2,6 +2,7 @@ import * as Cesium from 'cesium';
 import bexarCadAdapter from '../cad/bexarAdapter.js';
 import { createBdpPropertyCard } from '../ui/propertyCard.js';
 import { parcelGeoJsonWithBoundaries } from './parcelGeojson.js';
+import { styleSelectedParcelEntities, recommendedParcelFocusRange } from './parcelSelectionStyle.js';
 
 const MAX_VIEW_SPAN_DEGREES = 0.12;
 const QUERY_INTERVAL_MS = 30_000;
@@ -57,7 +58,30 @@ export function createCountyParcelLayer({
   let viewportCoverageWarning = '';
   let lastBoundsKey = '';
   let requestController = null;
+  let selectedParcelId = null;
   const parcelById = new Map();
+  const normalOutline = Cesium.Color.fromCssColorString('#f2f2f2').withAlpha(0.82);
+  const selectedOutline = Cesium.Color.fromCssColorString('#42c5ed').withAlpha(0.98);
+  const normalFill = Cesium.Color.fromCssColorString('#ffffff').withAlpha(0.055);
+  const selectedFill = Cesium.Color.fromCssColorString('#2289bd').withAlpha(0.24);
+
+  function refreshParcelSelection() {
+    if (!dataSource) return;
+    styleSelectedParcelEntities(dataSource.entities.values, selectedParcelId, {
+      parcelIdForEntity: (entity) => propertyValue(entity, 'bdpParcelId'),
+      defaultOutline: normalOutline,
+      selectedOutline,
+      defaultFill: normalFill,
+      selectedFill,
+    });
+  }
+
+  function showSelectedParcel(parcel) {
+    selectedParcelId = parcel?.id || null;
+    refreshParcelSelection();
+    if (parcel) propertyCard?.show(parcel);
+    else propertyCard?.hide();
+  }
   function assertActive(signal) {
     if (signal?.aborted || !enabled || !viewer) throw new DOMException('Parcel request cancelled', 'AbortError');
   }
@@ -66,8 +90,8 @@ export function createCountyParcelLayer({
     assertActive(signal);
     const next = await Cesium.GeoJsonDataSource.load(parcelGeoJsonWithBoundaries(parcels), {
       clampToGround: true,
-      stroke: Cesium.Color.fromCssColorString('#f2f2f2').withAlpha(0.82),
-      fill: Cesium.Color.fromCssColorString('#ffffff').withAlpha(0.055),
+      stroke: normalOutline,
+      fill: normalFill,
       strokeWidth: 2,
     });
     // Terrain-clamped polygon outlines are unsupported in Cesium; separate
@@ -91,16 +115,30 @@ export function createCountyParcelLayer({
     parcelById.clear();
     for (const parcel of parcels) parcelById.set(parcel.id, parcel);
     count = parcels.length;
+    refreshParcelSelection();
   }
 
-  async function focusSnapshot(parcels, { signal } = {}) {
+  async function focusSnapshot(parcels, { signal, selectedParcel = null } = {}) {
+    selectedParcelId = selectedParcel?.id || null;
     await replaceSnapshot(parcels, { signal });
     lastBoundsKey = '';
     lastUpdate = Date.now();
     viewportCoverageWarning = '';
     status = parcels.length ? 'nominal' : 'empty';
     if (dataSource && parcels.length) {
-      await viewer.flyTo(dataSource, { duration: 1.15 });
+      const focusRange = selectedParcel
+        ? recommendedParcelFocusRange(selectedParcel.property?.geometry)
+        : null;
+      // An explicit parcel lookup frames the actual GIS polygon rather than
+      // remaining at a regional-scale camera altitude. A multi-result owner
+      // search still fits the full datasource as before.
+      const offset = focusRange === null
+        ? undefined
+        : new Cesium.HeadingPitchRange(0, -Cesium.Math.toRadians(70), focusRange);
+      await viewer.flyTo(dataSource, {
+        duration: 1.15,
+        ...(offset ? { offset } : {}),
+      });
     }
     assertActive(signal);
   }
@@ -120,8 +158,8 @@ export function createCountyParcelLayer({
         return null;
       }
 
-      await focusSnapshot([parcel], { signal });
-      propertyCard.show(parcel);
+      await focusSnapshot([parcel], { signal, selectedParcel: parcel });
+      showSelectedParcel(parcel);
       return parcel;
     } catch (error) {
       if (error?.name === 'AbortError') {
@@ -176,7 +214,12 @@ export function createCountyParcelLayer({
 
     init(targetViewer) {
       viewer = targetViewer;
-      propertyCard = propertyCardFactory();
+      propertyCard = propertyCardFactory({
+        onHide: () => {
+          selectedParcelId = null;
+          refreshParcelSelection();
+        },
+      });
       clickHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
       clickHandler.setInputAction((movement) => {
         if (!enabled) return;
@@ -184,7 +227,7 @@ export function createCountyParcelLayer({
         const entity = picked?.id;
         const id = propertyValue(entity, 'bdpParcelId') || entity?.id;
         const parcel = parcelById.get(String(id));
-        if (parcel) propertyCard.show(parcel);
+        if (parcel) showSelectedParcel(parcel);
       }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
     },
 
@@ -195,6 +238,8 @@ export function createCountyParcelLayer({
 
     disable() {
       enabled = false;
+      selectedParcelId = null;
+      refreshParcelSelection();
       if (dataSource) dataSource.show = false;
       propertyCard?.hide();
       requestController?.abort();
@@ -204,8 +249,10 @@ export function createCountyParcelLayer({
     focusParcel,
     focusOwner,
     hideCard() {
+      selectedParcelId = null;
+      refreshParcelSelection();
       propertyCard?.hide();
-    },
+    }
 
     async update(targetViewer) {
       if (!enabled || loading) return true;
@@ -280,6 +327,7 @@ export function createCountyParcelLayer({
     },
 
     destroy() {
+      selectedParcelId = null;
       requestController?.abort();
       requestController = null;
       clickHandler?.destroy();
