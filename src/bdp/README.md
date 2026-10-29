@@ -559,6 +559,54 @@ storage, safe document scanning/preview, signed review events and auditable
 source-effective-date reconciliation. Do not expose these local scripts or
 database credentials in the Vite development server.
 
+### Step 45 — deny-by-default regulatory evidence access gate (NOT live auth)
+
+**Observed Step 44 local result:** 13 Node.js tests passed, 0 failed; the
+local document metadata template printed without writing to PostgreSQL.
+This verifies the fingerprinting test suite and dry-run template, not
+production document authentication or multi-user permissions.
+
+This phase adds **an unrouted server-side authorization boundary**:
+`src/bdp/regulatory/evidenceAccessPolicy.js` requires a future trusted
+server-side session resolver, exact county-FIPS + parcel-ID grants, and an
+explicit `evidence-reader` or `evidence-researcher` role. A reader can
+inspect metadata; a researcher can also append unverified research notes and
+document-index entries. There are **NO** rights to verify, amend, delete,
+mark a task complete, infer legal clearance or issue a BUY recommendation.
+Missing sessions, wildcard grants, forged client roles, cross-parcel access,
+and unknown actions all fail closed.
+
+`server/providers/bdp-evidence-access.js` demonstrates the required
+integration sequence: resolve a genuinely authenticated server-side
+session; check the parcel-specific permission; *then* query PostGIS via
+the existing evidence index or append adapter; verify the response remains
+unverified. The adapter is NOT routed to HTTP/Vite and does not touch God's
+Eye View's Cesium interface. Existing local-only CLI commands are unchanged.
+
+For a development-machine test (no database changes, all fake identities):
+
+```powershell
+cd "$HOME\\gods-eye-view"
+git pull --ff-only origin bdp-development
+node --test src/bdp/regulatory/evidenceAccessPolicy.test.mjs server/providers/bdp-evidence-access.test.mjs
+```
+
+**Security caveat:** This code is an authorization *policy seam*, NOT a
+login system or evidence security deployment. The future resolver MUST
+verify real server-side sessions with a proper identity provider, derive
+roles and parcel grants from a server-side authority (never browser
+JSON/header values), implement CSRF protection, rate limiting, audit logging
+and password/token handling, and use separate least-privilege DB roles.
+Currently the `bdp` PostgreSQL connection is an owner-level local dev
+connection. Do not expose a live evidence API or connect these adapters
+to anonymous Vite routes. The policy alone does not secure an endpoint.
+
+Next: threat model + restricted PostgreSQL read/write roles, securely
+provisioned operator identity/session backing and controlled journal
+read access; only then consider a property-panel evidence view. Never turn
+an indexed document into a verified task without distinct authorized legal
+review and independently corroborated evidence.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
