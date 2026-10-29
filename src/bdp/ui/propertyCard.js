@@ -4,6 +4,7 @@ import { buildOwnershipTitleReview, TITLE_REVIEW_REFERENCES } from '../title/own
 import { eligibleForAustinGisPilot } from '../intelligence/regionScope.js';
 import { AUSTIN_REGULATORY_REFERENCES, buildAustinRegulatoryReview } from '../entitlement/austinRegulatoryReview.js';
 import { buildAustinRegulatoryDueDiligence } from '../entitlement/austinRegulatoryDueDiligence.js';
+import { reviewReportedValuation, VALUATION_REVIEW_NOTICE } from '../valuation/valuationReview.js';
 
 function formatMoney(value) {
   if (value === null || value === undefined || value === '' || typeof value === 'boolean') return '—';
@@ -923,6 +924,19 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     const body = document.createElement('div');
     body.className = 'bdp-property-body';
 
+    const valuationReview = reviewReportedValuation(parcel.valuation);
+    const valuationReviewRow = valuationReview.status === 'review-required'
+      ? row('Valuation review', VALUATION_REVIEW_NOTICE)
+      : null;
+    if (valuationReviewRow) {
+      valuationReviewRow.dataset.bdpValuationReview = 'review-required';
+      valuationReviewRow.dataset.bdpEvidenceRefs = JSON.stringify([
+        'parcel.valuation.landValue',
+        'parcel.valuation.improvementValue',
+        'parcel.valuation.marketValue',
+      ]);
+    }
+
     body.append(
       row('Owner', parcel.owner?.name),
       row('Parcel ID', parcel.parcelId),
@@ -930,8 +944,9 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       row('Acres', formatNumber(parcel.property?.acres)),
       row('Land value', formatMoney(parcel.valuation?.landValue)),
       row('Improvements', formatMoney(parcel.valuation?.improvementValue)),
-      row('Total value', formatMoney(parcel.valuation?.marketValue)),
-      row('CAD value / acre', formatMoney(parcel.acquisition?.pricePerAcre)),
+      row('Reported value', formatMoney(parcel.valuation?.marketValue)),
+      row('Reported value / acre', formatMoney(parcel.acquisition?.pricePerAcre)),
+      ...(valuationReviewRow ? [valuationReviewRow] : []),
       row('Property use', parcel.providerData?.propertyUse),
       row('Legal', parcel.property?.legalDescription),
       row('Mailing', parcel.owner?.mailingAddress),
