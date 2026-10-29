@@ -252,7 +252,7 @@ export function createCountyParcelLayer({
       selectedParcelId = null;
       refreshParcelSelection();
       propertyCard?.hide();
-    }
+    },
 
     async update(targetViewer) {
       if (!enabled || loading) return true;
