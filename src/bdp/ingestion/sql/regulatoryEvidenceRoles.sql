@@ -22,17 +22,32 @@ BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'bdp_evidence_appender') THEN
     CREATE ROLE bdp_evidence_appender NOLOGIN;
   END IF;
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'bdp_evidence_owner') THEN
+    CREATE ROLE bdp_evidence_owner NOLOGIN;
+  END IF;
 END;
 $roles$;
 
 -- Existing roles with the same names should remain NOLOGIN if re-applied.
 ALTER ROLE bdp_evidence_reader NOLOGIN;
 ALTER ROLE bdp_evidence_appender NOLOGIN;
+ALTER ROLE bdp_evidence_owner NOLOGIN;
 
 REVOKE ALL PRIVILEGES ON TABLE public.bdp_regulatory_evidence_events FROM PUBLIC;
 REVOKE ALL PRIVILEGES ON TABLE public.bdp_regulatory_evidence_events
   FROM bdp_evidence_reader, bdp_evidence_appender;
-GRANT USAGE ON SCHEMA public TO bdp_evidence_reader, bdp_evidence_appender;
+GRANT USAGE ON SCHEMA public TO bdp_evidence_reader, bdp_evidence_appender,
+  bdp_evidence_owner;
+-- Dedicated unprivileged owner for the SECURITY DEFINER routine. The RPC
+-- cannot change, delete or SELECT private research content, even internally.
+REVOKE ALL ON public.bdp_regulatory_evidence_events FROM bdp_evidence_owner;
+GRANT INSERT (
+  county_fips, parcel_id, task_id, event_type, source_url, source_title,
+  source_date, source_sha256, notes, entered_by
+) ON public.bdp_regulatory_evidence_events TO bdp_evidence_owner;
+GRANT SELECT (
+  id, county_fips, parcel_id, task_id, event_type, verification_state, recorded_at
+) ON public.bdp_regulatory_evidence_events TO bdp_evidence_owner;
 GRANT SELECT (
   id, county_fips, parcel_id, task_id, event_type, source_title,
   source_date, source_sha256, verification_state, recorded_at
@@ -48,7 +63,13 @@ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = pg_catalog, pg_temp
 AS $append$
 DECLARE
-  v_row public.bdp_regulatory_evidence_events%ROWTYPE;
+  v_id BIGINT;
+  v_county CHAR(5);
+  v_parcel TEXT;
+  v_task TEXT;
+  v_event_type TEXT;
+  v_state TEXT;
+  v_recorded_at TIMESTAMPTZ;
   v_key TEXT;
   v_source_date TEXT;
 BEGIN
@@ -87,21 +108,31 @@ BEGIN
      p_event->>'sourceUrl', p_event->>'sourceTitle',
      v_source_date::date, p_event->>'sourceSha256',
      p_event->>'notes', p_event->>'enteredBy')
-  RETURNING * INTO v_row;
+  RETURNING id, county_fips, parcel_id, task_id, event_type,
+            verification_state, recorded_at
+    INTO v_id, v_county, v_parcel, v_task, v_event_type,
+         v_state, v_recorded_at;
 
   RETURN pg_catalog.jsonb_build_object(
-    'eventId', v_row.id,
-    'countyFips', BTRIM(v_row.county_fips),
-    'parcelId', v_row.parcel_id,
-    'taskId', v_row.task_id,
-    'eventType', v_row.event_type,
-    'verificationState', v_row.verification_state,
-    'recordedAt', v_row.recorded_at,
+    'eventId', v_id,
+    'countyFips', BTRIM(v_county),
+    'parcelId', v_parcel,
+    'taskId', v_task,
+    'eventType', v_event_type,
+    'verificationState', v_state,
+    'recordedAt', v_recorded_at,
     'legalClearance', NULL,
     'acquisitionRecommendation', NULL
   );
 END;
 $append$;
+
+-- Transfer SECURITY DEFINER ownership to a separate NOLOGIN role with ONLY
+-- the specific INSERT/RETURNING column permissions above. This prevents the
+-- RPC from running as the local bdp superuser when called by future services.
+-- Migration requires database superuser/admin privileges for role ownership.
+ALTER FUNCTION public.bdp_evidence_append_unverified(jsonb)
+  OWNER TO bdp_evidence_owner;
 
 -- PostgreSQL functions default to public EXECUTE unless explicitly revoked.
 -- REVOKE and GRANT live in the same transaction as CREATE OR REPLACE.
