@@ -673,7 +673,7 @@ tasks or changes an acquisition recommendation.
 
 ### Step 47 — restricted PostGIS parcel-level row isolation (admin opt-in)
 
-**Local Step 46 confirmation (October 29, 2026):** 18 Node.js tests
+**Local Step 46 confirmation:** 18 Node.js tests
 passed with zero failures. The role migration ended in `COMMIT`, and
 `regulatoryEvidenceRolesSmoke.sql` reported the least-privilege grant checks
 passed, then ended in `ROLLBACK`. That temporary event was not persisted.
@@ -709,6 +709,15 @@ row-level-security (RLS) policies:
   session handling before this can protect an actual web endpoint.
   A shared app login assigned broad grants would NOT enforce per-user
   database parcel isolation.
+
+Run Node.js static-contract checks before touching your database:
+
+```powershell
+node --test src/bdp/ingestion/sql/regulatoryEvidenceParcelIsolation.test.mjs
+```
+
+This tests source-level safety assumptions only; the PostgreSQL smoke test is
+needed to confirm actual role and policy enforcement.
 
 After verifying your local database backup, run this **administrative
 migration only when ready**:
