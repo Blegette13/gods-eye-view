@@ -139,6 +139,16 @@ The implementation now adds a **presentation-only source-valuation review** help
 
 **Remaining QA:** pull these changes, run the narrow valuation/property-card tests and full suite/build, then repeat the Travis lookup and confirm the amber caveat appears. Browser screenshots, maps, county records and temporary local test samples are not evidence of current legally verified ownership, boundaries, land use or valuations. Acquisition recommendations and verified development rights remain withheld.
 
+## Parcel intelligence QA and selected-boundary visualization (committed; operator check pending)
+
+The operator's second screenshot of Travis parcel `302959` **confirmed the new amber valuation discrepancy warning displays prominently** in the property panel while retaining the unchanged $1,198,206 land, $95,897 improvements and $695,000 reported total figures. This establishes that the new alert is visible in an actual browser, **not** that the source valuations or recorded ownership are legally verified.
+
+A new Phase 2 map interaction now highlights the **source-mapped GIS parcel polygon and separate ground-clamped LineString boundary entities** when the user searches for or clicks a parcel, using the **exact county-prefixed ID** to avoid cross-county ID collisions. Selected boundaries use a bright but non-tactical blue outline and soft transparent fill; unselected polygons and lines retain their existing low-contrast default treatment. Closing the property card, hiding it for another county, disabling or destroying a county layer resets the selection. All five other pilot counties inherit the same behavior through the existing shared county-layer factory. The viewer's native `flyTo` now uses a conservative per-parcel `HeadingPitchRange` computed only from the real source GeoJSON exterior coordinates; owner multi-match searches still fly to the full result set, and invalid/missing geometry never creates a guessed focal point.
+
+**Evidence limitation:** a visually highlighted **county GIS polygon is not a survey or legal parcel boundary**. No geometry, parcel source URL, ownership evidence, IDs, or PostGIS logic has changed. A viewport refresh that no longer contains the selected ID may remove its visual outline; the data should not be re-created or fabricated to keep an apparent parcel visible.
+
+New regression tests cover exact-ID selection, resets, multipart geometry, conservative camera range and property-card close cleanup. Initial source-derived smoke checks passed. **The full local npm suite, production build, and real-browser selected-outline appearance on current Cesium imagery remain to be verified** before accepting this map interaction.
+
 ## Non-negotiable regression checklist
 
 1. Cesium viewer, map stack and attribution render without legacy tracking layers.
