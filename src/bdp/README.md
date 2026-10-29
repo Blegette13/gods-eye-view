@@ -502,6 +502,63 @@ APIs. Before production, add authentication/authorization, least-privilege
 DB roles, encrypted private file storage, document provenance, backup and
 retention safeguards, and a separately authorized verification workflow.
 
+### Step 44 — local-only regulatory document fingerprinting
+
+Step 43 was verified on Windows with **16/16 passing Node.js tests** and the
+template printed successfully. The live regulatory database remains empty
+unless a local operator explicitly commits authentic evidence.
+
+This phase adds cryptographic file fingerprinting and a **dry-run-first**
+workflow for document-indexed research events. For an actual official PDF,
+image, text, or DOCX from a responsible agency, BDP can compute a SHA-256
+digest directly from a bounded local file (up to 32 MiB) and optionally append
+the hash plus source metadata to the existing PostGIS evidence journal.
+Original document bytes are **never** uploaded to GitHub, the browser, or
+PostgreSQL. The `.bdp-private/` folder is Git-ignored. The intake rejects
+oversized, empty, non-regular and out-of-folder files and detects symlinks.
+It is NOT an antivirus scanner, encrypted storage system, document viewer,
+verified ordinance lookup, or a production authorization layer. An official
+webpage URL does not itself prove the document is current or authoritative.
+
+Dry-run-only checks, safe even when no real parcel document is available:
+
+```powershell
+cd "$HOME\\gods-eye-view"
+git pull --ff-only origin bdp-development
+node --test src/bdp/regulatory/documentIntegrity.test.mjs scripts/bdp/prepare-regulatory-document.test.mjs src/bdp/regulatory/evidenceIntake.test.mjs
+node scripts/bdp/prepare-regulatory-document.mjs --template
+```
+
+For a **real** regulatory document later, save the original document file and
+a separate JSON metadata file under `.bdp-private/`. The JSON schema is
+printed by `--template`; sourceUrl must be the actual HTTPS document source,
+sourceTitle the actual published title, and sourceDate null if unknown. Never
+add a sourceSha256 field to the metadata: BDP calculates it from document
+bytes. Never enter fake parcel identifiers, unverified legal conclusions, or
+sensitive information into notes.
+
+The following command validates metadata and hashes the local file but
+**does not write to the database**:
+
+```powershell
+node scripts/bdp/prepare-regulatory-document.mjs --document .bdp-private/official-file.pdf --meta .bdp-private/official-file.json
+```
+
+Only after careful independent source, parcel and metadata review may a
+trusted LOCAL operator intentionally append the index row with `--commit`
+and an appropriately configured `BDP_PG_SERVICE`. A journal entry remains
+`unverified`, does not close a due-diligence task, and never changes
+development capacity, zoning clearance, model coverage or recommendations.
+Append-only entries cannot be edited/deleted through ordinary SQL; back up
+the private original document separately to retain the ability to verify its
+hash. No automatic file retention, access controls or backups exist yet.
+
+Before any multi-user web access: implement proper authentication, scoped
+authorization, least-privilege service roles, encrypted private document
+storage, safe document scanning/preview, signed review events and auditable
+source-effective-date reconciliation. Do not expose these local scripts or
+database credentials in the Vite development server.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
