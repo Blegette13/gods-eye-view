@@ -81,6 +81,16 @@ The existing `#location-search` DOM input is moved into a permanently displayed 
 
 **Scope limit:** legacy modules are still bundled/registered, and some ancillary infrastructure (voice, scene, CCTV providers, keyboard/cockpit controls) still exists in source. This is an operational **quarantine**, not a dependency-safe deletion, commercial data-license resolution, or proof that all legacy network/process work has stopped. Further disable/removal must be done provider-by-provider after import/route/teardown and restored-state audits. Browser regression is required before calling this finished.
 
+### Full-suite feedback and fixes (October 29, 2026)
+
+The first local `npm.cmd test` run reported **3 failures** among 3,243 tests. The targeted Phase 2 tests passed 12/12. Two failures came from the existing startup Chrome VM fixture not supplying the newly imported workspace policy and `document` state; the fixture now supplies the real policy function and verifies that land mode suppresses only the old first-run dialog while preserving key setup. The third failure revealed an unrelated existing Node-only regulatory document hashing module inside browser-built `src/`; it has been moved without changing its hashing/security logic to `server/providers/bdp-document-integrity.js`. The local intake CLI and document-integrity tests now import the server-owned module, and the browser boundary still checks all `.js` source modules.
+
+**These fixes are committed but await the operator's updated full-suite output.** Do not claim a green full suite or production build until actually observed. To isolate the exact previous failures, run:
+
+```powershell
+node --test src/browserModuleBoundary.test.mjs src/standalone/startupChrome.test.mjs src/bdp/regulatory/documentIntegrity.test.mjs scripts/bdp/prepare-regulatory-document.test.mjs
+```
+
 ### Local acceptance sequence (Windows PowerShell in existing checkout)
 
 ```powershell
