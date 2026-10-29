@@ -623,3 +623,77 @@ body[data-bdp-product='land-development-os']
   font-size: 11px;
   line-height: 1.5;
 }
+
+/* Evidence navigation: native details/summary for keyboard, touch, screen
+ * readers and resilient asynchronous population of county-source sections.
+ * The core owner/valuation/provenance fields and any valuation alert stay
+ * above these groups, always visible without opening a disclosure. */
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-evidence-intro {
+  margin: 18px 0 11px;
+  padding: 10px 12px;
+  border: 1px solid #c9dbe8;
+  border-radius: 9px;
+  color: #405a6c;
+  background: #eff6fa;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-evidence-group {
+  margin: 8px 0;
+  border: 1px solid #dfe7ee;
+  border-radius: 10px;
+  background: #fff;
+  overflow: clip;
+}
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-evidence-summary {
+  position: relative;
+  display: block;
+  padding: 12px 36px 12px 13px;
+  color: var(--ldos-ink);
+  background: #f6f9fc;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+  list-style: none;
+  user-select: none;
+}
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-evidence-summary::-webkit-details-marker {
+  display: none;
+}
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-evidence-summary::after {
+  content: '+';
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  color: var(--ldos-blue);
+  font-size: 18px;
+  font-weight: 500;
+}
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-evidence-group[open] > .bdp-property-evidence-summary {
+  border-bottom: 1px solid #dfe7ee;
+  background: #edf4f9;
+}
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-evidence-group[open] > .bdp-property-evidence-summary::after {
+  content: '−';
+}
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-evidence-summary:hover {
+  background: #eaf3f9;
+}
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-evidence-summary:focus-visible {
+  outline: 2px solid var(--ldos-focus);
+  outline-offset: -3px;
+  border-radius: 8px;
+}
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-evidence-content {
+  padding: 3px 12px 12px;
+}
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-evidence-content > .bdp-property-section-heading {
+  margin-top: 13px;
+}
+
