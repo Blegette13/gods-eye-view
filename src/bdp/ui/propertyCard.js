@@ -5,6 +5,7 @@ import { eligibleForAustinGisPilot } from '../intelligence/regionScope.js';
 import { AUSTIN_REGULATORY_REFERENCES, buildAustinRegulatoryReview } from '../entitlement/austinRegulatoryReview.js';
 import { buildAustinRegulatoryDueDiligence } from '../entitlement/austinRegulatoryDueDiligence.js';
 import { reviewReportedValuation, VALUATION_REVIEW_NOTICE } from '../valuation/valuationReview.js';
+import { reviewReportedAcreage } from '../valuation/acreageReview.js';
 
 function formatMoney(value) {
   if (value === null || value === undefined || value === '' || typeof value === 'boolean') return '—';
@@ -947,6 +948,12 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     const body = document.createElement('div');
     body.className = 'bdp-property-body';
 
+    const acreageReview = reviewReportedAcreage(parcel.property?.acres);
+    const acreageReviewRow = acreageReview ? row('Acreage review', acreageReview.message) : null;
+    if (acreageReviewRow) {
+      acreageReviewRow.dataset.bdpAcreageReview = acreageReview.kind;
+      acreageReviewRow.dataset.bdpEvidenceRefs = JSON.stringify(['parcel.property.acres']);
+    }
     const valuationReview = reviewReportedValuation(parcel.valuation);
     const valuationReviewRow = valuationReview.status === 'review-required'
       ? row('Valuation review', VALUATION_REVIEW_NOTICE)
@@ -965,6 +972,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       row('Parcel ID', parcel.parcelId),
       row('Account', parcel.providerData?.accountNumber),
       row('Acres', formatNumber(parcel.property?.acres)),
+      ...(acreageReviewRow ? [acreageReviewRow] : []),
       row('Land value', formatMoney(parcel.valuation?.landValue)),
       row('Improvements', formatMoney(parcel.valuation?.improvementValue)),
       row('Reported value', formatMoney(parcel.valuation?.marketValue)),
