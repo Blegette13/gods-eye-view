@@ -194,6 +194,7 @@ function decorateBdpLayerRows(container) {
   if (!container) return;
 
   const rows = [...container.querySelectorAll('.data-toggle-row')];
+  let previousLandGroupId = null;
   for (const row of rows) {
     const isLand = BDP_LAYER_IDS.has(row.dataset.layerId);
     row.classList.toggle('bdp-layer-row', isLand);
@@ -208,20 +209,14 @@ function decorateBdpLayerRows(container) {
     }
 
     const group = landLayerGroup(row.dataset.layerId);
-    if (!group) continue;
+    if (!group || previousLandGroupId === group.id) continue;
+    previousLandGroupId = group.id;
+
+    // Insert a heading at the first row of each consecutive group.
+    // The data manager retains the original row order and click handlers.
     const previous = row.previousElementSibling;
     if (previous?.classList.contains('bdp-layer-category-label')
       && previous.dataset.landGroup === group.id) continue;
-
-    // Insert a heading only when we cross into a new group; the registered
-    // catalogue's original order remains intact.
-    const priorLandRow = rows.filter((candidate) => BDP_LAYER_IDS.has(candidate.dataset.layerId))
-      .findLast((candidate) => candidate === row
-        ? false
-        : rows.indexOf(candidate) < rows.indexOf(row));
-    if (priorLandRow && landLayerGroup(priorLandRow.dataset.layerId)?.id === group.id) {
-      continue;
-    }
     if (previous?.classList.contains('bdp-layer-category-label')) previous.remove();
     row.before(createLandLayerCategoryLabel(group));
   }
