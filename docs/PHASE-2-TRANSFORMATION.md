@@ -167,6 +167,14 @@ The operator successfully ran the complete local test suite and Vite build after
 
 **Verification still required:** `node --test src/bdp/parcels/focusedLookup.test.mjs src/bdp/parcels/parcelLayerSyntax.test.mjs src/bdp/ui/propertyCard.test.mjs`; `npm.cmd test`; `npm.cmd run build`; and a fresh browser attempt of `Travis parcel: 302959`. If the exact lookup still fails, inspect the browser Network/Console response for `...TCAD/MapServer/0/query` and distinguish an ArcGIS `error` object, `exceededTransferLimit`, a bad GeoJSON payload, HTTP error or CORS. Do not claim the source is fixed until a live response is observed, and do not interpret provider availability as legal/valuation verification.
 
+## Phase 2 full-viewport map — tactical keyhole removed from land workspace
+
+The operator reviewed the working grouped property evidence interface and requested removal of the persistent black circular border around the satellite map. Investigation found that this is **not an intrinsic limitation of Cesium/Google 3D Tiles**: it is the upstream app's explicitly implemented `#scope-mask` 2D canvas (`src/scopeMask.js`), which paints near-opaque black outside a fixed circular viewport. The land-development product does not need this surveillance presentation.
+
+**Implementation:** keep the upstream scope-mask renderer and its defaults intact for potential standalone/upstream views, but add an upstream-neutral `setScopeMaskAvailable(allowed)` guard. `applyBdpGodsEyeUi()` disables scope availability **synchronously before application startup**, preventing canvas painting, DPR backing-store work, and old share-link/scene restoration from reactivating the scope. `workspace.css` hides `#scope-mask` and the decorative celestial ring in the land workspace as a secondary first-paint safeguard. Cesium canvas, photorealistic tiles, native map control and required credits remain untouched. `src/scopeMask.test.mjs` now checks that unavailable scopes cannot paint/re-enable from older share links, and that explicit re-availability preserves original upstream functionality.
+
+Source-derived syntax, startup-order, scoped-style, and fake canvas paint checks passed. **Acceptance pending:** update the local checkout, run `node --test src/scopeMask.test.mjs`, `npm.cmd test`, `npm.cmd run build`, then refresh the full browser map and inspect wide-screen and parcel zoom behavior. If a black region remains after this change, investigate Cesium/3D tiles availability/scene backdrop separately rather than disabling source attribution or masking source errors. The change is strictly visual and must not modify parcel GIS, saved evidence, search results or authorization.
+
 ## Non-negotiable regression checklist
 
 1. Cesium viewer, map stack and attribution render without legacy tracking layers.
