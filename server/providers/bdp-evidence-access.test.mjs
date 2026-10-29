@@ -79,7 +79,7 @@ test('reader cannot append; researcher can insert only an unverified, scoped not
       session === 'reader' ? { ...principal, roles: ['evidence-reader'] } : principal,
     query: async (sql, opts) => {
       calls++;
-      assert.match(sql, /SELECT public\\.bdp_evidence_append_unverified\\(/);
+      assert.match(sql, /SELECT public\.bdp_evidence_append_unverified\(/);
       assert.doesNotMatch(sql, /INSERT INTO bdp_regulatory_evidence_events/);
       assert.doesNotMatch(sql, /Evidence remains unverified/);
       assert.equal(opts.maxOutputBytes, 8192);
@@ -121,7 +121,7 @@ test('appending snapshots event fields before awaited identity resolution', asyn
       releaseIdentity = resolve;
     }),
     query: async (sql) => {
-      assert.match(sql, /SELECT public\\.bdp_evidence_append_unverified\\(/);
+      assert.match(sql, /SELECT public\.bdp_evidence_append_unverified\(/);
       assert.doesNotMatch(sql, /INSERT INTO bdp_regulatory_evidence_events/);
       return receipt;
     },
