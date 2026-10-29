@@ -69,7 +69,7 @@ test('live-screening mismatch is flagged before investment decisions without edi
 
 test('missing or noncontradictory component values never get a fabricated approval', async () => {
   const previous = globalThis.document;
-  globalThis.document = { createElement: (tag) => new Element('div'), body: new Element('body') };
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
   let card;
   try {
     card = createBdpPropertyCard({ screeningLoader: async () => response(parcel) });
