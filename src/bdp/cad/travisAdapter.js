@@ -89,7 +89,7 @@ async function fetchFeatures(url, limit, { signal } = {}, { allowUnidentifiedVie
   const data = await response.json();
   if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features)) {
     const code = Number.isInteger(data?.error?.code) ? ` (ArcGIS ${data.error.code})` : '';
-    throw new Error(`Travis parcel service returned invalid GeoJSON or a provider error${code}`);
+    throw new Error(`Travis parcel service returned malformed or truncated GeoJSON${code}`);
   }
   // Viewport requests can exceed the ArcGIS service's transfer limit in dense
   // neighborhoods. Do not treat an incomplete feature page as complete data,
