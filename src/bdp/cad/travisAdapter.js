@@ -87,8 +87,31 @@ async function fetchFeatures(url, limit, { signal } = {}, { allowUnidentifiedVie
   const response = await fetch(url, { signal });
   if (!response.ok) throw new Error(`Travis parcel service returned HTTP ${response.status}`);
   const data = await response.json();
-  if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features) || data.exceededTransferLimit === true)
-    throw new Error('Travis parcel service returned malformed or truncated GeoJSON');
+  if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features)) {
+    const code = Number.isInteger(data?.error?.code) ? ` (ArcGIS ${data.error.code})` : '';
+    throw new Error(`Travis parcel service returned invalid GeoJSON or a provider error${code}`);
+  }
+  // Viewport requests can exceed the ArcGIS service's transfer limit in dense
+  // neighborhoods. Do not treat an incomplete feature page as complete data,
+  // but also do not disable the entire county layer: report explicitly that
+  // the current viewport has no reliable parcel coverage and require zooming
+  // closer or an exact parcel lookup.
+  if (allowUnidentifiedViewport && (
+    data.exceededTransferLimit === true || data.features.length > limit
+  )) {
+    const parcels = [];
+    Object.defineProperty(parcels, 'viewportCoverage', {
+      value: Object.freeze({
+        receivedCount: data.features.length,
+        omittedUnidentified: 0,
+        overLimit: true,
+      }),
+      enumerable: false,
+    });
+    return parcels;
+  }
+  if (data.exceededTransferLimit === true)
+    throw new Error('Travis parcel service returned truncated GeoJSON');
   if (data.features.length > limit) throw new Error('Travis parcel result exceeds bounded request; narrow the search');
   if (data.features.some((item) => !['Polygon', 'MultiPolygon'].includes(item?.geometry?.type)))
     throw new Error('Travis parcel result has missing or invalid polygon geometry');
