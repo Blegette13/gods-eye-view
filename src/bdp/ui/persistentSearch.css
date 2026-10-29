@@ -1,0 +1,143 @@
+/* Phase 2 land workspace shell — the name is a descriptor, NOT final brand approval.
+ * This view reparents #location-search: it is still the original native input.
+ */
+body[data-bdp-product='land-development-os'] #title-bar h1 {
+  font-size: clamp(17px, 2vw, 23px);
+  letter-spacing: 3px;
+}
+body[data-bdp-product='land-development-os'] #title-bar .title-logo {
+  display: none;
+}
+body[data-bdp-product='land-development-os'] #title-bar .subtitle {
+  letter-spacing: 2.5px;
+}
+
+#land-search-bar {
+  position: fixed;
+  z-index: 145;
+  top: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: min(580px, calc(100vw - 32px));
+  padding: 12px 14px;
+  color: var(--text-primary);
+  background: rgba(4, 12, 23, 0.9);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.36);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  pointer-events: auto;
+}
+
+#land-search-bar .land-search-heading {
+  color: var(--accent);
+  font: 600 10px/1.5 var(--font-mono);
+  letter-spacing: 1.1px;
+}
+
+#land-search-bar .location-search-wrap {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+#land-search-bar #search-toggle {
+  display: none;
+}
+
+#land-search-bar #location-search,
+#land-search-bar #location-search.expanded {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(120, 175, 200, 0.28);
+  border-radius: 8px;
+  outline-offset: 2px;
+  color: var(--text-primary);
+  background: rgba(8, 21, 36, 0.93);
+  font: 400 13px/1.35 var(--font-sans);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+#land-search-bar #location-search::placeholder {
+  font-style: normal;
+}
+
+#land-search-bar #location-search:focus-visible {
+  outline: 2px solid var(--accent);
+  border-color: var(--accent);
+}
+
+#land-search-bar .land-search-hint {
+  color: var(--text-secondary);
+  font: 400 10px/1.45 var(--font-sans);
+}
+
+#land-search-bar .land-search-status:not(:empty) {
+  color: var(--text-secondary);
+  font: 500 11px/1.4 var(--font-sans);
+}
+
+#land-search-bar .land-search-status[data-search-state='error'] {
+  color: #ff8998;
+}
+#land-search-bar .land-search-status[data-search-state='success'] {
+  color: #8df5c8;
+}
+
+/* Make space for the permanent search when a property panel is open. */
+body[data-bdp-product='land-development-os'] #bdp-property-card {
+  top: 206px !important;
+  max-height: calc(100vh - 226px) !important;
+}
+
+body.ui-clean-view #land-search-bar {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+body.cockpit-mode #land-search-bar {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  body[data-bdp-product='land-development-os'] #title-bar {
+    top: 16px;
+    left: 16px;
+  }
+  body[data-bdp-product='land-development-os'] #title-bar h1 {
+    font-size: 16px;
+    letter-spacing: 1px;
+  }
+  body[data-bdp-product='land-development-os'] #title-bar .subtitle {
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+  body[data-bdp-product='land-development-os'] #title-bar .bdp-title-mode {
+    display: none;
+  }
+  body[data-bdp-product='land-development-os'] #top-center-actions {
+    top: 16px;
+    right: 12px;
+    left: auto;
+    transform: none;
+  }
+  #land-search-bar {
+    top: 80px;
+    padding: 10px 12px;
+  }
+  body[data-bdp-product='land-development-os'] #bdp-property-card {
+    top: 186px !important;
+    right: 12px !important;
+    width: calc(100vw - 24px) !important;
+    max-height: calc(100vh - 206px) !important;
+  }
+}
