@@ -663,7 +663,9 @@ parcel access depends on the trusted application-level gate. Never share
 claimed roles, grant anonymous access, or connect the evidence adapter to
 an HTTP endpoint. The future server MUST inject its own verified-session
 resolver and a separately provisioned least-privilege DB query adapter;
-the adapter now refuses to default to the local owner connection.
+the adapter now refuses to default to the local owner connection and
+requires **separately injected** `readQuery` and `appendQuery` functions,
+each backed by appropriately restricted DB connections.
 Additional protections needed: real identity provider, parcel-grant
 registry, DB-side row isolation, audit/retention, backups, secret rotation,
 and authenticated private file storage. No evidence entry closes checklist
