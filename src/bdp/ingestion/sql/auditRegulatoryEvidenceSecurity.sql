@@ -62,21 +62,30 @@ BEGIN
       'bdp_evidence_reader_parcel_isolation',
       'bdp_evidence_owner_insert_parcel_isolation',
       'bdp_evidence_owner_returning_parcel_isolation');
-  IF v_policies_count <> 3 THEN
-    RAISE EXCEPTION 'BDP audit failed: parcel RLS policies missing';
+  IF v_policies_count <> 3 OR (
+      SELECT count(*) FROM pg_catalog.pg_policy
+      WHERE polrelid = 'public.bdp_regulatory_evidence_events'::regclass
+    ) <> 3 THEN
+    RAISE EXCEPTION 'BDP audit failed: required RLS policy missing or unexpected permissive policy present';
   END IF;
   SELECT count(*) INTO v_bad_policy_count
   FROM pg_catalog.pg_policy p
   WHERE p.polrelid = 'public.bdp_regulatory_evidence_events'::regclass
     AND (
       (p.polname = 'bdp_evidence_reader_parcel_isolation'
-        AND (p.polcmd <> 'r' OR COALESCE(pg_catalog.pg_get_expr(p.polqual, p.polrelid), '')
+        AND (p.polcmd <> 'r' OR NOT p.polpermissive
+          OR p.polroles <> ARRAY[(SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'bdp_evidence_reader')]
+          OR COALESCE(pg_catalog.pg_get_expr(p.polqual, p.polrelid), '')
           NOT LIKE '%bdp_evidence_has_parcel_access%'))
       OR (p.polname = 'bdp_evidence_owner_insert_parcel_isolation'
-        AND (p.polcmd <> 'a' OR COALESCE(pg_catalog.pg_get_expr(p.polwithcheck, p.polrelid), '')
+        AND (p.polcmd <> 'a' OR NOT p.polpermissive
+          OR p.polroles <> ARRAY[(SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'bdp_evidence_owner')]
+          OR COALESCE(pg_catalog.pg_get_expr(p.polwithcheck, p.polrelid), '')
           NOT LIKE '%bdp_evidence_has_parcel_access%'))
       OR (p.polname = 'bdp_evidence_owner_returning_parcel_isolation'
-        AND (p.polcmd <> 'r' OR COALESCE(pg_catalog.pg_get_expr(p.polqual, p.polrelid), '')
+        AND (p.polcmd <> 'r' OR NOT p.polpermissive
+          OR p.polroles <> ARRAY[(SELECT oid FROM pg_catalog.pg_roles WHERE rolname = 'bdp_evidence_owner')]
+          OR COALESCE(pg_catalog.pg_get_expr(p.polqual, p.polrelid), '')
           NOT LIKE '%bdp_evidence_has_parcel_access%'))
     );
   IF v_bad_policy_count <> 0 THEN
