@@ -2,6 +2,7 @@ import './godsEyeUi.css';
 import './landSearch.css';
 import './persistentSearch.css';
 import './layerPreset.css';
+import './workspace.css';
 import { parseBdpLandSearch } from './landSearch.js';
 import { BDP_LAYER_STATE_REGISTRY } from '../config/layerRegistry.js';
 import { mountPersistentLandSearch } from './persistentSearch.js';
@@ -204,6 +205,7 @@ function adaptLayerPanel() {
   const panel = dataToggles?.closest('.panel-collapsible');
   const title = panel?.querySelector('.panel-title');
   if (title && title.textContent?.trim() === 'DATA LAYERS') {
+    title.textContent = 'MAP LAYERS';
     title.title = 'Toggle land-development map layers';
   }
   if (!dataToggles) return;
