@@ -442,6 +442,65 @@ and a full provenance workflow. The existing regulatory checklist is
 still a **research queue**; GIS observations and archived documents never
 auto-close tasks or modify score, buildability, or acquisition readiness.
 
+### Step 43 — dry-run-first local regulatory evidence intake
+
+Step 42 is verified on Windows: eight Node.js tests passed with zero failures,
+and the read-only index for Travis County FIPS `48453`, parcel `302959`
+returned `totalEvents: 0`, no reviewed tasks, and `legalClearance: null`.
+This confirms the query path, not yet a document-ingestion or legal-review
+workflow.
+
+Step 43 adds a LOCAL operator-controlled event intake, not an HTTP API or
+native property-panel write control. Input is a small JSON file, validated
+against `createRegulatoryEvidenceEvent` with an explicit allowlist of
+permitted fields. Unexpected approval/verification fields are rejected.
+User-controlled URLs and notes are serialized as UTF-8 JSON, encoded to hex,
+and decoded by PostgreSQL inside a statement streamed over psql stdin; raw
+notes, URLs, and reviewer names are never printed in console output.
+A dry run validates the event without touching the database.
+Only an explicit `--commit` causes a real INSERT, always with
+`verification_state='unverified'` enforced at the database level. The
+result must match the requested county, parcel, task, and unverified status.
+A real INSERT creates an append-only historical record and cannot be undone
+through ordinary UPDATE/DELETE. Do not commit any synthetic fixture to a
+real parcel or store confidential personal details in research notes.
+
+**Try validation without a database write** (requires no PostGIS session):
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/regulatory/evidenceLedger.test.mjs src/bdp/regulatory/evidenceIndex.test.mjs src/bdp/regulatory/evidenceIntake.test.mjs scripts/bdp/prepare-regulatory-evidence.test.mjs
+node scripts/bdp/prepare-regulatory-evidence.mjs --template
+```
+
+To prepare a REAL research note later: create a private local JSON file from
+the printed template, replace all placeholders with an actual county/parcel,
+a specific due-diligence task ID, truthful notes and a non-sensitive local
+operator label, and run:
+
+```powershell
+node scripts/bdp/prepare-regulatory-evidence.mjs --file .\\research-note.json
+```
+
+The default command performs a dry run. Do NOT use `--commit` until you
+intend to permanently append the entry, have confirmed your source
+and parcel ID, and are working inside the locally controlled PostGIS
+environment. To deliberately append an authentic unverified record later:
+
+```powershell
+$env:BDP_PG_SERVICE = "bdp"
+node scripts/bdp/prepare-regulatory-evidence.mjs --file .\\research-note.json --commit
+```
+
+Follow with a local `inspect-regulatory-evidence.mjs` call for the matching
+county and parcel to confirm the event index. This feature is for a trusted
+local operator only. The current `bdp` database owner connection is not a
+least-privilege service account. Never expose the CLI, general psql runner,
+input files or unredacted evidence notes to the browser, CI logs or public
+APIs. Before production, add authentication/authorization, least-privilege
+DB roles, encrypted private file storage, document provenance, backup and
+retention safeguards, and a separately authorized verification workflow.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
