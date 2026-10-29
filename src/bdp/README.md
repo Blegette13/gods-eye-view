@@ -473,23 +473,24 @@ node --test src/bdp/regulatory/evidenceLedger.test.mjs src/bdp/regulatory/eviden
 node scripts/bdp/prepare-regulatory-evidence.mjs --template
 ```
 
-To prepare a REAL research note later: create a private local JSON file from
+To prepare a REAL research note later: create a private local JSON file in
+`.bdp-private\\` (this folder is Git-ignored) from
 the printed template, replace all placeholders with an actual county/parcel,
 a specific due-diligence task ID, truthful notes and a non-sensitive local
 operator label, and run:
 
 ```powershell
-node scripts/bdp/prepare-regulatory-evidence.mjs --file .\\research-note.json
+node scripts/bdp/prepare-regulatory-evidence.mjs --file .\\.bdp-private\\research-note.json
 ```
 
-The default command performs a dry run. Do NOT use `--commit` until you
+The default command performs a dry run. Keep private evidence files outside Git commits and logs. Do NOT use `--commit` until you
 intend to permanently append the entry, have confirmed your source
 and parcel ID, and are working inside the locally controlled PostGIS
 environment. To deliberately append an authentic unverified record later:
 
 ```powershell
 $env:BDP_PG_SERVICE = "bdp"
-node scripts/bdp/prepare-regulatory-evidence.mjs --file .\\research-note.json --commit
+node scripts/bdp/prepare-regulatory-evidence.mjs --file .\\.bdp-private\\research-note.json --commit
 ```
 
 Follow with a local `inspect-regulatory-evidence.mjs` call for the matching
