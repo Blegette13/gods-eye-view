@@ -120,6 +120,26 @@ function sectionHeading(text) {
   return heading;
 }
 
+// Native, keyboard-accessible disclosure keeps the 20+ evidence sections
+// discoverable without requiring customers to scroll through every GIS feed.
+// Existing evidence rows, source metadata and async containers are unchanged.
+function propertyEvidenceGroup(label, entries, { expanded = false } = {}) {
+  const group = document.createElement('details');
+  group.className = 'bdp-property-evidence-group';
+  group.open = expanded;
+
+  const summary = document.createElement('summary');
+  summary.className = 'bdp-property-evidence-summary';
+  summary.textContent = label;
+
+  const content = document.createElement('div');
+  content.className = 'bdp-property-evidence-content';
+  content.append(...entries);
+
+  group.append(summary, content);
+  return group;
+}
+
 function sourceErrorLabel(error, source) {
   if (!error) return 'No data returned';
   if (error.status === 503) return 'PostGIS not configured';
@@ -1004,31 +1024,46 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     containers.soils.append(row('Soil screening', 'Loading…'));
     containers.terrain.append(row('Terrain', 'Loading…'));
 
+    const evidenceIntro = document.createElement('p');
+    evidenceIntro.className = 'bdp-property-evidence-intro';
+    evidenceIntro.textContent = 'Preliminary screening only. Unverified, unavailable and missing data do not establish clearance. Expand each section to review its source evidence.';
+
     body.append(
-      sectionHeading('LAND INTELLIGENCE'), containers.intelligence,
-      sectionHeading('ACQUISITION BRIEF'), containers.acquisitionBrief,
-      sectionHeading('RED FLAGS'), containers.flags,
-      sectionHeading('OWNERSHIP / TITLE REVIEW'), containers.ownershipTitle,
-      sectionHeading('ACQUISITION ECONOMICS'), containers.economics, economicsForm(parcel, containers.economics),
-      sectionHeading('GROWTH RADAR'), containers.growthRadar,
-      sectionHeading('DEVELOPMENT / MAPPED CONSTRAINTS'), containers.developmentConstraints,
-      sectionHeading('ENTITLEMENT / ZONING'), containers.entitlement,
-      ...(eligibleForAustinGisPilot(parcel) ? [
-        sectionHeading('AUSTIN GIS / JURISDICTION SCREEN'), containers.austinJurisdiction,
-        sectionHeading('AUSTIN GIS / PRELIMINARY ZONING'), containers.austinZoning,
-        sectionHeading('AUSTIN / REGULATORY REVIEW'), containers.austinRegulatory,
-      ] : []),
-      sectionHeading('ACCESS / TXDOT TRAFFIC'), containers.transportation,
-      sectionHeading('UTILITIES / INFRASTRUCTURE'), containers.utilities,
-      sectionHeading('SURFACE WATER RIGHTS / TCEQ'), containers.waterRights,
-      sectionHeading('ENERGY / OIL & GAS'), containers.energy,
-      sectionHeading('FLOOD / FEMA'), containers.flood,
-      sectionHeading('WETLANDS'), containers.wetlands,
-      sectionHeading('ENVIRONMENT / EPA CLEANUPS'), containers.cleanups,
-      sectionHeading('WASTE / TCEQ MSW'), containers.msw,
-      sectionHeading('CULTURAL / CEMETERIES'), containers.cemeteries,
-      sectionHeading('SOIL / SSURGO'), containers.soils,
-      sectionHeading('TERRAIN / 3DEP'), containers.terrain,
+      evidenceIntro,
+      propertyEvidenceGroup('Screening summary & red flags', [
+        sectionHeading('LAND INTELLIGENCE'), containers.intelligence,
+        sectionHeading('ACQUISITION BRIEF'), containers.acquisitionBrief,
+        sectionHeading('RED FLAGS'), containers.flags,
+      ], { expanded: true }),
+      propertyEvidenceGroup('Acquisition, ownership & title', [
+        sectionHeading('OWNERSHIP / TITLE REVIEW'), containers.ownershipTitle,
+        sectionHeading('ACQUISITION ECONOMICS'), containers.economics, economicsForm(parcel, containers.economics),
+        sectionHeading('GROWTH RADAR'), containers.growthRadar,
+      ]),
+      propertyEvidenceGroup('Planning, zoning & development', [
+        sectionHeading('DEVELOPMENT / MAPPED CONSTRAINTS'), containers.developmentConstraints,
+        sectionHeading('ENTITLEMENT / ZONING'), containers.entitlement,
+        ...(eligibleForAustinGisPilot(parcel) ? [
+          sectionHeading('AUSTIN GIS / JURISDICTION SCREEN'), containers.austinJurisdiction,
+          sectionHeading('AUSTIN GIS / PRELIMINARY ZONING'), containers.austinZoning,
+          sectionHeading('AUSTIN / REGULATORY REVIEW'), containers.austinRegulatory,
+        ] : []),
+        sectionHeading('SOIL / SSURGO'), containers.soils,
+        sectionHeading('TERRAIN / 3DEP'), containers.terrain,
+      ]),
+      propertyEvidenceGroup('Environmental & site constraints', [
+        sectionHeading('FLOOD / FEMA'), containers.flood,
+        sectionHeading('WETLANDS'), containers.wetlands,
+        sectionHeading('ENVIRONMENT / EPA CLEANUPS'), containers.cleanups,
+        sectionHeading('WASTE / TCEQ MSW'), containers.msw,
+        sectionHeading('CULTURAL / CEMETERIES'), containers.cemeteries,
+        sectionHeading('ENERGY / OIL & GAS'), containers.energy,
+      ]),
+      propertyEvidenceGroup('Transportation, utilities & water', [
+        sectionHeading('ACCESS / TXDOT TRAFFIC'), containers.transportation,
+        sectionHeading('UTILITIES / INFRASTRUCTURE'), containers.utilities,
+        sectionHeading('SURFACE WATER RIGHTS / TCEQ'), containers.waterRights,
+      ]),
     );
 
     const disclaimer = document.createElement('p');
