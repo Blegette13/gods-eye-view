@@ -723,7 +723,7 @@ function intelligenceRows(screening) {
   const scoreLabel = withheld
     ? 'WITHHELD · INSUFFICIENT EVIDENCE'
     : `${formatNumber(score.confidenceAdjustedScore, 0)} / 100 · ${score.readiness.replaceAll('-', ' ').toUpperCase()}`;
-  const scoreRow = row('BDP score', scoreLabel);
+  const scoreRow = row('Land screening score', scoreLabel);
   scoreRow.dataset.bdpScoreState = withheld ? 'withheld' : score.readiness;
   return [
     scoreRow,
@@ -902,7 +902,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
 
     const eyebrow = document.createElement('div');
     eyebrow.className = 'bdp-property-eyebrow';
-    eyebrow.textContent = 'BDP LAND INTELLIGENCE';
+    eyebrow.textContent = 'PROPERTY INTELLIGENCE';
 
     const title = document.createElement('strong');
     title.className = 'bdp-property-title';
@@ -968,7 +968,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     containers.developmentConstraints.append(row('Constraint footprint', 'Loading…'));
     containers.economics.append(...economicsRows(evaluateAcquisitionEconomics(parcel)));
     containers.growthRadar.append(row('Growth Radar', 'Loading…'));
-    containers.intelligence.append(row('BDP screening', 'Loading evidence…'));
+    containers.intelligence.append(row('Land screening', 'Loading evidence…'));
     containers.flags.append(row('Flags', 'Loading evidence…'));
     containers.energy.append(row('RRC screening', 'Loading…'));
     containers.flood.append(row('FEMA screening', 'Loading…'));
@@ -987,7 +987,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     containers.terrain.append(row('Terrain', 'Loading…'));
 
     body.append(
-      sectionHeading('BDP INTELLIGENCE'), containers.intelligence,
+      sectionHeading('LAND INTELLIGENCE'), containers.intelligence,
       sectionHeading('ACQUISITION BRIEF'), containers.acquisitionBrief,
       sectionHeading('RED FLAGS'), containers.flags,
       sectionHeading('OWNERSHIP / TITLE REVIEW'), containers.ownershipTitle,
@@ -1015,7 +1015,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
 
     const disclaimer = document.createElement('p');
     disclaimer.className = 'bdp-property-disclaimer';
-    disclaimer.textContent = 'BDP score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. TxDOT roadway proximity does not prove legal access/frontage. Utility service areas/CCNs do not prove capacity, taps, extension cost or electric service; archived transmission mapping does not prove current line/easement conditions. TCEQ water-right points do not prove that a right belongs to the parcel owner, conveys with the tract, or provides available supply. TCEQ MSW coordinates may be a gate, benchmark, centroid, or other point and do not prove exact waste boundaries or parcel contamination. Austin parcel zoning/ETOD GIS intersections are a Travis pilot and do not establish official zoning, city jurisdiction, adoption of density bonuses or permitted uses. San Antonio zoning, ETJ and Future Land Use GIS are planning screens and do not establish legal entitlement, vested rights, density, overlays or permitted development. THC cemetery geometry is public screening data and is not a boundary survey; exact archeological site locations are restricted and are not publicly screened, so absence from this interface is not archeological clearance. FEMA, RRC, NWI, EPA cleanup, TCEQ MSW, THC public cultural data, TxDOT, utility GIS, TCEQ water-right GIS, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, utility, water-right, traffic/ROW, engineering and permitting due diligence remains required.';
+    disclaimer.textContent = 'Land screening score is withheld until enough weighted categories have evidence. Owner/valuation records may require current CAD/deed verification. TxDOT roadway proximity does not prove legal access/frontage. Utility service areas/CCNs do not prove capacity, taps, extension cost or electric service; archived transmission mapping does not prove current line/easement conditions. TCEQ water-right points do not prove that a right belongs to the parcel owner, conveys with the tract, or provides available supply. TCEQ MSW coordinates may be a gate, benchmark, centroid, or other point and do not prove exact waste boundaries or parcel contamination. Austin parcel zoning/ETOD GIS intersections are a Travis pilot and do not establish official zoning, city jurisdiction, adoption of density bonuses or permitted uses. San Antonio zoning, ETJ and Future Land Use GIS are planning screens and do not establish legal entitlement, vested rights, density, overlays or permitted development. THC cemetery geometry is public screening data and is not a boundary survey; exact archeological site locations are restricted and are not publicly screened, so absence from this interface is not archeological clearance. FEMA, RRC, NWI, EPA cleanup, TCEQ MSW, THC public cultural data, TxDOT, utility GIS, TCEQ water-right GIS, SSURGO and 3DEP outputs are preliminary screening data; professional, legal, title, survey, environmental, utility, water-right, traffic/ROW, engineering and permitting due diligence remains required.';
     body.append(disclaimer);
 
     collapse.addEventListener('click', () => {
@@ -1044,7 +1044,7 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
       .catch((error) => {
         if (token !== renderToken) return;
         containers.acquisitionBrief.replaceChildren(row('Acquisition brief', 'Unavailable · no acquisition recommendation'));
-        containers.intelligence.replaceChildren(row('BDP screening', 'Screening session unavailable'));
+        containers.intelligence.replaceChildren(row('Land screening', 'Screening session unavailable'));
         containers.flags.replaceChildren(row('Flags', 'Evidence could not be assembled'));
         console.warn('[BDP:PropertyCard] screening failed:', error);
       });
