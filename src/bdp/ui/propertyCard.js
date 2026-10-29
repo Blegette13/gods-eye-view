@@ -873,7 +873,7 @@ function actionButton(icon, label) {
   return button;
 }
 
-export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntelligence } = {}) {
+export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntelligence, onHide = null } = {}) {
   const root = document.createElement('aside');
   root.id = 'bdp-property-card';
   root.className = 'bdp-property-panel';
@@ -887,6 +887,9 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
     renderToken += 1;
     root.style.display = 'none';
     root.replaceChildren();
+    // Give the owner of the map selection a chance to clear its highlight,
+    // including when the customer clicks the card's own close button.
+    onHide?.();
   }
 
   function show(parcel) {
