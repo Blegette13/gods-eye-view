@@ -20,12 +20,12 @@ export function mountPersistentLandSearch(root = document) {
   const heading = root.createElement('label');
   heading.className = 'land-search-heading';
   heading.htmlFor = 'location-search';
-  heading.textContent = 'PROPERTY & LOCATION SEARCH';
+  heading.textContent = 'Property & location search';
 
   const hint = root.createElement('div');
   hint.id = 'land-search-hint';
   hint.className = 'land-search-hint';
-  hint.textContent = 'Address / coordinates / county parcel: ID / county account: ID / county owner: NAME';
+  hint.textContent = 'Addresses and coordinates navigate the map. For parcel records, try: Travis parcel: 302959';
 
   const status = root.createElement('div');
   status.id = 'land-search-status';
@@ -33,7 +33,7 @@ export function mountPersistentLandSearch(root = document) {
   status.setAttribute('role', 'status');
   status.setAttribute('aria-live', 'polite');
 
-  search.placeholder = 'Search address, parcel, account, owner or coordinates';
+  search.placeholder = 'Address, coordinates, county parcel, account or owner';
   search.setAttribute('aria-label', 'Search for an address or coordinates, or enter a county parcel, account or owner command');
   search.setAttribute('aria-describedby', 'land-search-hint land-search-status');
 
