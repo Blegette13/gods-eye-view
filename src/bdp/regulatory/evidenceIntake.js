@@ -88,3 +88,22 @@ export function validateRegulatoryEvidenceInsertResult(output, expected) {
     legalClearance: null, acquisitionRecommendation: null,
   });
 }
+
+/**
+ * Step 46 service-account variant: call the ONLY RPC granted to the NOLOGIN
+ * bdp_evidence_appender role. Never grant that role direct table access.
+ * Authorization still requires a separately authenticated, parcel-scoped
+ * server session. Local owner-only CLIs retain the original INSERT builder.
+ */
+export function prepareRegulatoryEvidenceRoleAppend(input) {
+  const { preview } = prepareRegulatoryEvidenceInsert(input);
+  const event = createRegulatoryEvidenceEvent(input);
+  const payload = Object.fromEntries(FIELDS.map((key) => [key, event[key]]));
+  const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('hex');
+  const sql = `
+SELECT public.bdp_evidence_append_unverified(
+  convert_from(decode('${encoded}', 'hex'), 'UTF8')::jsonb
+)::text;
+`;
+  return Object.freeze({ sql, preview });
+}
