@@ -190,3 +190,29 @@ body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-di
     font-size: 9px;
   }
 }
+
+/* Search is the main operator action, not decorative HUD text. */
+body[data-bdp-product='land-development-os'] #land-search-bar {
+  border-color: rgba(107, 180, 212, 0.43);
+  background: rgba(4, 14, 26, 0.95);
+}
+
+body[data-bdp-product='land-development-os'] #land-search-bar .land-search-heading {
+  color: #87e8ff;
+  font-size: 11px;
+}
+
+body[data-bdp-product='land-development-os'] #land-search-bar #location-search {
+  color: #f3f9ff;
+  font-size: 15px;
+}
+
+body[data-bdp-product='land-development-os'] #land-search-bar #location-search::placeholder {
+  color: #a6bbce;
+  opacity: 1;
+}
+
+body[data-bdp-product='land-development-os'] #land-search-bar .land-search-hint {
+  color: #adc5d5;
+  font-size: 11px;
+}
