@@ -31,6 +31,9 @@ test('audit checks all group roles and rejects privileged LOGIN/BYPASSRLS', () =
 
 test('audit checks actual RLS state, three policies and both function owners', () => {
   assert.match(audit, /relrowsecurity/);
+  assert.match(audit, /unexpected permissive policy present/);
+  assert.match(audit, /p\.polroles <> ARRAY/);
+  assert.match(audit, /NOT p\.polpermissive/);
   for (const policy of [
     'bdp_evidence_reader_parcel_isolation',
     'bdp_evidence_owner_insert_parcel_isolation',
