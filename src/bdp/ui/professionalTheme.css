@@ -501,3 +501,97 @@ body[data-bdp-product='land-development-os'] #key-setup-chip:focus-visible {
     transition: none;
   }
 }
+
+/* Provider setup is an operator utility, not a combat-console popup. */
+body[data-bdp-product='land-development-os'] #key-setup {
+  color: var(--ldos-ink);
+  border: 1px solid var(--ldos-border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 25px 75px rgba(5, 17, 30, .35);
+  font-family: var(--font-sans);
+}
+body[data-bdp-product='land-development-os'] #key-setup .key-setup-scanline {
+  display: none;
+}
+body[data-bdp-product='land-development-os'] #key-setup :is(.key-setup-header, .key-setup-footer) {
+  color: var(--ldos-muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: .01em;
+  text-transform: none;
+}
+body[data-bdp-product='land-development-os'] #key-setup .key-setup-kicker {
+  color: var(--ldos-blue);
+  font-weight: 650;
+}
+body[data-bdp-product='land-development-os'] #key-setup h2 {
+  color: var(--ldos-ink);
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+body[data-bdp-product='land-development-os'] #key-setup #key-setup-description,
+body[data-bdp-product='land-development-os'] #key-setup .key-setup-note {
+  color: var(--ldos-quiet);
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+body[data-bdp-product='land-development-os'] #key-setup .key-setup-row {
+  border: 1px solid #e0e8ee;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+body[data-bdp-product='land-development-os'] #key-setup .key-setup-row[data-set='true'] {
+  border-color: #b5d8c6;
+  background: #f1faf5;
+}
+body[data-bdp-product='land-development-os'] #key-setup .key-setup-row-head {
+  color: var(--ldos-ink);
+  font-family: var(--font-sans);
+}
+body[data-bdp-product='land-development-os'] #key-setup .key-setup-row-head strong {
+  font-size: 12px;
+  letter-spacing: .01em;
+}
+body[data-bdp-product='land-development-os'] #key-setup .key-setup-unlocks {
+  color: var(--ldos-quiet);
+  font-size: 11px;
+}
+body[data-bdp-product='land-development-os'] #key-setup .key-setup-get {
+  color: var(--ldos-blue);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  letter-spacing: .01em;
+}
+body[data-bdp-product='land-development-os'] #key-setup .key-setup-fields input {
+  color: var(--ldos-ink);
+  border: 1px solid #cfdae3;
+  border-radius: 8px;
+  background: #fff;
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+body[data-bdp-product='land-development-os'] #key-setup .key-setup-fields input::placeholder {
+  color: #687d90;
+}
+body[data-bdp-product='land-development-os'] #key-setup .key-setup-fields input:focus {
+  outline: 2px solid var(--ldos-focus);
+  outline-offset: 1px;
+  border-color: var(--ldos-focus);
+}
+body[data-bdp-product='land-development-os'] #key-setup .key-setup-apply {
+  color: #fff;
+  border-radius: 9px;
+  background: var(--ldos-blue);
+  font-family: var(--font-sans);
+  letter-spacing: .01em;
+}
+body[data-bdp-product='land-development-os'] #key-setup .key-setup-close {
+  color: var(--ldos-muted);
+}
+body[data-bdp-product='land-development-os'] #key-setup .key-setup-close:hover,
+body[data-bdp-product='land-development-os'] #key-setup .key-setup-close:focus-visible {
+  color: var(--ldos-blue);
+  border-color: #a8c8dc;
+}
