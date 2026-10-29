@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { useLegacyFirstRunLauncher } from '../bdp/config/workspacePolicy.js';
 
 const source = readFileSync(
   new URL('./startupChrome.js', import.meta.url),
@@ -10,7 +11,7 @@ const source = readFileSync(
   .replace(/^import .*;\n/gm, '')
   .replace('export function', 'function');
 
-function fixture() {
+function fixture(product = undefined) {
   const timers = new Map();
   const listeners = new Map();
   const events = [];
@@ -19,6 +20,8 @@ function fixture() {
   const controller = new AbortController();
   const context = {
     console,
+    document: { body: { dataset: { bdpProduct: product } } },
+    useLegacyFirstRunLauncher,
     setTimeout(fn, delay) {
       const id = ++nextTimer;
       timers.set(id, { fn, delay });
@@ -122,4 +125,19 @@ test('shutdown during the cover transition cancels the listener and fallback', a
   transition();
   f.fire(900);
   assert.deepEqual(f.events, ['hidden', 'settings:destroy']);
+});
+
+test('land-development workspace bypasses legacy missions but still reveals map and key setup', async () => {
+  const f = fixture('land-development-os');
+  f.restored();
+  f.fire(1000);
+  await flush();
+  assert.deepEqual(f.events, ['hidden']);
+  f.listeners.get('transitionend')();
+  f.fire(900);
+  assert.deepEqual(f.events, ['hidden']);
+  assert.equal(f.listeners.has('transitionend'), false);
+  await f.stop();
+  assert.deepEqual(f.events, ['hidden', 'settings:destroy']);
+  assert.equal(f.timers.size, 0);
 });
