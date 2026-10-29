@@ -18,13 +18,16 @@ VALUES
   ('48453', 'bdp-acl-denied-smoke', 'verify-zoning-designation',
    'review-note', 'Synthetic denied scope; not actual regulatory evidence', 'bdp-smoke');
 
--- Exactly one unexpired parcel grant per test login. The second synthetic
--- parcel is intentionally NOT granted.
+-- Exactly one UNEXPIRED parcel grant per test login. Reader also
+-- has an intentionally EXPIRED grant for the denied parcel; appender has no
+-- second-parcel grant at all.
 INSERT INTO public.bdp_evidence_parcel_acl
   (login_role, county_fips, parcel_id, can_read, can_append, expires_at)
 VALUES
   ('bdp_acl_smoke_reader', '48453', 'bdp-acl-allowed-smoke',
    TRUE, FALSE, CURRENT_TIMESTAMP + INTERVAL '5 minutes'),
+  ('bdp_acl_smoke_reader', '48453', 'bdp-acl-denied-smoke',
+   TRUE, FALSE, CURRENT_TIMESTAMP - INTERVAL '5 minutes'),
   ('bdp_acl_smoke_appender', '48453', 'bdp-acl-allowed-smoke',
    FALSE, TRUE, CURRENT_TIMESTAMP + INTERVAL '5 minutes');
 
@@ -57,7 +60,7 @@ BEGIN
       '48453', 'bdp-acl-allowed-smoke', 'append-event') THEN
     RAISE EXCEPTION 'ACL reader helper returned an unexpected permission';
   END IF;
-  RAISE NOTICE 'BDP Step 47 reader: one permitted parcel only; other parcel and append denied';
+  RAISE NOTICE 'BDP Step 47 reader: permitted parcel only; expired grant and append denied';
 END;
 $read$;
 RESET SESSION AUTHORIZATION;
