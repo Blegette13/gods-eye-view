@@ -142,12 +142,19 @@ export function createStandaloneData({
       if (name !== county) other.hideCard();
     }
 
+    // The manager performs a viewport fetch during its enable lifecycle.
+    // Reserve this exact-ID search first: a dense/truncated viewport must not
+    // prevent a bounded parcel or owner request from reaching the CAD source.
+    const releaseFocusedLookup = layer.beginFocusedLookup();
     try {
-      await dataManager.setEnabled(layerId, true, {
+      const enabled = await dataManager.setEnabled(layerId, true, {
         origin: 'user',
         signal,
       });
       if (signal.aborted) return;
+      if (enabled === false || !dataManager.isEnabled(layerId)) {
+        throw new Error(`${county} parcel layer could not be enabled for lookup`);
+      }
 
       if (command.kind === 'owner') {
         const parcels = await layer.focusOwner(command.value, {
@@ -216,6 +223,8 @@ export function createStandaloneData({
           },
         }),
       );
+    } finally {
+      releaseFocusedLookup();
     }
   };
   window.addEventListener('bdp:land-search', handleBdpLandSearch);
