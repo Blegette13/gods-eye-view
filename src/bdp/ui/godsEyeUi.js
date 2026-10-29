@@ -8,6 +8,7 @@ import { parseBdpLandSearch } from './landSearch.js';
 import { BDP_LAYER_STATE_REGISTRY } from '../config/layerRegistry.js';
 import { mountPersistentLandSearch } from './persistentSearch.js';
 import { landLayerGroup, landLayerDisplayName } from './landLayerPresentation.js';
+import { setScopeMaskAvailable } from '../../scopeMask.js';
 
 // Internal bdp-* IDs are intentionally preserved for data, share-state and DB compatibility.
 const BDP_LAYER_IDS = new Set(BDP_LAYER_STATE_REGISTRY.map(({ id }) => id));
@@ -269,6 +270,10 @@ function applyNow() {
 }
 
 export function applyBdpGodsEyeUi() {
+  // Must run synchronously before Cesium/StyleManager initialize. A restored
+  // upstream share link may request scope=true later; the availability gate
+  // keeps the land workspace fully unmasked without changing source tokens.
+  setScopeMaskAvailable(false);
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', applyNow, { once: true });
     return;
