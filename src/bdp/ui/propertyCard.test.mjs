@@ -30,6 +30,59 @@ function response(candidate) {
     score: { readiness: 'insufficient-evidence', coveragePercent: 0, confidenceAdjustedCoveragePercent: 0 }, redFlags: [], redFlagSummary: { critical: 0, high: 0, medium: 0 }, sourceCoveragePercent: 0 };
 }
 
+test('live-screening mismatch is flagged before investment decisions without editing CAD-reported numbers', async () => {
+  const previous = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const candidate = {
+      ...parcel, county: 'Travis', countyFips: '48453', parcelId: '302959',
+      property: { ...parcel.property, acres: 0.18, situsAddress: '611 W ANNIE ST' },
+      valuation: { landValue: 1198206, improvementValue: 95897, marketValue: 695000 },
+      acquisition: { pricePerAcre: 3902302 },
+      source: { recordCurrency: 'unverified', provider: 'Travis County GIS / TCAD' },
+    };
+    card = createBdpPropertyCard({ screeningLoader: async () => response(candidate) });
+    card.show(candidate);
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const getRow = (key) => rows.find((el) => el.children[0].textContent === key);
+    const valueFor = (key) => getRow(key)?.children[1].textContent;
+    assert.equal(valueFor('Land value'), '$1,198,206');
+    assert.equal(valueFor('Improvements'), '$95,897');
+    assert.equal(valueFor('Reported value'), '$695,000');
+    assert.equal(valueFor('Reported value / acre'), '$3,902,302');
+    assert.match(valueFor('Valuation review'), /REVIEW REQUIRED.*do not|REVIEW REQUIRED.*confirm current values directly/i);
+    assert.equal(getRow('Valuation review').dataset.bdpValuationReview, 'review-required');
+    assert.deepEqual(JSON.parse(getRow('Valuation review').dataset.bdpEvidenceRefs), [
+      'parcel.valuation.landValue',
+      'parcel.valuation.improvementValue',
+      'parcel.valuation.marketValue',
+    ]);
+    assert.equal(valueFor('Record currency'), 'UNVERIFIED');
+    assert.equal(candidate.valuation.landValue, 1198206);
+    assert.equal(candidate.valuation.marketValue, 695000);
+  } finally {
+    card?.destroy();
+    globalThis.document = previous;
+  }
+});
+
+test('missing or noncontradictory component values never get a fabricated approval', async () => {
+  const previous = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element('div'), body: new Element('body') };
+  let card;
+  try {
+    card = createBdpPropertyCard({ screeningLoader: async () => response(parcel) });
+    card.show(parcel);
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    assert.equal(rows.find((el) => el.children[0].textContent === 'Valuation review'), undefined);
+    assert.equal(rows.find((el) => el.children[0].textContent === 'Reported value')?.children[1].textContent, '—');
+  } finally {
+    card?.destroy();
+    globalThis.document = previous;
+  }
+});
+
 test('Harris source year and stacked-account caveat display without verifying ownership or asking price', async () => {
   const previous = globalThis.document;
   globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
@@ -65,7 +118,7 @@ test('native property panel keeps nulls unknown, shows Growth Radar and calculat
     card.show(parcel);
     const rows = () => find(card.root, (el) => el.className === 'bdp-property-row');
     const valueFor = (key) => rows().find((el) => el.children[0].textContent === key)?.children[1].textContent;
-    assert.equal(valueFor('Total value'), '—');
+    assert.equal(valueFor('Reported value'), '—');
     assert.equal(valueFor('Verified vesting'), 'UNKNOWN');
     assert.equal(valueFor('Title clearance'), 'UNKNOWN');
     const lookup = find(card.root, (el) => el.tagName === 'a' && el.textContent === 'Open county land records')[0];
