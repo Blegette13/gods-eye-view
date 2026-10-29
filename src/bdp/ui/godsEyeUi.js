@@ -2,21 +2,11 @@ import './godsEyeUi.css';
 import './landSearch.css';
 import './layerPreset.css';
 import { parseBdpLandSearch } from './landSearch.js';
+import { BDP_LAYER_STATE_REGISTRY } from '../config/layerRegistry.js';
+import { mountPersistentLandSearch } from './persistentSearch.js';
 
-const BDP_LAYER_IDS = new Set([
-  'bdp-bexar-parcels',
-  'bdp-travis-parcels',
-  'bdp-williamson-parcels',
-  'bdp-hays-parcels',
-  'bdp-dallas-parcels',
-  'bdp-harris-parcels',
-  'bdp-fema-flood',
-  'bdp-rrc-energy',
-  'bdp-nwi-wetlands',
-  'bdp-ssurgo-soils',
-  'bdp-epa-cleanups',
-  'bdp-txdot-traffic',
-]);
+// Internal bdp-* IDs are intentionally preserved for data, share-state and DB compatibility.
+const BDP_LAYER_IDS = new Set(BDP_LAYER_STATE_REGISTRY.map(({ id }) => id));
 
 let layerObserver = null;
 
@@ -29,20 +19,20 @@ function replaceTitleText() {
   const titleText = titleBar.querySelector('h1 > span:last-child');
   if (titleText) {
     titleText.replaceChildren();
-    titleText.append(document.createTextNode("GOD'S EYE "));
+    titleText.append(document.createTextNode('LAND '));
     const accent = document.createElement('span');
     accent.className = 'title-accent';
-    accent.textContent = 'VIEW';
+    accent.textContent = 'DEVELOPMENT';
     titleText.append(accent);
   }
 
   const subtitle = titleBar.querySelector('.subtitle');
-  if (subtitle) subtitle.textContent = 'BDP LAND ACQUISITION INTELLIGENCE';
+  if (subtitle) subtitle.textContent = 'OPERATING SYSTEM';
 
   if (!titleBar.querySelector('.bdp-title-mode')) {
     const mode = document.createElement('span');
     mode.className = 'bdp-title-mode';
-    mode.textContent = 'Texas land intelligence';
+    mode.textContent = 'TEXAS PILOT · WORKING TITLE';
     titleBar.append(mode);
   }
 }
@@ -54,6 +44,11 @@ function signalLandSearchState(search, state, message = '') {
 
   const status = document.getElementById('location-mini-poi');
   if (status && message) status.textContent = message;
+  const visibleStatus = document.getElementById('land-search-status');
+  if (visibleStatus) {
+    visibleStatus.textContent = message;
+    visibleStatus.dataset.searchState = state;
+  }
 
   if (state === 'success' || state === 'error') {
     window.setTimeout(() => {
@@ -108,8 +103,7 @@ function attachLandSearch(search) {
 function adaptLocationTray() {
   const search = document.getElementById('location-search');
   if (!search) return;
-  search.placeholder = 'Place/coords · parcel: ID · owner: NAME · county parcel: ID';
-  search.setAttribute('aria-label', 'Search map by address, place, coordinates, or Bexar, Travis, or Williamson parcel and owner commands');
+  mountPersistentLandSearch();
   attachLandSearch(search);
 }
 
@@ -135,15 +129,15 @@ function createBdpLayerSectionLabel() {
   const section = document.createElement('div');
   section.className = 'bdp-layer-section-label';
   section.setAttribute('role', 'group');
-  section.setAttribute('aria-label', 'BDP land intelligence layers');
+  section.setAttribute('aria-label', 'Land development layers');
 
   const kicker = document.createElement('span');
   kicker.className = 'bdp-layer-section-kicker';
-  kicker.textContent = 'BDP';
+  kicker.textContent = 'LAND';
 
   const title = document.createElement('span');
   title.className = 'bdp-layer-section-title';
-  title.textContent = 'LAND INTELLIGENCE';
+  title.textContent = 'DEVELOPMENT LAYERS';
 
   const rule = document.createElement('span');
   rule.className = 'bdp-layer-section-rule';
@@ -152,8 +146,8 @@ function createBdpLayerSectionLabel() {
   const actions = document.createElement('span');
   actions.className = 'bdp-layer-section-actions';
   actions.append(
-    createPresetButton('screen', 'SCREEN', 'Enable the BDP land-screening layer stack'),
-    createPresetButton('clear', 'CLEAR', 'Turn off BDP land-intelligence layers'),
+    createPresetButton('screen', 'SCREEN', 'Enable land-screening map layers'),
+    createPresetButton('clear', 'CLEAR', 'Turn off land-screening map layers'),
   );
 
   section.append(kicker, title, rule, actions);
@@ -175,10 +169,10 @@ function attachPresetFeedback() {
     if (!status) return;
     if (result.ok) {
       status.textContent = result.mode === 'clear'
-        ? 'BDP land layers cleared'
-        : `BDP land screen active · ${result.enabledCount || 0} layers`;
+        ? 'Land screening layers cleared'
+        : `Land screen active · ${result.enabledCount || 0} layers`;
     } else {
-      status.textContent = result.message || 'BDP layer preset unavailable';
+      status.textContent = result.message || 'Land layer preset unavailable';
     }
   });
 }
@@ -209,7 +203,7 @@ function adaptLayerPanel() {
   const panel = dataToggles?.closest('.panel-collapsible');
   const title = panel?.querySelector('.panel-title');
   if (title && title.textContent?.trim() === 'DATA LAYERS') {
-    title.title = "Toggle God's Eye and BDP land-intelligence map layers";
+    title.title = 'Toggle land-development map layers';
   }
   if (!dataToggles) return;
 
@@ -223,8 +217,8 @@ function adaptLayerPanel() {
 }
 
 function applyNow() {
-  document.title = "BDP · God's Eye View · Land Intelligence";
-  document.body.dataset.bdpProduct = 'land-intelligence';
+  document.title = 'Land Development Operating System · Texas Pilot';
+  document.body.dataset.bdpProduct = 'land-development-os';
   replaceTitleText();
   adaptLocationTray();
   adaptLayerPanel();
