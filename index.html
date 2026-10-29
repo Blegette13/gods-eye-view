@@ -896,19 +896,19 @@
   <aside id="key-setup" role="dialog" aria-labelledby="key-setup-title" aria-describedby="key-setup-description" hidden>
     <div class="key-setup-scanline" aria-hidden="true"></div>
     <header class="key-setup-header">
-      <span class="key-setup-kicker">GROUND STATION · PROVIDER SETTINGS</span>
+      <span class="key-setup-kicker">Map services · Local configuration</span>
       <button type="button" class="key-setup-close" data-key-setup-close aria-label="Close key setup">
         <span class="material-symbols-outlined" aria-hidden="true">close</span>
       </button>
     </header>
-    <h2 id="key-setup-title">Power up the globe</h2>
-    <p id="key-setup-description">The globe already flies keyless. Every key below switches on another real feed — paste one and it's saved into this app's local configuration, then the server restarts itself. Server-side keys stay on this machine; Google Maps and Cesium ion run in the browser and must be provider-restricted. Keys you configured elsewhere are shown but never touched.</p>
+    <h2 id="key-setup-title">Provider settings</h2>
+    <p id="key-setup-description">The map can run with its keyless basemap. Configure only the services you use: some legacy integrations listed here are not part of the land-development workspace. Values saved here update this machine's local configuration and restart the development server. Server-side credentials stay on this machine; browser-side Google Maps and Cesium ion keys must be restricted at the provider. Keys configured elsewhere are not changed.</p>
     <div class="key-setup-rows" data-key-setup-rows></div>
     <div class="key-setup-footer">
-      <button type="button" class="key-setup-apply" data-key-setup-apply>SAVE KEYS</button>
+      <button type="button" class="key-setup-apply" data-key-setup-apply>Save settings</button>
       <span class="key-setup-hint">ESC to close</span>
     </div>
-    <p class="key-setup-note" data-key-setup-status role="status" aria-live="polite">The Google Maps key buys the photorealistic planet — everything else stacks on top.</p>
+    <p class="key-setup-note" data-key-setup-status role="status" aria-live="polite">Provider services are optional for the keyless basemap. Configure only services you intend to use.</p>
   </aside>
 
   <!-- Intelligence HUD Overlay -->
