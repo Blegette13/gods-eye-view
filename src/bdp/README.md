@@ -607,6 +607,68 @@ read access; only then consider a property-panel evidence view. Never turn
 an indexed document into a verified task without distinct authorized legal
 review and independently corroborated evidence.
 
+### Step 46 — separate PostgreSQL evidence privileges
+
+**Step 45 local confirmation:** 12/12 authorization and service-boundary tests
+passed. The trusted-server authorization policy is implemented, but NO real
+operator login/session system or live evidence HTTP route has been deployed.
+
+Step 46 is an **opt-in additive local Postgres migration**:
+`src/bdp/ingestion/sql/regulatoryEvidenceRoles.sql`. This migration requires
+the Step 41 evidence table and an administrator/superuser connection. It
+creates exactly three NOLOGIN group roles:
+
+- `bdp_evidence_reader`: SELECT on only the evidence index metadata
+  columns (no notes, source URL, or entered_by).
+- `bdp_evidence_appender`: EXECUTE on a narrowly-defined,
+  `SECURITY DEFINER` `public.bdp_evidence_append_unverified(jsonb)` routine;
+  no SELECT/INSERT/UPDATE/DELETE on the evidence table itself.
+- `bdp_evidence_owner`: a separate NOLOGIN function owner, with permission
+  only for specified INSERT and limited RETURNING columns. The function
+  does not run as the original `bdp` database superuser.
+
+The restricted function rejects unsupported fields (including approval
+claims), inserts only records constrained as `unverified`, and returns a
+small, non-legal clearance receipt. The post-auth service adapter now
+generates RPC calls instead of direct INSERT statements. The previous
+local trusted-operator evidence CLI still uses the original PostGIS
+owner connection and remains intentionally **local-only**.
+
+**Run automated Node.js policy and SQL-generation tests first:**
+
+```powershell
+cd "$HOME\\gods-eye-view"
+git pull --ff-only origin bdp-development
+node --test src/bdp/regulatory/evidenceAccessPolicy.test.mjs server/providers/bdp-evidence-access.test.mjs src/bdp/regulatory/evidenceIntake.test.mjs
+```
+
+**On the local trusted bdp PostGIS administrator connection only**, after
+confirming you have a database backup, apply and smoke-test:
+
+```powershell
+psql "service=bdp" -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/regulatoryEvidenceRoles.sql
+psql "service=bdp" -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/regulatoryEvidenceRolesSmoke.sql
+```
+
+The smoke test uses a synthetic test-only parcel event, a restricted role
+context, and an outer `ROLLBACK` transaction. No synthetic evidence is
+persisted. The CLI must report the grant checks pass and complete ROLLBACK;
+the role migration itself commits three group roles, grants and the RPC.
+
+**This is NOT deployable authentication**. NOLOGIN roles cannot be used to
+log in; there are no separate login credentials yet and no parcel RLS.
+Database reader metadata grants are *not* parcel-row restricted: actual
+parcel access depends on the trusted application-level gate. Never share
+`bdp` owner credentials with an application service, accept browser
+claimed roles, grant anonymous access, or connect the evidence adapter to
+an HTTP endpoint. The future server MUST inject its own verified-session
+resolver and a separately provisioned least-privilege DB query adapter;
+the adapter now refuses to default to the local owner connection.
+Additional protections needed: real identity provider, parcel-grant
+registry, DB-side row isolation, audit/retention, backups, secret rotation,
+and authenticated private file storage. No evidence entry closes checklist
+tasks or changes an acquisition recommendation.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
