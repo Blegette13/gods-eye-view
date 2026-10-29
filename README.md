@@ -1,3 +1,10 @@
+> **Land Development Operating System — Phase 2 (development branch)**  
+> This fork is being transformed into an independent, map-first land-development platform. The name and brand are **not finalized**. See the [Phase 2 architecture audit and roadmap](docs/PHASE-2-TRANSFORMATION.md). The existing Cesium foundation, land-intelligence pilots and secure evidence contracts remain intact. The original God's Eye View overview below is retained as upstream project documentation; its legacy layers are **not yet removed or disabled**.
+>
+> **Important:** county parcel/search support is currently pilot-scoped, not statewide; geospatial and legal unknowns are never clearance. Check third-party dataset and API licensing before commercial use.
+
+---
+
 <div align="center">
 
 # 🌐 God's Eye View
