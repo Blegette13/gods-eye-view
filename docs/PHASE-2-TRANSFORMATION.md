@@ -129,6 +129,16 @@ Following the operator's second working local screenshot, the workspace has been
 
 **Quality gates not yet observed on this commit:** the local unit suite, Vite production build, and real-browser desktop/mobile screenshot. Test layering, parcel search, map attribution, toggles, scrolling and property-card evidence states after pulling. **Do not infer the product is ready for paying customers from a theme alone**: authentication and licensing, data coverage, on-call reliability, acquisition/development workflows and actual parcel search behavior still need verified release gates.
 
+## First parcel search acceptance — confirmed and data-quality finding
+
+The operator's October 29, 2026 browser screenshot confirms that entering `Travis parcel: 302959` in the persistent native input triggered the county-specific search: the Travis parcel layer switched ON, the camera moved into Austin, the search reported the matched owner, and the property intelligence card displayed a situs address, reported acreage, valuation fields, parcel ID, provenance and explicit **UNVERIFIED** currency.
+
+**Important: retrieval is not source verification.** The displayed Travis County GIS/TCAD fields for the sample parcel were reported as land **$1,198,206**, improvements **$95,897**, and total **$695,000**. The displayed land component alone exceeds the reported total. This is a material source-component discrepancy, **not proof that any one county field is wrong**. The underlying GIS fields may describe different bases, exemptions or periods. Investigate the authoritative appraisal record and field definitions before using the figures for underwriting. Other parcels/counties have not been visually accepted.
+
+The implementation now adds a **presentation-only source-valuation review** helper: if nonnegative reported land and/or improvement components materially exceed the reported value, a visibly amber `REVIEW REQUIRED` row explains the discrepancy and requests independent county verification. It does **not** rewrite source values, fabricate a corrected appraisal, infer a sale price, or mark unknown records as safe. The panel now uses the less-ambiguous labels `Reported value` and `Reported value / acre` rather than suggesting that a GIS total is necessarily the sum of land and improvements. A unit test covers the exact screenshot field pattern and assures the raw numbers remain unchanged.
+
+**Remaining QA:** pull these changes, run the narrow valuation/property-card tests and full suite/build, then repeat the Travis lookup and confirm the amber caveat appears. Browser screenshots, maps, county records and temporary local test samples are not evidence of current legally verified ownership, boundaries, land use or valuations. Acquisition recommendations and verified development rights remain withheld.
+
 ## Non-negotiable regression checklist
 
 1. Cesium viewer, map stack and attribution render without legacy tracking layers.
