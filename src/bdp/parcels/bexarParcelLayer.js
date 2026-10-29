@@ -301,7 +301,21 @@ export function createCountyParcelLayer({
           limit: adapter.county === 'Bexar' ? 1000 : 500,
           signal: requestController.signal,
         });
-        const omitted = parcels.viewportCoverage?.omittedUnidentified || 0;
+        const coverage = parcels.viewportCoverage;
+        if (coverage?.overLimit === true) {
+          // The provider explicitly reported that this viewport was cut off
+          // (or returned more than the request cap). Never display a subset as
+          // full GIS coverage. Keep the layer active and inform the operator
+          // that they must zoom closer or use a bounded parcel-ID search.
+          // Existing explicitly selected source parcels are not invented,
+          // changed or relabeled as a complete neighborhood snapshot.
+          viewportCoverageWarning = 'INCOMPLETE COVERAGE · Travis GIS parcel response exceeds the map request limit. Zoom closer or search by county parcel ID; boundaries for this view are not loaded.';
+          lastUpdate = Date.now();
+          lastError = null;
+          status = 'degraded';
+          return true;
+        }
+        const omitted = coverage?.omittedUnidentified || 0;
         if (omitted) {
           // A mapped polygon without a valid parcel ID is NOT a verified tract.
           // Show identifiable parcels, but never imply the viewport is complete.
