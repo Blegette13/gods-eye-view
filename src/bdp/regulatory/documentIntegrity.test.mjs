@@ -8,7 +8,7 @@ import {
   fingerprintPrivateRegulatoryDocument,
   readPrivateRegulatoryMetadata,
   resolvePrivateRegulatoryFile,
-} from './documentIntegrity.js';
+} from '../../../server/providers/bdp-document-integrity.js';
 
 async function fixture(t) {
   const projectRoot = await mkdtemp(join(tmpdir(), 'bdp-reg-doc-'));
