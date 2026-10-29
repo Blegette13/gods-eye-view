@@ -82,7 +82,7 @@ function layerFixture() {
     dataSources: { add: async () => {}, remove: () => {} },
     flyTo: async (_target, options) => calls.camera.push(options),
   };
-  return { layer, calls, viewer };
+  return { layer, calls, viewer, adapter };
 }
 
 test('direct parcel lookup bypasses malformed dense viewport query during enable', async () => {
@@ -129,5 +129,33 @@ test('ordinary manual layer enable still reports truncated provider results as u
   assert.equal(calls.viewport, 1);
   assert.equal(layer.getStats().status, 'unavailable');
   assert.equal(layer.getStats().available, false);
+  layer.destroy();
+});
+
+test('dense viewport stays available but warns of incomplete GIS coverage', async () => {
+  const { layer, calls, viewer, adapter } = layerFixture();
+  adapter.fetchParcelsInBounds = async () => {
+    calls.viewport += 1;
+    const parcels = [];
+    Object.defineProperty(parcels, 'viewportCoverage', {
+      value: Object.freeze({ overLimit: true, receivedCount: 501, omittedUnidentified: 0 }),
+    });
+    return parcels;
+  };
+  layer.init(viewer);
+  layer.enable();
+  assert.equal(await layer.update(viewer), true, 'over-limit status must not disable county layer');
+  const stats = layer.getStats();
+  assert.equal(stats.status, 'degraded');
+  assert.equal(stats.available, true);
+  assert.equal(stats.count, 0);
+  assert.equal(stats.lastError, null);
+  assert.match(stats.loadingLabel, /INCOMPLETE COVERAGE.*Zoom closer/);
+  assert.equal(calls.render, 0, 'not even a visually empty source snapshot is synthesized');
+  assert.equal(calls.viewport, 1);
+  // A subsequent exact parcel request still uses the original GIS provider.
+  const parcel = await layer.focusParcel('302959');
+  assert.equal(parcel.parcelId, '302959');
+  assert.equal(calls.specific, 1);
   layer.destroy();
 });
