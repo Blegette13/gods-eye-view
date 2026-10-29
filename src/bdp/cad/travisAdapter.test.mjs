@@ -101,18 +101,59 @@ test('viewport keeps identifiable Travis parcels visible but reports every unide
   }
 });
 
-test('viewport fails closed for malformed shapes, duplicate IDs, and capped responses', async () => {
+test('viewport fails closed for malformed shapes and duplicate IDs', async () => {
   const prior = globalThis.fetch;
   const bounds = { west: -97.8, south: 30.2, east: -97.7, north: 30.3 };
   try {
-    for (const [features, extra] of [
-      [[feature({ PROP_ID: 1 }), { ...feature({ PROP_ID: null }), geometry: null }], {}],
-      [[feature({ PROP_ID: 1 }), feature({ PROP_ID: 1 })], {}],
-      [[feature({ PROP_ID: 1 })], { exceededTransferLimit: true }],
+    for (const features of [
+      [feature({ PROP_ID: 1 }), { ...feature({ PROP_ID: null }), geometry: null }],
+      [feature({ PROP_ID: 1 }), feature({ PROP_ID: 1 })],
     ]) {
-      globalThis.fetch = async () => ({ ok: true, json: async () => ({ type: 'FeatureCollection', features, ...extra }) });
-      await assert.rejects(travisCadAdapter.fetchParcelsInBounds(bounds), /geometry|repeats|truncated/);
+      globalThis.fetch = async () => ({ ok: true, json: async () => ({ type: 'FeatureCollection', features }) });
+      await assert.rejects(travisCadAdapter.fetchParcelsInBounds(bounds), /geometry|repeats/);
     }
+  } finally {
+    globalThis.fetch = prior;
+  }
+});
+
+test('dense Travis viewport remains explicitly incomplete rather than disabling the parcel service', async () => {
+  const prior = globalThis.fetch;
+  const bounds = { west: -97.8, south: 30.2, east: -97.7, north: 30.3 };
+  try {
+    for (const result of [
+      { type: 'FeatureCollection', features: [feature({ PROP_ID: 1 })], exceededTransferLimit: true },
+      { type: 'FeatureCollection', features: Array.from({ length: 4 },
+        (_, index) => feature({ PROP_ID: 50 + index })) },
+    ]) {
+      globalThis.fetch = async () => ({ ok: true, json: async () => result });
+      const parcels = await travisCadAdapter.fetchParcelsInBounds(bounds, { limit: 3 });
+      assert.equal(parcels.length, 0, 'never render a capped source subset as a complete map');
+      assert.equal(parcels.viewportCoverage.overLimit, true);
+      assert.equal(parcels.viewportCoverage.receivedCount, result.features.length);
+      assert.equal(parcels.viewportCoverage.omittedUnidentified, 0);
+      assert.equal(Object.keys(parcels).includes('viewportCoverage'), false);
+    }
+    // Exact-ID source requests MUST NOT accept capped results as complete.
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      type: 'FeatureCollection', features: [feature({ PROP_ID: 12 })],
+      exceededTransferLimit: true,
+    }) });
+    await assert.rejects(travisCadAdapter.fetchParcel('12'), /truncated/);
+  } finally {
+    globalThis.fetch = prior;
+  }
+});
+
+test('malformed county source responses remain unavailable instead of inventing zero parcels', async () => {
+  const prior = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({
+      error: { code: 498, message: 'restricted' },
+    }) });
+    await assert.rejects(travisCadAdapter.fetchParcelsInBounds({
+      west: -97.8, south: 30.2, east: -97.7, north: 30.3,
+    }), /malformed.*498/);
   } finally {
     globalThis.fetch = prior;
   }
