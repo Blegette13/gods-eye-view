@@ -79,7 +79,8 @@ test('reader cannot append; researcher can insert only an unverified, scoped not
       session === 'reader' ? { ...principal, roles: ['evidence-reader'] } : principal,
     query: async (sql, opts) => {
       calls++;
-      assert.match(sql, /INSERT INTO bdp_regulatory_evidence_events/);
+      assert.match(sql, /SELECT public\\.bdp_evidence_append_unverified\\(/);
+      assert.doesNotMatch(sql, /INSERT INTO bdp_regulatory_evidence_events/);
       assert.doesNotMatch(sql, /Evidence remains unverified/);
       assert.equal(opts.maxOutputBytes, 8192);
       return receipt;
@@ -120,7 +121,8 @@ test('appending snapshots event fields before awaited identity resolution', asyn
       releaseIdentity = resolve;
     }),
     query: async (sql) => {
-      assert.match(sql, /INSERT INTO bdp_regulatory_evidence_events/);
+      assert.match(sql, /SELECT public\\.bdp_evidence_append_unverified\\(/);
+      assert.doesNotMatch(sql, /INSERT INTO bdp_regulatory_evidence_events/);
       return receipt;
     },
   });
@@ -135,7 +137,7 @@ test('appending snapshots event fields before awaited identity resolution', asyn
 test('malformed database read/append receipts are rejected without claiming approval', async () => {
   const service = createScopedRegulatoryEvidenceService({
     resolveAuthenticatedIdentity: async () => principal,
-    query: async (sql) => sql.includes('INSERT INTO')
+    query: async (sql) => sql.includes('bdp_evidence_append_unverified')
       ? { ...receipt, verificationState: 'verified' }
       : { ...emptyIndex, legalClearance: true },
   });
