@@ -398,6 +398,50 @@ God's Eye, explicit reviewer identity/authorization, document effective
 dates and replacement records. No automatic model-score, development
 capacity or purchase-decision changes may be made from submitted documents.
 
+### Step 42 — local read-only regulatory evidence inspection
+
+The initial PostgreSQL migration and rollback-only smoke tests for Step 41
+were verified locally on October 28, 2026: the table, indexes, functions,
+triggers and comment committed, the smoke test confirmed blocks on UPDATE,
+DELETE and `verified` inserts, and the evidence row count was **0** after
+ROLLBACK. The separate Node.js contract test results were not included in
+this database screenshot and should be run independently.
+
+This phase adds a parcel-filtered, **metadata-only** inspector for the new
+evidence journal. It is deliberately a LOCAL PowerShell CLI, **not** a web
+endpoint or publicly exposed Vite route. It returns only a bounded set of
+event IDs, task IDs, event types, dates, source titles and optional checksums;
+no notes, reviewer names, source URLs, attachments or credentials are printed.
+It uses the established `BDP_PG_SERVICE` connection with SQL passed over
+stdin to avoid Windows command limits.
+
+Run in the PowerShell session with existing BDP_PG_SERVICE/PGSERVICEFILE
+and `PGPASSWORD` settings (the **same** PowerShell session matters):
+
+```powershell
+cd "$HOME\\gods-eye-view"
+git pull --ff-only origin bdp-development
+node --test src/bdp/regulatory/evidenceLedger.test.mjs src/bdp/regulatory/evidenceIndex.test.mjs
+node scripts/bdp/inspect-regulatory-evidence.mjs 48453 302959
+```
+
+The current empty database should report `totalEvents: 0`,
+`returnedEvents: 0`, `events: []`, `verifiedTasks: 0`, and
+`legalClearance: null`. This is EXPECTED. The final output explicitly
+states that no legal land-use clearance or acquisition recommendation was
+established. Queries are strictly scoped to a validated five-digit Texas
+county FIPS and simple parcel identifier, and result pages are limited to
+50 by default (never >100). The `truncated` flag is true if more than
+the returned page of events exist.
+
+**Privacy/security boundary:** evidence metadata is not yet served to the
+God's Eye browser. Before connecting a live journal to the native UI we
+need a secure authentication/authorization model, protected data access,
+reviewer identity management, optional document hashing / private storage,
+and a full provenance workflow. The existing regulatory checklist is
+still a **research queue**; GIS observations and archived documents never
+auto-close tasks or modify score, buildability, or acquisition readiness.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
