@@ -66,3 +66,127 @@ body[data-bdp-product='land-development-os'] #cesiumContainer {
     top: 216px;
   }
 }
+
+/* The first real-browser screenshot surfaced a readability problem:
+ * the original surveillance HUD used very small, low-contrast type.
+ * Phase 2 starts moving toward a usable property-analysis workspace.
+ */
+body[data-bdp-product='land-development-os'] #data-panel .data-panel-inner {
+  background: rgba(5, 16, 28, 0.94);
+  border-color: rgba(113, 180, 211, 0.32);
+}
+
+body[data-bdp-product='land-development-os'] #data-panel .panel-title {
+  color: #e8f4ff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-section-label {
+  flex-wrap: wrap;
+  gap: 7px;
+  padding-block: 10px 6px;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-section-title {
+  color: #c2d5e4;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-section-actions {
+  margin-left: auto;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-preset-button {
+  min-width: 52px;
+  min-height: 28px;
+  color: #d3e6f5;
+  border-color: rgba(112, 189, 217, 0.38);
+  background: rgba(46, 136, 168, 0.12);
+  font-size: 9px;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-category-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 15px 7px 7px;
+  color: #86dfff;
+  font: 700 10px/1.4 var(--font-sans);
+  letter-spacing: 0.6px;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-category-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(123, 192, 219, 0.22);
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-row {
+  padding: 9px 9px 8px;
+  border: 1px solid rgba(122, 181, 207, 0.1);
+  border-radius: 8px;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-row:hover {
+  background: rgba(40, 130, 163, 0.12);
+  border-color: rgba(122, 181, 207, 0.28);
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-row .data-name {
+  color: #edf7ff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-row .data-toggle-meta {
+  color: #aec4d4;
+  font-size: 10px;
+  line-height: 1.45;
+  letter-spacing: 0;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-row .data-count {
+  color: #a9c3d4;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-row .data-toggle-btn {
+  min-height: 26px;
+  color: #d2e0ec;
+  border-color: rgba(139, 179, 204, 0.25);
+  font-size: 9px;
+}
+
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-key {
+  color: #c0d4e2;
+  font-size: 10px;
+}
+
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-value {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-section-heading {
+  font-size: 10px;
+}
+
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-disclaimer {
+  color: #b2c5d3 !important;
+  font-size: 10px;
+}
+
+@media (min-width: 1150px) {
+  body[data-bdp-product='land-development-os'] #data-panel {
+    --panel-expanded-width: 342px;
+  }
+}
+
+@media (max-width: 720px) {
+  body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-row .data-toggle-meta {
+    font-size: 9px;
+  }
+}
