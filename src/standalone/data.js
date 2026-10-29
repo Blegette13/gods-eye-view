@@ -31,6 +31,7 @@ import tceqMswLayer from '../bdp/overlays/tceqMswLayer.js';
 import thcCemeteryLayer from '../bdp/overlays/thcCemeteryLayer.js';
 import sanAntonioEntitlementLayer from '../bdp/overlays/sanAntonioEntitlementLayer.js';
 import { extendLayerStateRegistry } from '../bdp/config/layerRegistry.js';
+import { landWorkspaceVisibilityGuard } from '../bdp/config/workspacePolicy.js';
 
 const BDP_SCREEN_LAYER_IDS = Object.freeze([
   'bdp-bexar-parcels',
@@ -108,6 +109,14 @@ export function createStandaloneData({
   dataManager.finalizeRegistrations(
     extendLayerStateRegistry(LAYER_STATE_REGISTRY),
   );
+
+  // Retain exact legacy registrations and URL/state tokens, but refuse legacy
+  // feed activation even when requested by saved state, share links or tools.
+  // Installation precedes StyleManager's restoration/attachDataManager.
+  const removeLandWorkspaceGuard = dataManager.addVisibilityGuard(
+    landWorkspaceVisibilityGuard,
+  );
+  defer(removeLandWorkspaceGuard);
 
   let parcelSearchController = null;
   const handleBdpLandSearch = async (event) => {
