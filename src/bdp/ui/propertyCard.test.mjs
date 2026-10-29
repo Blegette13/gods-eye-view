@@ -83,6 +83,30 @@ test('missing or noncontradictory component values never get a fabricated approv
   }
 });
 
+test('closing the property panel clears its owning map selection without changing parcel evidence', async () => {
+  const originalDocument = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  let onHideCalls = 0;
+  try {
+    card = createBdpPropertyCard({
+      screeningLoader: async () => response(parcel),
+      onHide: () => { onHideCalls += 1; },
+    });
+    card.show(parcel);
+    const close = find(card.root, (node) => node.tagName === 'button'
+      && node.attributes['aria-label'] === 'Close property intelligence')[0];
+    assert.ok(close);
+    close.listeners.click({});
+    assert.equal(onHideCalls, 1);
+    assert.equal(card.root.style.display, 'none');
+    assert.equal(parcel.parcelId, '123');
+  } finally {
+    card?.destroy();
+    globalThis.document = originalDocument;
+  }
+});
+
 test('Harris source year and stacked-account caveat display without verifying ownership or asking price', async () => {
   const previous = globalThis.document;
   globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
