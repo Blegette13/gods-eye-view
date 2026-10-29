@@ -27,6 +27,12 @@ body[data-bdp-product='land-development-os'] :is(
   display: none !important;
 }
 
+/* Original emblem remains in source for upstream attribution, not on the
+ * independent product splash screen while its final branding is undecided. */
+body[data-bdp-product='land-development-os'] #loading-screen .loader-logo {
+  display: none !important;
+}
+
 /* The upstream data manager still owns and refreshes the complete registry.
  * Present only the land-intelligence rows; retain internal IDs and source
  * contracts without migrating durable state or introducing a second manager.
