@@ -697,3 +697,28 @@ body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-ev
   margin-top: 13px;
 }
 
+
+body[data-bdp-product='land-development-os'] #bdp-property-card
+  .bdp-property-row[data-bdp-acreage-review] {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+  margin: 10px 0;
+  padding: 11px 12px;
+  border: 1px solid #edcd8a;
+  border-left: 4px solid #bf7a1c;
+  border-radius: 10px;
+  background: #fff8ea;
+}
+body[data-bdp-product='land-development-os'] #bdp-property-card
+  .bdp-property-row[data-bdp-acreage-review] .bdp-property-key {
+  color: #87520d;
+  font-weight: 750;
+  font-size: 11px;
+}
+body[data-bdp-product='land-development-os'] #bdp-property-card
+  .bdp-property-row[data-bdp-acreage-review] .bdp-property-value {
+  color: #704712;
+  font-size: 11px;
+  line-height: 1.5;
+}
