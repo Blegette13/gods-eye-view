@@ -118,6 +118,17 @@ The operator verified the first Phase 2 shell in a running local Chromium browse
 
 **Operator confirmation remaining:** pull these UX commits, run `npm.cmd test` and `npm.cmd run build`, then visually check headings, nonduplicated groups, active layer toggles, scrolling, search behavior, mobile fit and accuracy of source/UNKNOWN reporting. These latest UI refinements have passed source-derived smoke checks but not yet a full local suite/browser verification.
 
+## Phase 2 visual design: professional proptech surfaces (committed; visual acceptance pending)
+
+Following the operator's second working local screenshot, the workspace has been moved away from the original black/cyan tactical/HUD visual styling toward a modern, customer-facing property-intelligence product:
+
+- `src/bdp/ui/professionalTheme.css` is a **scoped presentation-only theme** imported after `workspace.css`. It applies warm-white floating search, layer and property cards, slate typography, muted blue controls, subtle shadows, rounded corners, visible keyboard focus, and distinct warning/error states.
+- The land-layer grouping, manager lifecycle, data sources, original Cesium world and provider credits, PostgreSQL data contracts, and missing-data rules remain unchanged.
+- First-pass human-facing labels now use *Map layers*, *Available datasets*, *Enable all*, *Clear*, *Property & location search*, and *Texas preview*, rather than command-center labels. The search hint explicitly distinguishes map navigation from parcel-record lookup to avoid promising an unsupported address-to-parcel match.
+- The local development-only provider setup gets a professional dialog theme and neutral label showing unconfigured credentials. It does **not** imply that nine unrelated legacy OSINT keys are prerequisites for the land system. Existing upstream pure helper behavior remains the default; a new test covers the land-specific label.
+
+**Quality gates not yet observed on this commit:** the local unit suite, Vite production build, and real-browser desktop/mobile screenshot. Test layering, parcel search, map attribution, toggles, scrolling and property-card evidence states after pulling. **Do not infer the product is ready for paying customers from a theme alone**: authentication and licensing, data coverage, on-call reliability, acquisition/development workflows and actual parcel search behavior still need verified release gates.
+
 ## Non-negotiable regression checklist
 
 1. Cesium viewer, map stack and attribution render without legacy tracking layers.
