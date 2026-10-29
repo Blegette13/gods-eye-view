@@ -3,8 +3,10 @@
  *
  * Integrators must supply a genuine server-side session resolver. A resolver
  * that trusts browser-supplied roles / parcel grants is NOT authentication.
- * Local Step 42-44 CLI tooling is unchanged. No evidence is automatically
- * verified by a read or append.
+ * Local Step 42-44 CLI tooling is unchanged. The server-side append path
+ * calls only the Step 46 restricted PostGIS RPC. This adapter still needs a
+ * separately authenticated resolver and least-privilege DB credentials.
+ * No evidence is automatically verified by a read or append.
  */
 import { queryPostgisJsonStdin } from './bdp-psql.js';
 import { createRegulatoryEvidenceGate } from '../../src/bdp/regulatory/evidenceAccessPolicy.js';
@@ -13,7 +15,7 @@ import {
   validateRegulatoryEvidenceIndexResult,
 } from '../../src/bdp/regulatory/evidenceIndex.js';
 import {
-  prepareRegulatoryEvidenceInsert,
+  prepareRegulatoryEvidenceRoleAppend,
   validateRegulatoryEvidenceInsertResult,
 } from '../../src/bdp/regulatory/evidenceIntake.js';
 
@@ -44,7 +46,7 @@ export function createScopedRegulatoryEvidenceService({
         throw new TypeError('Expected a regulatory research event object');
       }
       const event = Object.freeze({ ...submittedEvent });
-      const prepared = prepareRegulatoryEvidenceInsert(event);
+      const prepared = prepareRegulatoryEvidenceRoleAppend(event);
       const operation = event.eventType === 'document-indexed'
         ? 'append-document' : 'append-note';
       const decision = await requireAccess(session, operation, prepared.preview);
