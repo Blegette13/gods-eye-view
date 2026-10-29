@@ -595,3 +595,31 @@ body[data-bdp-product='land-development-os'] #key-setup .key-setup-close:focus-v
   color: var(--ldos-blue);
   border-color: #a8c8dc;
 }
+
+/* Screenshot-identified inconsistent CAD fields must interrupt financial
+ * interpretation without implying that the raw public record is false. */
+body[data-bdp-product='land-development-os']
+  #bdp-property-card .bdp-property-row[data-bdp-valuation-review='review-required'] {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+  margin: 12px 0;
+  padding: 12px 13px;
+  border: 1px solid #edcd8a;
+  border-left: 4px solid #bf7a1c;
+  border-radius: 10px;
+  background: #fff8ea;
+}
+body[data-bdp-product='land-development-os']
+  #bdp-property-card .bdp-property-row[data-bdp-valuation-review='review-required'] .bdp-property-key {
+  color: #87520d;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .01em;
+}
+body[data-bdp-product='land-development-os']
+  #bdp-property-card .bdp-property-row[data-bdp-valuation-review='review-required'] .bdp-property-value {
+  color: #704712;
+  font-size: 11px;
+  line-height: 1.5;
+}
