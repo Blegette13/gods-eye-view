@@ -58,3 +58,22 @@ export function parcelExteriorCoordinates(geometry) {
   }
   return coordinates;
 }
+
+/**
+ * Suggest a camera distance from the source polygon's actual angular extent.
+ * This controls viewing only. Never interprets acreage, legal boundaries or
+ * buildability; a missing/malformed geometry gets no guessed camera target.
+ */
+export function recommendedParcelFocusRange(geometry) {
+  const coordinates = parcelExteriorCoordinates(geometry);
+  if (!coordinates.length) return null;
+  const longitude = coordinates.map((point) => point[0]);
+  const latitude = coordinates.map((point) => point[1]);
+  const midLatitude = (Math.min(...latitude) + Math.max(...latitude)) / 2;
+  const widthMeters = (Math.max(...longitude) - Math.min(...longitude))
+    * 111320 * Math.max(0, Math.cos(midLatitude * Math.PI / 180));
+  const heightMeters = (Math.max(...latitude) - Math.min(...latitude)) * 111320;
+  if (!Number.isFinite(widthMeters) || !Number.isFinite(heightMeters)) return null;
+  // Do not zoom into a building's interior. Leave room around larger tracts.
+  return Math.max(450, Math.max(widthMeters, heightMeters) * 4);
+}
