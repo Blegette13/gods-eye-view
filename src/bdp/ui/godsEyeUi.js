@@ -6,6 +6,7 @@ import './workspace.css';
 import { parseBdpLandSearch } from './landSearch.js';
 import { BDP_LAYER_STATE_REGISTRY } from '../config/layerRegistry.js';
 import { mountPersistentLandSearch } from './persistentSearch.js';
+import { landLayerGroup, landLayerDisplayName } from './landLayerPresentation.js';
 
 // Internal bdp-* IDs are intentionally preserved for data, share-state and DB compatibility.
 const BDP_LAYER_IDS = new Set(BDP_LAYER_STATE_REGISTRY.map(({ id }) => id));
@@ -179,12 +180,50 @@ function attachPresetFeedback() {
   });
 }
 
+function createLandLayerCategoryLabel(group) {
+  const section = document.createElement('div');
+  section.className = 'bdp-layer-category-label';
+  section.dataset.landGroup = group.id;
+  section.setAttribute('role', 'heading');
+  section.setAttribute('aria-level', '3');
+  section.textContent = group.label;
+  return section;
+}
+
 function decorateBdpLayerRows(container) {
   if (!container) return;
 
   const rows = [...container.querySelectorAll('.data-toggle-row')];
   for (const row of rows) {
-    row.classList.toggle('bdp-layer-row', BDP_LAYER_IDS.has(row.dataset.layerId));
+    const isLand = BDP_LAYER_IDS.has(row.dataset.layerId);
+    row.classList.toggle('bdp-layer-row', isLand);
+    if (!isLand) continue;
+
+    // Display name changes never touch the registered IDs or the manager's
+    // source metadata. The original toggle buttons keep their event handlers.
+    const name = row.querySelector('.data-name');
+    if (name) {
+      const label = landLayerDisplayName(name.textContent);
+      if (name.textContent !== label) name.textContent = label;
+    }
+
+    const group = landLayerGroup(row.dataset.layerId);
+    if (!group) continue;
+    const previous = row.previousElementSibling;
+    if (previous?.classList.contains('bdp-layer-category-label')
+      && previous.dataset.landGroup === group.id) continue;
+
+    // Insert a heading only when we cross into a new group; the registered
+    // catalogue's original order remains intact.
+    const priorLandRow = rows.filter((candidate) => BDP_LAYER_IDS.has(candidate.dataset.layerId))
+      .findLast((candidate) => candidate === row
+        ? false
+        : rows.indexOf(candidate) < rows.indexOf(row));
+    if (priorLandRow && landLayerGroup(priorLandRow.dataset.layerId)?.id === group.id) {
+      continue;
+    }
+    if (previous?.classList.contains('bdp-layer-category-label')) previous.remove();
+    row.before(createLandLayerCategoryLabel(group));
   }
 
   const firstBdpRow = rows.find((row) => BDP_LAYER_IDS.has(row.dataset.layerId));
@@ -192,12 +231,18 @@ function decorateBdpLayerRows(container) {
 
   if (!firstBdpRow) {
     existing?.remove();
+    container.querySelectorAll('.bdp-layer-category-label').forEach((heading) => heading.remove());
     return;
   }
-  if (existing?.nextElementSibling === firstBdpRow) return;
+
+  const firstGroupHeading = firstBdpRow.previousElementSibling;
+  const firstContent = firstGroupHeading?.classList.contains('bdp-layer-category-label')
+    ? firstGroupHeading
+    : firstBdpRow;
+  if (existing?.nextElementSibling === firstContent) return;
 
   existing?.remove();
-  firstBdpRow.before(createBdpLayerSectionLabel());
+  firstContent.before(createBdpLayerSectionLabel());
 }
 
 function adaptLayerPanel() {
