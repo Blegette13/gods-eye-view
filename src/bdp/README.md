@@ -807,6 +807,68 @@ database role grants, session-bound connections, logging and independent
 penetration/security review remain necessary before a production evidence
 API. The code continues to withhold legal/regulatory clearance.
 
+### Step 49 — trusted session-to-PostgreSQL login binding contract (NOT live login)
+
+**Step 48 local verification:** four Node.js static-contract tests passed.
+The separate read-only PostgreSQL audit reported **PASS**, with 0 active
+and 0 expired parcel grants and a final `ROLLBACK`. This confirms the
+configured database roles and policies, not login security.
+
+Step 47 Row-Level Security (RLS) uses PostgreSQL `SESSION_USER` as
+the identity key for exact parcel ACL grants. A single application
+connection using the local `bdp` owner account would bypass that
+protection; a shared database login for different operators would
+also collapse their individual parcel scopes.
+
+Step 49 introduces an **unrouted integration contract** at
+`server/providers/bdp-evidence-session.js`, with regression tests in
+`server/providers/bdp-evidence-session.test.mjs`:
+
+- Existing Step 45 per-parcel access policy must first authorize an
+  independently **authenticated, server-side session**.
+- A separately trusted `resolveOperatorDbLogin({subject})` mapping
+  must resolve to an operator-specific nonprivileged PostgreSQL login
+  in the `bdp_operator_<id>` namespace. No wildcard or owner logins.
+- A future `withOperatorDbConnection({login,operation,mustPinConnection},
+  callback)` implementation must pin the **same authenticated
+  PostgreSQL connection** for both the session probe and the evidence
+  read/append SQL. Do not use a per-query pool with no connection pin,
+  or change session authorization on a shared superuser connection.
+- The probe checks `SESSION_USER` and `CURRENT_USER` match the trusted
+  mapping, and rejects superuser/BYPASSRLS/non-login identities. It
+  requires the appropriate inherited reader/appender role via
+  `pg_has_role(..., 'USAGE')`.
+- Authorized reads return metadata only. Appends use the previously
+  restricted `bdp_evidence_append_unverified` function and continue
+  to reject claims of zoning, title or acquisition clearance.
+- This module creates **no real accounts, no secrets, no sessions,
+  no HTTP routes, and no database mutations**. The existing public
+  God's Eye View/Cesium UI and local PostGIS workflows remain unchanged.
+
+To run only the new Node.js contract tests:
+
+```powershell
+cd "$HOME\\gods-eye-view"
+git pull --ff-only origin bdp-development
+node --test server/providers/bdp-evidence-session.test.mjs
+```
+
+**Critical deployment gap:** This module's dependencies are intentionally
+not yet implemented. A genuine identity provider, trusted subject mapping,
+nonprivileged distinct Postgres LOGIN provisioning/revocation, secret
+management, TLS, session renewal, CSRF protection, rate limits,
+audit logging and a PINNED connection manager are needed. The old
+`bdp-evidence-access.js` is also NOT exposed as an endpoint and must
+not be used with a shared database owner login. Client-supplied roles,
+headers, scopes and mutable cookies must never be trusted as a session.
+Postgres RLS and these tests do NOT prove a user is authenticated or
+establish any legal/regulatory verification.
+
+**Next decision:** choose an identity provider and a protected
+server-side account/connection lifecycle that preserves per-operator
+PostgreSQL logins. Do not turn on an authenticated evidence API until
+a real end-to-end authentication and RLS integration test has passed.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
