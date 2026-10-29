@@ -1,0 +1,62 @@
+/*
+ * Phase 2: land-development workspace visibility only.
+ *
+ * Quarantined features remain registered in the original engine for now.
+ * workspacePolicy.js separately prevents their data layers from enabling,
+ * including via old share links. CSS alone is NOT feed suppression.
+ *
+ * Keep #cesiumContainer, map credit attribution, key setup, top map actions,
+ * data-panel and the native #location-search (moved into #land-search-bar).
+ */
+body[data-bdp-product='land-development-os'] :is(
+  #style-indicator,
+  #command-dock,
+  #view-switcher,
+  #pp-toggles,
+  #cctv-panel,
+  #scene-panel,
+  #scene-runtime,
+  #right-context-rail,
+  #cockpit-hud,
+  #intel-hud,
+  #safe-frame-overlay,
+  #traffic-sync-chip,
+  #cctv-sync-chip,
+  #first-run-launcher
+) {
+  display: none !important;
+}
+
+/* The upstream data manager still owns and refreshes the complete registry.
+ * Present only the land-intelligence rows; retain internal IDs and source
+ * contracts without migrating durable state or introducing a second manager.
+ */
+body[data-bdp-product='land-development-os']
+  #data-toggles > .data-toggle-row:not([data-layer-id^='bdp-']) {
+  display: none !important;
+}
+
+body[data-bdp-product='land-development-os'] #data-panel {
+  --panel-expanded-width: min(310px, calc(100vw - 30px));
+}
+
+body[data-bdp-product='land-development-os'] #data-panel .panel-title {
+  letter-spacing: 1.25px;
+}
+
+body[data-bdp-product='land-development-os'] #data-panel .data-toggle-list {
+  scrollbar-width: thin;
+}
+
+/* Keep the map interactive even when the left layer panel is collapsed. */
+body[data-bdp-product='land-development-os'] #world-overlay-root,
+body[data-bdp-product='land-development-os'] #world-overlay-actions,
+body[data-bdp-product='land-development-os'] #cesiumContainer {
+  visibility: visible;
+}
+
+@media (max-width: 720px) {
+  body[data-bdp-product='land-development-os'] #data-panel {
+    top: 216px;
+  }
+}
