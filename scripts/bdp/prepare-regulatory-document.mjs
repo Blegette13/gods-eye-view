@@ -13,7 +13,7 @@ import { queryPostgisJsonStdin } from '../../server/providers/bdp-psql.js';
 import {
   fingerprintPrivateRegulatoryDocument,
   readPrivateRegulatoryMetadata,
-} from '../../src/bdp/regulatory/documentIntegrity.js';
+} from '../../server/providers/bdp-document-integrity.js';
 import {
   prepareRegulatoryEvidenceInsert,
   validateRegulatoryEvidenceInsertResult,
