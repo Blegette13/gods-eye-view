@@ -7,8 +7,8 @@
  * calls only the Step 46 restricted PostGIS RPC. This adapter still needs a
  * separately authenticated resolver and least-privilege DB credentials.
  * No evidence is automatically verified by a read or append.
- * The database query adapter MUST be supplied by trusted server code and
- * MUST use separately provisioned restricted read/append DB privileges,
+ * The readQuery and appendQuery adapters MUST be supplied by trusted server
+ * code using separately provisioned restricted read/append DB privileges,
  * never the local bdp owner/superuser connection. This module is NOT routed.
  */
 import { createRegulatoryEvidenceGate } from '../../src/bdp/regulatory/evidenceAccessPolicy.js';
@@ -23,18 +23,19 @@ import {
 
 export function createScopedRegulatoryEvidenceService({
   resolveAuthenticatedIdentity,
-  query,
+  readQuery,
+  appendQuery,
 } = {}) {
   const requireAccess = createRegulatoryEvidenceGate(resolveAuthenticatedIdentity);
-  if (typeof query !== 'function') {
-    throw new TypeError('An explicitly injected least-privilege PostGIS query adapter is required');
+  if (typeof readQuery !== 'function' || typeof appendQuery !== 'function') {
+    throw new TypeError('Explicitly injected separate readQuery and appendQuery adapters are required');
   }
 
   return Object.freeze({
     async readIndex(session, requestedScope) {
       const decision = await requireAccess(session, 'read-index', requestedScope);
       const scope = { countyFips: decision.countyFips, parcelId: decision.parcelId };
-      const raw = await query(buildRegulatoryEvidenceIndexSql(scope), {
+      const raw = await readQuery(buildRegulatoryEvidenceIndexSql(scope), {
         timeoutMs: 20_000, maxOutputBytes: 200_000,
       });
       return validateRegulatoryEvidenceIndexResult(raw, scope);
@@ -56,7 +57,7 @@ export function createScopedRegulatoryEvidenceService({
           decision.parcelId !== prepared.preview.parcelId) {
         throw new Error('Regulatory evidence scope mismatch');
       }
-      const raw = await query(prepared.sql, {
+      const raw = await appendQuery(prepared.sql, {
         timeoutMs: 20_000, maxOutputBytes: 8192,
       });
       return validateRegulatoryEvidenceInsertResult(raw, event);
