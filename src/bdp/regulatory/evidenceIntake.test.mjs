@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   prepareRegulatoryEvidenceInsert,
+  prepareRegulatoryEvidenceRoleAppend,
   validateRegulatoryEvidenceInsertResult,
 } from './evidenceIntake.js';
 
@@ -71,5 +72,27 @@ test('database insert receipt must match exact parcel and unverified state', () 
     { recordedAt: 'not a timestamp' },
   ]) {
     assert.throws(() => validateRegulatoryEvidenceInsertResult({ ...receipt, ...bad }, input));
+  }
+});
+
+test('restricted role append uses fixed Postgres RPC, not a direct table INSERT', () => {
+  const { sql, preview } = prepareRegulatoryEvidenceRoleAppend(input);
+  assert.match(sql, /SELECT public\.bdp_evidence_append_unverified\(/);
+  assert.doesNotMatch(sql, /INSERT INTO|UPDATE|DELETE|DROP TABLE research/);
+  assert.match(sql, /convert_from\(decode\('[0-9a-f]+', 'hex'\), 'UTF8'\)::jsonb/);
+  const hex = sql.match(/decode\('([0-9a-f]+)', 'hex'\)/)[1];
+  assert.deepEqual(JSON.parse(Buffer.from(hex, 'hex').toString('utf8')), input);
+  assert.equal(preview.verificationState, 'unverified');
+  assert.equal(preview.acquisitionRecommendation, null);
+});
+
+test('restricted role append rejects forged verification even with a valid role', () => {
+  for (const patch of [
+    { verificationState: 'verified' },
+    { legalClearance: true },
+    { acquisitionRecommendation: 'BUY' },
+    { enteredBy: '' },
+  ]) {
+    assert.throws(() => prepareRegulatoryEvidenceRoleAppend({ ...input, ...patch }));
   }
 });
