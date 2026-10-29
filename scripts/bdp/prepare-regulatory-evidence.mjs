@@ -11,6 +11,7 @@
  * NEVER expose this CLI as an unauthenticated web endpoint.
  */
 import { readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
 import { queryPostgisJsonStdin } from '../../server/providers/bdp-psql.js';
 import {
   prepareRegulatoryEvidenceInsert,
@@ -79,8 +80,7 @@ export async function runLocalRegulatoryEvidenceIntake(argv, {
   return Object.freeze({ mode, result });
 }
 
-if (process.argv[1] && import.meta.url === new URL('file://' +
-    process.argv[1].replaceAll('\\', '/')).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   runLocalRegulatoryEvidenceIntake(process.argv.slice(2)).catch((error) => {
     // Do not leak SQL, notes, source URLs, psql stderr or credentials.
     console.error('BDP local evidence intake unavailable · ' +
