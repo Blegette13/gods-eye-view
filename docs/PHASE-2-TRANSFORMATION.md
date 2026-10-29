@@ -108,6 +108,16 @@ Use the terminal's printed local URL. In the browser: confirm the map and legall
 
 Local tests/production build and real browser behavior **have not been run from the GitHub connector**. Until the operator performs these checks, the modifications are provisional and do not certify Step 51 security isolation.
 
+## First actual browser inspection — Phase 2 UI revision
+
+The operator verified the first Phase 2 shell in a running local Chromium browser after a successful production build. The real screenshot confirmed that the Cesium 3D imagery, independent title, fixed property search bar, map-layer control, and original provider-settings access render together; legacy cockpit, CCTV, Context, military and satellite panels are not visible in that workspace.
+
+**Observed usability defects:** tiny low-contrast names and source lines in the scrolling layer rail, a visible legacy `BDP ·` label prefix, and 17 datasets presented as one undifferentiated list. This is a working geospatial shell, **not yet** an acquisition/development/project management operating system.
+
+**First usability improvement committed:** `src/bdp/ui/landLayerPresentation.js` supplies a complete presentation-only classification of the 17 registered data layers into *Parcels & Ownership*, *Environmental & Site Constraints*, *Access & Infrastructure*, and *Regulatory & Entitlements*. `godsEyeUi.js` injects accessible headings and removes only the displayed `BDP ·` prefix; the manager's registered IDs, saved tokens, click handlers and authoritative feed provenance are untouched. `workspace.css` raises contrast/type sizes in the search bar, data-layer rail and property evidence panel. New regression tests enforce one-to-one data coverage and original registry ordering.
+
+**Operator confirmation remaining:** pull these UX commits, run `npm.cmd test` and `npm.cmd run build`, then visually check headings, nonduplicated groups, active layer toggles, scrolling, search behavior, mobile fit and accuracy of source/UNKNOWN reporting. These latest UI refinements have passed source-derived smoke checks but not yet a full local suite/browser verification.
+
 ## Non-negotiable regression checklist
 
 1. Cesium viewer, map stack and attribution render without legacy tracking layers.
