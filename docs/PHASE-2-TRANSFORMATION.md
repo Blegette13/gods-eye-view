@@ -149,6 +149,14 @@ A new Phase 2 map interaction now highlights the **source-mapped GIS parcel poly
 
 New regression tests cover exact-ID selection, resets, multipart geometry, conservative camera range and property-card close cleanup. Initial source-derived smoke checks passed. **The full local npm suite, production build, and real-browser selected-outline appearance on current Cesium imagery remain to be verified** before accepting this map interaction.
 
+## Selected parcel visual acceptance and evidence-panel organization
+
+On October 29, 2026, the operator's live screenshot confirmed **Step 19: Travis parcel 302959 selected successfully in the 3D globe**: camera zoomed from the original distant Austin view to local neighborhood scale, the exact county GIS shape has a blue visible outline and transparent blue fill, the parcel intelligence panel still opens, and the amber valuation disagreement warning remains visible. This confirms the first real browser rendering of the selected-parcel feature, not a legal survey, verified title, or valuation clearance. The black circular imagery boundary / vignette and degree of map viewport coverage remain separate visual-review items.
+
+The parcel card was previously one continuous scrolling list of more than 20 detail groups. The latest **presentation-only evidence-navigation revision** adds five native accessible disclosure sections: **Screening summary & red flags** (expanded initially), **Acquisition, ownership & title**, **Planning, zoning & development**, **Environmental & site constraints**, and **Transportation, utilities & water**. The parcel owner, raw CAD fields, provenance, data currency and amber valuation warnings stay **outside** disclosures and cannot be hidden by collapsing a detail group. A permanent introductory caution says absent/unverified data are not clearance. Async evidence containers, source URLs, existing section headings, and economic scenario controls are reparented into the disclosures, not removed or duplicated. Reopening the same parcel rerenders a fresh set of groups.
+
+**Acceptance required:** pull these commits, run `node --test src/bdp/ui/propertyCard.test.mjs`, then `npm.cmd test` and `npm.cmd run build`. In the browser repeat the Travis lookup, scroll the property panel, expand each group, verify source caveats and ability to enter scenario assumptions, verify both keyboard and mouse disclosure actions, close/reopen the panel and confirm the selected GIS outline resets. Do not represent screenshots and a green build as a commercial release gate.
+
 ## Non-negotiable regression checklist
 
 1. Cesium viewer, map stack and attribution render without legacy tracking layers.
