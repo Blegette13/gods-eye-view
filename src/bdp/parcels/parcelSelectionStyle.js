@@ -67,12 +67,20 @@ export function parcelExteriorCoordinates(geometry) {
 export function recommendedParcelFocusRange(geometry) {
   const coordinates = parcelExteriorCoordinates(geometry);
   if (!coordinates.length) return null;
-  const longitude = coordinates.map((point) => point[0]);
-  const latitude = coordinates.map((point) => point[1]);
-  const midLatitude = (Math.min(...latitude) + Math.max(...latitude)) / 2;
-  const widthMeters = (Math.max(...longitude) - Math.min(...longitude))
-    * 111320 * Math.max(0, Math.cos(midLatitude * Math.PI / 180));
-  const heightMeters = (Math.max(...latitude) - Math.min(...latitude)) * 111320;
+  let west = Infinity;
+  let east = -Infinity;
+  let south = Infinity;
+  let north = -Infinity;
+  for (const [lon, lat] of coordinates) {
+    west = Math.min(west, lon);
+    east = Math.max(east, lon);
+    south = Math.min(south, lat);
+    north = Math.max(north, lat);
+  }
+  const midLatitude = (south + north) / 2;
+  const widthMeters = (east - west) * 111320
+    * Math.max(0, Math.cos(midLatitude * Math.PI / 180));
+  const heightMeters = (north - south) * 111320;
   if (!Number.isFinite(widthMeters) || !Number.isFinite(heightMeters)) return null;
   // Do not zoom into a building's interior. Leave room around larger tracts.
   return Math.max(450, Math.max(widthMeters, heightMeters) * 4);
