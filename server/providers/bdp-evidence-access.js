@@ -7,8 +7,10 @@
  * calls only the Step 46 restricted PostGIS RPC. This adapter still needs a
  * separately authenticated resolver and least-privilege DB credentials.
  * No evidence is automatically verified by a read or append.
+ * The database query adapter MUST be supplied by trusted server code and
+ * MUST use separately provisioned restricted read/append DB privileges,
+ * never the local bdp owner/superuser connection. This module is NOT routed.
  */
-import { queryPostgisJsonStdin } from './bdp-psql.js';
 import { createRegulatoryEvidenceGate } from '../../src/bdp/regulatory/evidenceAccessPolicy.js';
 import {
   buildRegulatoryEvidenceIndexSql,
@@ -21,11 +23,11 @@ import {
 
 export function createScopedRegulatoryEvidenceService({
   resolveAuthenticatedIdentity,
-  query = queryPostgisJsonStdin,
+  query,
 } = {}) {
   const requireAccess = createRegulatoryEvidenceGate(resolveAuthenticatedIdentity);
   if (typeof query !== 'function') {
-    throw new TypeError('Trusted PostGIS query adapter must be a function');
+    throw new TypeError('An explicitly injected least-privilege PostGIS query adapter is required');
   }
 
   return Object.freeze({
