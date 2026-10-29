@@ -671,6 +671,75 @@ registry, DB-side row isolation, audit/retention, backups, secret rotation,
 and authenticated private file storage. No evidence entry closes checklist
 tasks or changes an acquisition recommendation.
 
+### Step 47 — restricted PostGIS parcel-level row isolation (admin opt-in)
+
+**Local Step 46 confirmation (October 29, 2026):** 18 Node.js tests
+passed with zero failures. The role migration ended in `COMMIT`, and
+`regulatoryEvidenceRolesSmoke.sql` reported the least-privilege grant checks
+passed, then ended in `ROLLBACK`. That temporary event was not persisted.
+
+Step 46 restricted which table columns the database roles could access, but
+**did not restrict reader rows to authorized parcels**. Step 47 closes this
+specific gap for future restricted database logins by adding an
+administrator-managed, exact-parcel grant registry and Postgres
+row-level-security (RLS) policies:
+
+- `src/bdp/ingestion/sql/regulatoryEvidenceParcelIsolation.sql` creates
+  `bdp_evidence_parcel_acl` (Postgres login role, Texas county FIPS,
+  exact parcel ID, read/append permission, grant expiry), an independent
+  `bdp_evidence_acl_owner` NOLOGIN helper role, and a definer function
+  `bdp_evidence_has_parcel_access`.
+- The helper checks the **authenticated PostgreSQL `SESSION_USER`**, not
+  a browser-controlled header, identity JSON, `SET ROLE`, or the definer's
+  `CURRENT_USER`. The ACL table remains admin-only. Neither app group role
+  can edit or inspect it.
+- The evidence table's RLS policy limits reader SELECT to explicitly granted,
+  unexpired parcel rows. The restricted Step 46 append function's owner can
+  INSERT/RETURNING only for a granted, unexpired parcel. Approval states
+  are still prohibited by the evidence journal constraint.
+- **The migration provisions NO real user logins, no user passwords, and
+  NO parcel grants.** All restricted roles fail closed until a future
+  authenticated operator identity/DB-login architecture provisions grants.
+  The existing local `bdp` owner-admin CLI is unaffected.
+- Owner/superuser database connections can bypass RLS. Never use the
+  `bdp` owner account for a deployed browser/API service. Real users need
+  independently authenticated DB logins (or an equivalently secured
+  database identity architecture), safe identity lifecycle, strict
+  role inheritance, grant expiry/revocation, and independently tested
+  session handling before this can protect an actual web endpoint.
+  A shared app login assigned broad grants would NOT enforce per-user
+  database parcel isolation.
+
+After verifying your local database backup, run this **administrative
+migration only when ready**:
+
+```powershell
+cd "$HOME\\gods-eye-view"
+git pull --ff-only origin bdp-development
+psql "service=bdp" -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/regulatoryEvidenceParcelIsolation.sql
+```
+
+Then run the **fully reversible** smoke test, also using the local
+administrator connection:
+
+```powershell
+psql "service=bdp" -v ON_ERROR_STOP=1 -f src/bdp/ingestion/sql/regulatoryEvidenceParcelIsolationSmoke.sql
+```
+
+The smoke test creates two transaction-local fake login identities and
+synthetic parcel events/grants, checks a reader cannot see a different
+parcel, checks appender restriction against cross-parcel INSERT and
+unauthorized direct SELECT, then ends with `ROLLBACK`. The temporary
+logins, grants and synthetic records should all disappear; the migration
+itself makes permanent DDL and role changes.
+
+This RLS layer is an important prerequisite, **not a replacement** for
+Step 45's server-side authorization gate, a real identity provider, secure
+DB credential provisioning, audit logging, private document protection or
+legal due diligence. God's Eye View's original Cesium experience, Vite
+routes and parcel-screening pipeline remain unchanged. No legal-clearance
+or BUY decision can be inferred from this new infrastructure.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
