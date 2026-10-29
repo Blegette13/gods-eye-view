@@ -30,6 +30,55 @@ function response(candidate) {
     score: { readiness: 'insufficient-evidence', coveragePercent: 0, confidenceAdjustedCoveragePercent: 0 }, redFlags: [], redFlagSummary: { critical: 0, high: 0, medium: 0 }, sourceCoveragePercent: 0 };
 }
 
+test('parcel evidence uses five accessible groups while overview warnings stay outside disclosures', async () => {
+  const originalDocument = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const candidate = {
+      ...parcel,
+      valuation: { landValue: 150000, improvementValue: 0, marketValue: 90000 },
+      source: { recordCurrency: 'unverified' },
+    };
+    card = createBdpPropertyCard({ screeningLoader: async () => response(candidate) });
+    card.show(candidate);
+    await tick();
+    const body = card.root.children[1];
+    const groups = body.children.filter((el) => el.className === 'bdp-property-evidence-group');
+    assert.equal(groups.length, 5);
+    assert.deepEqual(groups.map((group) => group.children[0].textContent), [
+      'Screening summary & red flags',
+      'Acquisition, ownership & title',
+      'Planning, zoning & development',
+      'Environmental & site constraints',
+      'Transportation, utilities & water',
+    ]);
+    assert.equal(groups[0].open, true);
+    assert.ok(groups.slice(1).every((group) => group.open === false));
+    assert.equal(groups.every((group) => group.tagName === 'details'), true);
+    assert.equal(groups.every((group) => group.children[0].tagName === 'summary'), true);
+    const intro = body.children.find((node) => node.className === 'bdp-property-evidence-intro');
+    assert.match(intro.textContent, /Unverified, unavailable and missing data do not establish clearance/);
+    const warningIndex = body.children.findIndex((node) => node.dataset.bdpValuationReview === 'review-required');
+    const firstGroupIndex = body.children.indexOf(groups[0]);
+    assert.ok(warningIndex >= 0 && warningIndex < firstGroupIndex);
+    assert.match(groups[0].textContent, /LAND INTELLIGENCE/);
+    assert.match(groups[1].textContent, /OWNERSHIP \/ TITLE REVIEW/);
+    assert.match(groups[2].textContent, /DEVELOPMENT \/ MAPPED CONSTRAINTS/);
+    assert.match(groups[3].textContent, /FLOOD \/ FEMA/);
+    assert.match(groups[4].textContent, /UTILITIES \/ INFRASTRUCTURE/);
+    // County unknowns, financial controls and source details still exist in
+    // their original evidence nodes; collapsing is visual-only.
+    assert.equal(find(groups[1], (el) => el.tagName === 'form').length, 1);
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    assert.equal(rows.find((row) => row.children[0].textContent === 'Verified vesting')?.children[1].textContent, 'UNKNOWN');
+    assert.equal(rows.find((row) => row.children[0].textContent === 'Record currency')?.children[1].textContent, 'UNVERIFIED');
+  } finally {
+    card?.destroy();
+    globalThis.document = originalDocument;
+  }
+});
+
 test('live-screening mismatch is flagged before investment decisions without editing CAD-reported numbers', async () => {
   const previous = globalThis.document;
   globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
