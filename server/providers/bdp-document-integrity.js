@@ -1,7 +1,9 @@
 /**
  * SERVER / LOCAL-OPERATOR ONLY: document fingerprinting for regulatory research.
  *
- * Intentionally outside browser-built src/ because this module requires Node\u0027s\n * crypto, filesystem and path APIs. Never import from browser entrypoints.\n * No document bytes, file path, or reviewer notes are written to PostGIS.
+ * Intentionally outside browser-built src/ because this module requires Node's
+ * crypto, filesystem and path APIs. Never import from browser entrypoints.
+ * No document bytes, file path, or reviewer notes are written to PostGIS.
  * An SHA-256 fingerprint proves which local bytes were indexed; it does NOT
  * authenticate an ordinance, its effective date, or any development right.
  */
