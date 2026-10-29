@@ -25,7 +25,7 @@ export function mountPersistentLandSearch(root = document) {
   const hint = root.createElement('div');
   hint.id = 'land-search-hint';
   hint.className = 'land-search-hint';
-  hint.textContent = 'Addresses and coordinates navigate the map. For parcel records, try: Travis parcel: 302959';
+  hint.textContent = 'Addresses and coordinates navigate the map. Parcel lookup: Travis parcel: [parcel ID]. Owner lookup: Travis owner: [name].';
 
   const status = root.createElement('div');
   status.id = 'land-search-status';
