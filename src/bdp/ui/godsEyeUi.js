@@ -3,6 +3,7 @@ import './landSearch.css';
 import './persistentSearch.css';
 import './layerPreset.css';
 import './workspace.css';
+import './professionalTheme.css';
 import { parseBdpLandSearch } from './landSearch.js';
 import { BDP_LAYER_STATE_REGISTRY } from '../config/layerRegistry.js';
 import { mountPersistentLandSearch } from './persistentSearch.js';
@@ -35,7 +36,7 @@ function replaceTitleText() {
   if (!titleBar.querySelector('.bdp-title-mode')) {
     const mode = document.createElement('span');
     mode.className = 'bdp-title-mode';
-    mode.textContent = 'TEXAS PILOT · WORKING TITLE';
+    mode.textContent = 'Texas preview';
     titleBar.append(mode);
   }
 }
@@ -136,11 +137,11 @@ function createBdpLayerSectionLabel() {
 
   const kicker = document.createElement('span');
   kicker.className = 'bdp-layer-section-kicker';
-  kicker.textContent = 'LAND';
+  kicker.textContent = 'Land';
 
   const title = document.createElement('span');
   title.className = 'bdp-layer-section-title';
-  title.textContent = 'DEVELOPMENT LAYERS';
+  title.textContent = 'Available datasets';
 
   const rule = document.createElement('span');
   rule.className = 'bdp-layer-section-rule';
@@ -149,8 +150,8 @@ function createBdpLayerSectionLabel() {
   const actions = document.createElement('span');
   actions.className = 'bdp-layer-section-actions';
   actions.append(
-    createPresetButton('screen', 'SCREEN', 'Enable land-screening map layers'),
-    createPresetButton('clear', 'CLEAR', 'Turn off land-screening map layers'),
+    createPresetButton('screen', 'Enable all', 'Enable all available land-screening map layers'),
+    createPresetButton('clear', 'Clear', 'Turn off all land-screening map layers'),
   );
 
   section.append(kicker, title, rule, actions);
@@ -245,7 +246,7 @@ function adaptLayerPanel() {
   const panel = dataToggles?.closest('.panel-collapsible');
   const title = panel?.querySelector('.panel-title');
   if (title && title.textContent?.trim() === 'DATA LAYERS') {
-    title.textContent = 'MAP LAYERS';
+    title.textContent = 'Map layers';
     title.title = 'Toggle land-development map layers';
   }
   if (!dataToggles) return;
