@@ -923,6 +923,57 @@ credentials and RLS at the network boundary before adding a live
 evidence API. The 8/8 tests are **unit tests of a contract**, not a
 production security certification or user-login demonstration.
 
+### Step 51 — signed-proof session issuance and revocation contracts (NOT live)
+
+**Step 50 local result:** 8/8 opaque-session resolver tests passed,
+zero failures. That verifies mocked HMAC/session policy only, not a real
+identity provider or live sign-in.
+
+Step 51 adds `server/providers/bdp-evidence-lifecycle.js` and
+`server/providers/bdp-evidence-lifecycle.test.mjs`. These are an **unrouted
+server-only integration contract** for issuing and revoking short-lived,
+opaque sessions after future independent identity verification:
+
+- `verifyTrustedSignIn(signInProof)` must **cryptographically verify**
+  signed external identity proof, MFA assurance, issuer/audience/nonce
+  and freshness; it cannot merely accept browser JSON booleans.
+  The lifecycle rejects missing/non-MFA/future/stale assertions.
+- `lookupActiveOperator({subject})` must consult an authoritative
+  operator registry. Roles and exact Texas parcel grants come **only**
+  from that registry, never from ID tokens or user-provided fields.
+- After both checks pass, Node's CSPRNG generates a new 32-byte random
+  session handle; the store receives **only its HMAC-SHA256 digest**,
+  validated subject, MFA state, grants, issue/last-seen/expiry times.
+  Session lifetime is one hour; Step 50 still enforces a 30-minute
+  inactivity cutoff and supports immediate revocation.
+- `insertSession(record)` must be an atomic, durable trusted write,
+  returning `true` only after commit. `revokeSessionByDigest(digest)`
+  must atomically revoke the matching existing session. Revoked
+  handles fail the Step 50 resolver / Step 45 parcel gate.
+- The real session store and its revocation path must reflect current
+  account/role/parcel changes promptly. Step 47's PostgreSQL RLS
+  independently enforces current unexpired parcel grants.
+- **No provider, real operator, SQL store, password, credential, live
+  cookie, login route or evidence HTTP API is created.** No changes to
+  the original God's Eye View/Cesium UI or parcel screening.
+
+Run the mocked contract tests locally:
+
+```powershell
+cd "$HOME\\gods-eye-view"
+git pull --ff-only origin bdp-development
+node --test server/providers/bdp-evidence-lifecycle.test.mjs
+```
+
+For production, a real sign-in path still requires an independently
+verified IdP (including nonce/replay controls), operator registry,
+identity lifecycle and account recovery, persistent private session
+storage with transaction semantics, secure cookie/CSRF/HTTPS defenses,
+rate limits/auditing, key rotation, and truly distinct non-superuser
+PostgreSQL connections bound to authenticated operator identities.
+**Do not connect this contract directly to public HTTP/Vite routes.**
+Neither session issuance nor database access confers legal clearance.
+
 ## Initial modules
 
 - `config/` — Texas and BDP configuration.
