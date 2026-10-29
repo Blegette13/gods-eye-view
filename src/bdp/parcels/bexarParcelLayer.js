@@ -59,6 +59,7 @@ export function createCountyParcelLayer({
   let lastBoundsKey = '';
   let requestController = null;
   let selectedParcelId = null;
+  let focusedLookupToken = null;
   const parcelById = new Map();
   const normalOutline = Cesium.Color.fromCssColorString('#f2f2f2').withAlpha(0.82);
   const selectedOutline = Cesium.Color.fromCssColorString('#42c5ed').withAlpha(0.98);
@@ -212,6 +213,19 @@ export function createCountyParcelLayer({
     source,
     updateInterval: QUERY_INTERVAL_MS,
 
+    // Exact parcel/owner lookups must not be blocked by an unrelated,
+    // potentially truncated countywide viewport query during setEnabled().
+    // The data manager still owns enable/disable, guards and state restore.
+    // A token-scoped release prevents an earlier aborted search from clearing
+    // the next lookup's reservation.
+    beginFocusedLookup() {
+      const token = Symbol('county-focused-search');
+      focusedLookupToken = token;
+      return () => {
+        if (focusedLookupToken === token) focusedLookupToken = null;
+      };
+    },
+
     init(targetViewer) {
       viewer = targetViewer;
       propertyCard = propertyCardFactory({
@@ -255,7 +269,11 @@ export function createCountyParcelLayer({
     },
 
     async update(targetViewer) {
-      if (!enabled || loading) return true;
+      // Called by DataManager immediately after enable(). A direct parcel or
+      // owner search should fetch the requested ID first, not preflight a dense
+      // viewport that can exceed the ArcGIS response limit or be temporarily
+      // unavailable. Never synthesize data or mark that viewport as complete.
+      if (!enabled || loading || focusedLookupToken !== null) return true;
       viewer = targetViewer || viewer;
       const rectangle = viewer?.camera?.computeViewRectangle(viewer.scene.globe.ellipsoid);
       const bounds = rectangleToBounds(rectangle);
@@ -328,6 +346,7 @@ export function createCountyParcelLayer({
 
     destroy() {
       selectedParcelId = null;
+      focusedLookupToken = null;
       requestController?.abort();
       requestController = null;
       clickHandler?.destroy();
