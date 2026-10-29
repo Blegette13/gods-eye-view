@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   styleSelectedParcelEntities,
   parcelExteriorCoordinates,
+  recommendedParcelFocusRange,
 } from './parcelSelectionStyle.js';
 
 function feature(parcelId, graphicType) {
@@ -88,4 +89,19 @@ test('invalid/missing or out-of-range geometry is never used as a camera target'
   ]) {
     assert.deepEqual(parcelExteriorCoordinates(geometry), []);
   }
+});
+
+test('parcel camera framing is specific for a small urban lot and adjusts for large tracts', () => {
+  const small = { type: 'Polygon', coordinates: [[
+    [-97.75790, 30.19158], [-97.75774, 30.19158],
+    [-97.75774, 30.19177], [-97.75790, 30.19158],
+  ]] };
+  const large = { type: 'Polygon', coordinates: [[
+    [-97.80, 30.20], [-97.77, 30.20],
+    [-97.77, 30.23], [-97.80, 30.20],
+  ]] };
+  assert.equal(recommendedParcelFocusRange(small), 450);
+  assert.ok(recommendedParcelFocusRange(large) > 3000);
+  assert.equal(recommendedParcelFocusRange(null), null);
+  assert.equal(recommendedParcelFocusRange({ type: 'Point', coordinates: [-97.7, 30.2] }), null);
 });
