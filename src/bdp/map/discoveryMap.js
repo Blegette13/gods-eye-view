@@ -5,6 +5,7 @@ import {
   countyBoundaryLines,
 } from './discoveryGeography.js';
 import { summarizeDiscoveryCandidates } from './discoveryFeedback.js';
+import { fetchHighAltitudeDiscovery, HIGH_ALTITUDE_DISCOVERY_COUNTIES } from './highAltitudeDiscovery.js';
 
 const icon = (className, text) => {
   const element = document.createElement('span');
@@ -35,6 +36,9 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
   const viewportByCounty = new Map();
   let neighborsVisible = false;
   let boundaryAvailable = false;
+  let sourcePreview = null;
+  let sourceScan = null;
+  const MAX_RESULT_CARDS = 40;
   const click = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
   click.setInputAction((movement) => {
     const hit = viewer.scene.pick(movement.position);
@@ -45,9 +49,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     if (!candidate) return;
     const input = document.getElementById('location-search');
     if (input) input.value = `${candidate.county} parcel: ${candidate.parcelId}`;
-    window.dispatchEvent(new CustomEvent('bdp:land-search', {
-      detail: { kind: 'parcel', county: candidate.county, value: candidate.parcelId },
-    }));
+    openProperty(candidate);
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
   const legend = document.createElement('aside');
@@ -109,8 +111,72 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     layersButton.textContent = open ? 'Hide map layers' : 'Map layers';
   });
   finderActions.append(enableParcels, layersButton);
-  finder.append(finderKicker, finderTitle, matchCount, matchDetails, finderHelp, finderActions);
+  const resultsHeading = document.createElement('h3');
+  resultsHeading.className = 'ldos-discovery-list-heading';
+  resultsHeading.textContent = 'Property results';
+  const results = document.createElement('ol');
+  results.id = 'ldos-discovery-results';
+  results.setAttribute('aria-label', 'Preliminary property candidates');
+  finder.append(finderKicker, finderTitle, matchCount, matchDetails, finderHelp,
+    finderActions, resultsHeading, results);
   document.body.append(finder);
+
+  function openProperty(candidate) {
+    const input = document.getElementById('location-search');
+    if (input) input.value = candidate.county + ' parcel: ' + candidate.parcelId;
+    window.dispatchEvent(new CustomEvent('bdp:land-search', {
+      detail: {
+        kind: 'parcel', county: candidate.county,
+        value: candidate.parcelId, cameraRangeMultiplier: 2.3,
+      },
+    }));
+  }
+
+  function availableResults(viewSummary) {
+    const collected = new Map();
+    // High-altitude county source samples are independent of current camera.
+    for (const record of sourcePreview?.results || []) {
+      collected.set(record.county + ':' + record.parcelId, record);
+    }
+    // As the operator explores, viewport results can enrich the list without
+    // erasing the county preview or confusing the two different scan scopes.
+    for (const record of viewSummary.pins) {
+      const key = record.county + ':' + record.parcelId;
+      if (!collected.has(key)) collected.set(key, record);
+    }
+    return [...collected.values()];
+  }
+
+  function renderResultList(records) {
+    results.replaceChildren();
+    if (!records.length) {
+      const empty = document.createElement('li');
+      empty.className = 'ldos-discovery-result-empty';
+      empty.textContent = sourcePreview?.state === 'loading'
+        ? 'Searching the county source…'
+        : 'No preview results available. Try another acreage range, or browse the map.';
+      results.append(empty);
+      return;
+    }
+    for (const candidate of records.slice(0, MAX_RESULT_CARDS)) {
+      const row = document.createElement('li');
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'ldos-discovery-result';
+      const name = document.createElement('strong');
+      name.textContent = candidate.label;
+      const meta = document.createElement('span');
+      const acres = candidate.acresReported;
+      meta.textContent = candidate.county + ' · Parcel ' + candidate.parcelId +
+        (typeof acres === 'number' && acres > 0 ? ' · ' + acres + ' reported ac' : ' · acreage UNKNOWN');
+      const note = document.createElement('small');
+      note.textContent = 'Preliminary source match · View intelligence →';
+      button.append(name, meta, note);
+      button.addEventListener('click', () => openProperty(candidate));
+      row.append(button);
+      results.append(row);
+    }
+  }
 
   function updateFinder() {
     const active = Boolean(current?.county);
@@ -135,10 +201,27 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       center: censusCenter,
       viewports: [...viewportByCounty.values()],
     });
-    matchCount.textContent = summary.count === null
-      ? 'Not evaluated yet'
-      : summary.count + ' possible ' + (summary.count === 1 ? 'match' : 'matches');
-    matchDetails.textContent = summary.message;
+    if (sourcePreview?.state === 'loading') {
+      matchCount.textContent = 'Searching county source…';
+      matchDetails.textContent = 'Sampling real county GIS records independently of camera zoom. Results are NOT a complete county inventory.';
+    } else if (sourcePreview?.state === 'sample') {
+      const records = availableResults(summary);
+      matchCount.textContent = sourcePreview.results.length + ' source-sample ' +
+        (sourcePreview.results.length === 1 ? 'match' : 'matches');
+      matchDetails.textContent = sourcePreview.message +
+        (summary.count === null ? '' : ' Local map view: ' + summary.count + ' additional/overlapping preliminary matches.');
+      renderResultList(records);
+      return;
+    } else if (sourcePreview?.state === 'error') {
+      matchCount.textContent = 'County scan unavailable';
+      matchDetails.textContent = sourcePreview.message + ' · ' + summary.message;
+    } else {
+      matchCount.textContent = summary.count === null
+        ? 'Not evaluated yet'
+        : summary.count + ' possible ' + (summary.count === 1 ? 'match' : 'matches');
+      matchDetails.textContent = summary.message;
+    }
+    renderResultList(availableResults(summary));
   }
   const onLayerResult = (event) => {
     if (!current || event?.detail?.county !== current.county) return;
@@ -173,7 +256,8 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       criteria: current, center: censusCenter,
       viewports: [...viewportByCounty.values()],
     });
-    for (const candidate of summary.pins) {
+    const combined = availableResults(summary);
+    for (const candidate of combined.slice(0, 24)) {
       viewer.entities.add({
         id: 'ldos-candidate:' + candidate.county + ':' + candidate.parcelId,
         name: candidate.label,
@@ -235,6 +319,9 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
 
   async function setCriteria(criteria) {
     const token = ++sequence;
+    sourceScan?.abort();
+    sourceScan = null;
+    sourcePreview = null;
     controller?.abort();
     controller = new AbortController();
     const signal = controller.signal;
@@ -313,6 +400,32 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
         }
         boundaryAvailable = true;
         neighborsVisible = neighbors.length > 0;
+        // County discovery uses acreage predicates at the source itself. This
+        // is bounded sampling, not an inaccurate promise of countywide counts.
+        if (HIGH_ALTITUDE_DISCOVERY_COUNTIES.includes(current.county)) {
+          sourceScan = new AbortController();
+          const sampleController = sourceScan;
+          sourcePreview = { state: 'loading', results: [] };
+          updateFinder();
+          void fetchHighAltitudeDiscovery({
+            criteria: current, center: point, signal: sampleController.signal,
+          }).then((snapshot) => {
+            if (sampleController.signal.aborted || token !== sequence || destroyed) return;
+            sourcePreview = snapshot;
+            renderCandidateMarkers();
+          }).catch((error) => {
+            if (sampleController.signal.aborted || token !== sequence || destroyed) return;
+            sourcePreview = {
+              state: 'error', results: [],
+              message: 'Travis countywide preview source error: ' +
+                (error instanceof Error ? error.message : 'Unknown source failure'),
+            };
+            console.warn('High-altitude discovery unavailable:', error);
+            updateFinder();
+          });
+        } else {
+          sourcePreview = { state: 'unsupported', results: [] };
+        }
         const summary = renderCandidateMarkers();
         status(
           neighborsUnavailable
@@ -364,6 +477,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       destroyed = true;
       controller?.abort();
       sequence++;
+      sourceScan?.abort();
       window.removeEventListener('land:parcel-viewport', onParcelViewport);
       window.removeEventListener('land:discovery-layer-result', onLayerResult);
       click.destroy();
