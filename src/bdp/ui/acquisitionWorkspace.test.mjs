@@ -177,3 +177,31 @@ test('session shortlist creates separate stage board, moves parcel, and returns 
     env.restore();
   }
 });
+
+test('Browse freely clears county preferences but preserves the session acquisition board', async () => {
+  const env = withDOM();
+  let workspace;
+  try {
+    const updates = [];
+    workspace = mountLandWorkspaces({
+      initialCriteria: { county: 'Travis', radiusMiles: 50, purpose: '', zip: '',
+        budgetMax: null, acresMin: 10, acresMax: 60 },
+      onCriteriaChange: (value) => updates.push(value),
+    });
+    env.win.dispatchEvent(new CustomEvent('land:acquisition-add', {
+      detail: { parcel: { county: 'Travis', parcelId: '00045', property: { situsAddress: 'Source address' } } },
+    }));
+    const browse = find(env.body, (node) => node.tagName === 'button'
+      && node.textContent === 'Browse freely')[0];
+    assert.equal(browse.hidden, false);
+    browse.listeners.click[0]();
+    assert.equal(workspace.getCriteria(), null);
+    assert.equal(updates.at(-1), null);
+    assert.equal(env.body.dataset.landView, 'map');
+    assert.equal(workspace.entries().length, 1, 'do not destroy saved session candidates');
+    assert.equal(browse.hidden, true);
+  } finally {
+    workspace?.destroy();
+    env.restore();
+  }
+});
