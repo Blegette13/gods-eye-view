@@ -41,6 +41,8 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     const key = id.slice('ldos-candidate:'.length);
     const candidate = candidateMarkers.find((item) => item.county + ':' + item.parcelId === key);
     if (!candidate) return;
+    const input = document.getElementById('location-search');
+    if (input) input.value = `${candidate.county} parcel: ${candidate.parcelId}`;
     window.dispatchEvent(new CustomEvent('bdp:land-search', {
       detail: { kind: 'parcel', county: candidate.county, value: candidate.parcelId },
     }));
