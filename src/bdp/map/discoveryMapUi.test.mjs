@@ -366,7 +366,30 @@ test('1.3km free browsing auto-resolves county and lists every rendered GIS parc
     env.moved();
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(ascended, 'Travis');
-    assert.equal(finder.hidden, true);
+    assert.equal(finder.hidden, false,
+      'selected property keeps the previous neighborhood list while intelligence is open');
+    assert.equal(env.body.dataset.landLayers, 'closed');
+    const details = find(env.body, (node) => node.id === 'ldos-discovery-match-details')[0];
+    assert.match(details.textContent, /Previous neighborhood snapshot/,
+      'the retained list must never be presented as current-camera coverage');
+
+    // When the customer returns to neighborhood viewing, a fresh real GIS
+    // snapshot unpins the old list. Ascending without a selected snapshot
+    // then restores the normal county-free map layers UI.
+    env.viewer.camera.positionCartographic.height = 1300;
+    env.moved();
+    await new Promise((resolve) => setImmediate(resolve));
+    env.window.dispatchEvent(new env.Event('land:parcel-viewport', {
+      detail: { county: 'Travis', complete: true, reason: 'complete',
+        parcels: [record('00004', 4.4)] },
+    }));
+    assert.equal(count.textContent, '1 mapped parcel',
+      'a new bounded map response replaces the previous neighborhood snapshot');
+    assert.equal(finder.hidden, false);
+    env.viewer.camera.positionCartographic.height = 1301;
+    env.moved();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(finder.hidden, true, 'unselected ambient parcels hide above 1.3km');
     assert.equal(env.body.dataset.landLayers, 'open');
   } finally {
     map.destroy();
