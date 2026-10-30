@@ -307,6 +307,12 @@ export function createCountyParcelLayer({
         && document.body?.dataset?.landProfile === 'browse';
       const height = viewer?.camera?.positionCartographic?.height;
       if (freeMode && !shouldDiscoverFreeParcels(height)) {
+        // Explicitly selected source parcel remains visible alongside its
+        // intelligence card, even if the detail camera frames above 1.3 km.
+        if (selectedParcelId) {
+          if (dataSource) dataSource.show = true;
+          return true;
+        }
         if (dataSource) dataSource.show = false;
         lastBoundsKey = '';
         status = 'zoom-in';
