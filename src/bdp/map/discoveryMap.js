@@ -675,9 +675,11 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     if (current || destroyed) return;
     const height = cameraHeightMeters(viewer);
     if (!shouldDiscoverFreeParcels(height)) {
-      // At a higher vantage the layer manager will hide free-browse parcel
-      // geometry on its next managed refresh. UI never claims old results
-      // remain the currently rendered inventory.
+      // Hide actual county polygons as well as UI when zooming above 1.3 km.
+      // The guarded manager only refreshes already-enabled layers.
+      if (freeCounty) window.dispatchEvent(new CustomEvent('land:discovery-free-zoomed-out', {
+        detail: { county: freeCounty },
+      }));
       freeRows = null;
       freeCoverage = null;
       freeSnapshotPinned = false;
