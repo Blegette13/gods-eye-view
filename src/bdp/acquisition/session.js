@@ -10,6 +10,18 @@ export const ACQUISITION_STAGES = Object.freeze([
   'Identified', 'Screening', 'Due Diligence',
   'Negotiation', 'Under Contract', 'Acquired',
 ]);
+// Pilot coverage: public county selection is limited to adapters that exist.
+// Never imply that neighboring counties with no adapter have parcel coverage.
+export const PILOT_COUNTIES = Object.freeze([
+  Object.freeze({ name: 'Bexar', fips: '48029' }),
+  Object.freeze({ name: 'Travis', fips: '48453' }),
+  Object.freeze({ name: 'Williamson', fips: '48491' }),
+  Object.freeze({ name: 'Hays', fips: '48209' }),
+  Object.freeze({ name: 'Dallas', fips: '48113' }),
+  Object.freeze({ name: 'Harris', fips: '48201' }),
+]);
+export const SEARCH_RADII_MILES = Object.freeze([0, 5, 10, 25, 50]);
+
 export const LAND_PURPOSES = Object.freeze([
   'Residential development',
   'Commercial development',
@@ -29,6 +41,15 @@ function optionalNonnegative(value, label) {
 }
 
 export function normalizeLandCriteria(input = {}) {
+  const county = String(input.county || '').trim();
+  if (!PILOT_COUNTIES.some((entry) => entry.name === county)) {
+    throw new Error('Select a supported Texas county to begin.');
+  }
+  const radiusMiles = input.radiusMiles === undefined || input.radiusMiles === ''
+    ? 0 : Number(input.radiusMiles);
+  if (!SEARCH_RADII_MILES.includes(radiusMiles)) {
+    throw new Error('Choose an available radius option.');
+  }
   const purpose = String(input.purpose || '').trim();
   if (purpose && !LAND_PURPOSES.includes(purpose)) throw new Error('Choose a listed land use.');
   const zip = String(input.zip || '').trim();
@@ -39,10 +60,11 @@ export function normalizeLandCriteria(input = {}) {
   if (acresMin !== null && acresMax !== null && acresMax < acresMin) {
     throw new Error('Maximum acres cannot be smaller than minimum acres.');
   }
-  return Object.freeze({ purpose, zip, budgetMax, acresMin, acresMax });
+  return Object.freeze({
+    county, radiusMiles, purpose, zip, budgetMax, acresMin, acresMax,
+  });
 }
-
-const COUNTIES = new Set(['Bexar', 'Travis', 'Williamson', 'Hays', 'Dallas', 'Harris']);
+const COUNTIES = new Set(PILOT_COUNTIES.map(({ name }) => name));
 function safeText(input, max = 220) {
   return typeof input === 'string' ? input.slice(0, max).trim() : '';
 }
