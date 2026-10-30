@@ -11,7 +11,14 @@ export function ratePreferenceEvidence(criteria, entry) {
     label: 'Not rated', rationale: 'No search profile', matched: 0, outside: 0,
     unknown: 0, checked: 0, configured: 0, fitScore: null,
   });
-  const findings = reviewLandCriteria(criteria, entry);
+  const findings = [...reviewLandCriteria(criteria, entry)];
+  if (criteria.county) {
+    const countyStatus = criteria.radiusMiles > 0
+      ? 'unknown' // county alone does not establish location inside a ring
+      : !entry?.county ? 'unknown'
+        : entry.county === criteria.county ? 'reported-match' : 'reported-outside';
+    findings.push({ field: 'Selected county / search area', status: countyStatus });
+  }
   const matched = findings.filter((item) => item.status === 'reported-match').length;
   const outside = findings.filter((item) => item.status === 'reported-outside').length;
   const unknown = findings.filter((item) => item.status === 'unknown').length;
