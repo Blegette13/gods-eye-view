@@ -929,3 +929,49 @@ body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty)
     top: 309px;
   }
 }
+
+/* Customer-requested header alignment. On desktop-wide screens the
+ * Map Explorer / Acquisition Board / Edit Criteria controls share the
+ * search bar's top line. The separate three globe controls occupy the safe
+ * gap immediately LEFT of the search. No navigation or search overlap. */
+@media (min-width: 1420px) {
+  body[data-bdp-product='land-development-os'] .ldos-workspace-nav,
+  body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+    .ldos-workspace-nav {
+    top: 25px;
+    right: 20px;
+    left: auto;
+  }
+  body[data-bdp-product='land-development-os'] #top-center-actions,
+  body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+    #top-center-actions {
+    top: 42px;
+    left: calc(50% - 356px);
+    right: auto;
+    transform: none;
+  }
+  /* The height badge is below the horizontal navigation, not behind it. */
+  body[data-bdp-product='land-development-os'] #land-camera-altimeter,
+  body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+    #land-camera-altimeter {
+    top: 86px;
+    right: 20px;
+    bottom: auto;
+  }
+}
+
+/* At narrower desktop widths a four-button nav cannot share the same row
+ * as a 380–440px search without collision. Keep both fully readable. */
+@media (min-width: 721px) and (max-width: 1419px) {
+  body[data-bdp-product='land-development-os'] .ldos-workspace-nav {
+    top: 115px;
+    right: 12px;
+    left: auto;
+  }
+  body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+    .ldos-workspace-nav {
+    top: 160px;
+    right: 12px;
+    left: auto;
+  }
+}
