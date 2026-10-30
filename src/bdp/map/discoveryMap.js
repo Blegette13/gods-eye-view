@@ -126,6 +126,10 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     const profile = current;
     finderTitle.textContent = profile.county + ' County' +
       (profile.radiusMiles ? ' · ' + profile.radiusMiles + ' mi' : '');
+    if (!enableParcels.disabled && !enableParcels.textContent.startsWith('Retry')
+        && !enableParcels.textContent.startsWith('Refresh')) {
+      enableParcels.textContent = 'Enable ' + profile.county + ' parcels';
+    }
     const summary = summarizeDiscoveryCandidates({
       criteria: current,
       center: censusCenter,
@@ -334,7 +338,9 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     const { county, complete, parcels } = event?.detail || {};
     if (typeof county !== 'string') return;
     viewportByCounty.set(county, {
+      county,
       complete: complete === true,
+      reason: event?.detail?.reason || 'not-complete',
       parcels: complete && Array.isArray(parcels) ? parcels : [],
     });
     if (!current || destroyed) return;
