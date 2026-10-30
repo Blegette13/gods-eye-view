@@ -360,7 +360,11 @@ export function createCountyParcelLayer({
           // changed or relabeled as a complete neighborhood snapshot.
           notifyViewportCandidates([], false, 'over-limit');
           if (freeMode && !selectedParcelId && dataSource) dataSource.show = false;
-          viewportCoverageWarning = 'INCOMPLETE COVERAGE · Travis GIS parcel response exceeds the map request limit. Zoom closer or search by county parcel ID; boundaries for this view are not loaded.';
+          const attemptedTiles = Number.isInteger(coverage.tileQueries) ? coverage.tileQueries : 0;
+          const countyName = adapter.county || 'County';
+          viewportCoverageWarning = attemptedTiles
+            ? `INCOMPLETE COVERAGE · ${countyName} GIS exceeds safe viewport limits after ${attemptedTiles} bounded subqueries. Zoom closer or search by exact parcel ID; no incomplete borders shown.`
+            : `INCOMPLETE COVERAGE · ${countyName} GIS exceeded the map request limit. Zoom closer or search by exact parcel ID; no incomplete borders shown.`;
           lastUpdate = Date.now();
           lastError = null;
           status = 'degraded';
