@@ -6,20 +6,19 @@ import {
 } from './session.js';
 
 test('criteria are optional, bounded and do not silently invent buyer targets', () => {
-  assert.deepEqual(normalizeLandCriteria(), {
-    purpose: '', zip: '', budgetMax: null, acresMin: null, acresMax: null,
-  });
+  assert.throws(() => normalizeLandCriteria(), /Select a supported Texas county/);
   assert.deepEqual(normalizeLandCriteria({
-    purpose: LAND_PURPOSES[0], zip: '78205', budgetMax: '250000',
+    county: 'Bexar', radiusMiles: '25', purpose: LAND_PURPOSES[0], zip: '78205', budgetMax: '250000',
     acresMin: '2', acresMax: '15',
   }), {
-    purpose: LAND_PURPOSES[0], zip: '78205', budgetMax: 250000, acresMin: 2, acresMax: 15,
+    county: 'Bexar', radiusMiles: 25, purpose: LAND_PURPOSES[0], zip: '78205', budgetMax: 250000, acresMin: 2, acresMax: 15,
   });
   for (const input of [
+    { county: 'Unknown' }, { county: 'Bexar', radiusMiles: 200 },
     { purpose: 'Unverified zoning approved' }, { zip: '1234' },
     { zip: '123456' }, { budgetMax: '-1' }, { acresMin: 'NaN' },
     { acresMin: '10', acresMax: '3' }, { acresMax: 'Infinity' },
-  ]) assert.throws(() => normalizeLandCriteria(input));
+  ]) assert.throws(() => normalizeLandCriteria({ county: 'Bexar', ...input }));
 });
 
 test('session pipeline preserves county-qualified IDs and rejects unrelated data', () => {
@@ -50,7 +49,7 @@ test('session pipeline preserves county-qualified IDs and rejects unrelated data
 
 test('matching is advisory only: asking price and permitted use always unknown', () => {
   const criteria = normalizeLandCriteria({
-    purpose: LAND_PURPOSES[1], zip: '78704',
+    county: 'Travis', radiusMiles: 10, purpose: LAND_PURPOSES[1], zip: '78704',
     budgetMax: '1000000', acresMin: '1', acresMax: '5',
   });
   const entry = acquisitionSnapshot({
@@ -71,7 +70,7 @@ test('matching is advisory only: asking price and permitted use always unknown',
 });
 
 test('five-digit street numbers cannot masquerade as a source ZIP preference match', () => {
-  const criteria = normalizeLandCriteria({ zip: '12345' });
+  const criteria = normalizeLandCriteria({ county: 'Travis', zip: '12345' });
   const entry = {
     address: '12345 Main Street Austin TX 78704',
     acresReported: null,
