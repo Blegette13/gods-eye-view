@@ -67,7 +67,8 @@ export function showLandDiscoveryGate({ initialCriteria = null } = {}) {
   }
   const county = document.createElement('select');
   county.name = 'county';
-  county.required = true;
+  // Required only for guided searches. A county-free browse is a first-class mode.
+  county.required = false;
   const chooseCounty = document.createElement('option');
   chooseCounty.value = '';
   chooseCounty.textContent = 'Choose a Texas county';
@@ -124,7 +125,7 @@ export function showLandDiscoveryGate({ initialCriteria = null } = {}) {
   const locationRow = document.createElement('div');
   locationRow.className = 'ldos-criteria-grid';
   locationRow.append(
-    field('Search county · required', county, 'Pilot service coverage currently supports six Texas counties.'),
+    field('County · for guided discovery', county, 'Choose a county to search, or leave blank to explore the map freely.'),
     field('Search radius', radius, '0 searches the chosen county; larger radii are measured from its Census internal point. Nearby counties may have no parcel feed.'),
   );
   form.append(locationRow, field('What do you need the land for?', purpose), row);
@@ -148,7 +149,7 @@ export function showLandDiscoveryGate({ initialCriteria = null } = {}) {
   const begin = document.createElement('button');
   begin.type = 'submit';
   begin.className = 'ldos-welcome-continue';
-  begin.textContent = 'Enter workspace →';
+  begin.textContent = 'Enter map explorer →';
   footer.append(skip, begin);
   form.append(error, footer);
   card.append(brand, eyebrow, heading, description, form, note);
