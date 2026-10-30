@@ -476,10 +476,10 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
               if (signal.aborted || token !== sequence || destroyed) return;
               await viewer.dataSources.add(contextSource);
               sources.push(contextSource);
-              legend.hidden = false;
-              rows.replaceChildren();
-              addLegendLine('neighbor', 'Nearby Census county borders · navigation only');
-              description.textContent = 'Free exploration · no county selected or parcel matching applied.';
+              // In Free Explorer the native Map Layers panel owns the left rail.
+              // Do NOT open the separate Search Geography card over it. The
+              // sourced county outlines still render as contextual map lines.
+              legend.hidden = true;
               viewer.scene.requestRender?.();
             }
           } catch (error) {
