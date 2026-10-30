@@ -139,6 +139,38 @@ test('user may skip or submit preferences before map UI is initialized', async (
   }
 });
 
+test('blank county with no preferences enters free map without validation', async () => {
+  const env = withDOM();
+  try {
+    const ready = showLandDiscoveryGate();
+    const form = find(env.body, (node) => node.tagName === 'form')[0];
+    const county = find(form, (node) => node.name === 'county')[0];
+    assert.equal(county.required, false);
+    form.listeners.submit[0]({ preventDefault() {} });
+    assert.equal(await ready, null);
+    assert.equal(env.doc.getElementById('land-discovery-gate'), null);
+  } finally {
+    env.restore();
+  }
+});
+
+test('guided search preferences with no county still require supported coverage', async () => {
+  const env = withDOM();
+  try {
+    const ready = showLandDiscoveryGate();
+    const form = find(env.body, (node) => node.tagName === 'form')[0];
+    find(form, (node) => node.name === 'acresMin')[0].value = '12';
+    form.listeners.submit[0]({ preventDefault() {} });
+    const err = find(form, (node) => node.className === 'ldos-criteria-error')[0];
+    assert.match(err.textContent, /Select a supported Texas county/);
+    const skip = find(form, (node) => node.className === 'ldos-welcome-skip')[0];
+    skip.listeners.click[0]();
+    assert.equal(await ready, null);
+  } finally {
+    env.restore();
+  }
+});
+
 test('session shortlist creates separate stage board, moves parcel, and returns to map', async () => {
   const env = withDOM();
   let instance;
