@@ -15,11 +15,26 @@ export function summarizeDiscoveryCandidates({ criteria, center, viewports = [],
     state: 'needs-evidence', count: null, scanned: 0, pins: [],
     message: 'Add a ZIP or acreage preference for preliminary source matching. Budget and land use cannot be verified from county parcel data.',
   });
-  const complete = viewports.filter((item) => item?.complete === true && Array.isArray(item.parcels));
-  if (!complete.length) return Object.freeze({
-    state: 'not-scanned', count: null, scanned: 0, pins: [],
-    message: 'Not scanned yet · Zoom into a neighborhood and enable the county parcel layer. No countywide search has been performed.',
-  });
+  const relevant = criteria.radiusMiles === 0
+    ? viewports.filter((item) => !item?.county || item.county === criteria.county)
+    : viewports;
+  const complete = relevant.filter((item) => item?.complete === true && Array.isArray(item.parcels));
+  if (!complete.length) {
+    const reasons = relevant.map((item) => item?.reason);
+    const detail = reasons.includes('over-limit')
+      ? 'Map area exceeds the GIS response limit. Zoom closer; no complete parcel inventory was loaded.'
+      : reasons.includes('error')
+        ? 'County source failed. Retry or inspect the GIS service; no match count is available.'
+        : reasons.includes('partial')
+          ? 'Source geometry is incomplete; no verified-complete viewport to evaluate.'
+          : reasons.includes('loading')
+            ? 'Loading bounded county parcel records…'
+            : 'Zoom into a neighborhood and enable the county parcel layer. No countywide search has been performed.';
+    return Object.freeze({
+      state: 'not-scanned', count: null, scanned: 0, pins: [],
+      message: 'Not scanned yet · ' + detail,
+    });
+  }
   const all = complete.flatMap((item) => item.parcels);
   const unique = new Set(all.map((parcel) => parcel?.county + ':' + parcel?.parcelId));
   const matches = suggestViewportParcels({
