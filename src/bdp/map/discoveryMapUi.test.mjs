@@ -8,6 +8,8 @@ import {
 } from './discoveryGeography.js';
 import { summarizeDiscoveryCandidates } from './discoveryFeedback.js';
 import { normalizeLandCriteria } from '../acquisition/session.js';
+import { freeBrowseCountyUrl, countyFromFreeBrowseResponse,
+  shouldDiscoverFreeParcels, freeBrowseVisibleParcels } from './freeBrowseParcels.js';
 
 class Element {
   constructor(tag) {
@@ -50,8 +52,12 @@ function fixture({ preview = null, named = null } = {}) {
   const markers = [];
   let flights = 0;
   let markerClicked = null;
+  let moveEnd = null;
   const viewer = {
-    camera: { positionCartographic: { height: 14000 } },
+    camera: {
+      positionCartographic: { height: 14000 },
+      moveEnd: { addEventListener(fn) { moveEnd = fn; return () => { moveEnd = null; }; } },
+    },
     scene: {
       canvas: {}, requestRender() {},
       pick: () => ({ id: markers[0] }),
@@ -112,6 +118,10 @@ function fixture({ preview = null, named = null } = {}) {
     censusCountyUrl, countyForCriteria, countyPoint, validateCountyFeatures,
     radiusLineCoordinates, radiusEnvelope, countyBoundaryLines,
     summarizeDiscoveryCandidates,
+    freeBrowseCountyUrl, countyFromFreeBrowseResponse,
+    shouldDiscoverFreeParcels, freeBrowseVisibleParcels,
+    MAX_FREE_BROWSE_ROWS: 500,
+    cameraHeightMeters: (view) => view.camera.positionCartographic.height,
     frameFreeBrowse: (view) => { view.freeBrowseFramed = true; },
     freeBrowseLookPoint: () => ({ latitude: 30.27, longitude: -97.74 }),
     mountCameraAltimeter: () => ({ destroy() {} }),
@@ -122,6 +132,7 @@ function fixture({ preview = null, named = null } = {}) {
   return {
     create, body, window, Event, viewer, markers, sources, input, polygon,
     get flights() { return flights; },
+    moved: () => moveEnd?.(),
     click: () => markerClicked?.({ position: { x: 1, y: 1 } }),
   };
 }
@@ -297,6 +308,66 @@ test('load-more respects bounded source pages and deduplicates candidates withou
     assert.equal(more.hidden, true);
     const count = find(env.body, (node) => node.id === 'ldos-discovery-match-count')[0];
     assert.match(count.textContent, /2 source-sample matches/);
+  } finally {
+    map.destroy();
+  }
+});
+
+test('1.3km free browsing auto-resolves county and lists every rendered GIS parcel', async () => {
+  const env = fixture();
+  const activated = [];
+  env.window.addEventListener('land:discovery-enable-county',
+    (event) => activated.push(event.detail.county));
+  const map = env.create({ viewer: env.viewer });
+  try {
+    await new Promise((resolve) => setImmediate(resolve));
+    env.viewer.camera.positionCartographic.height = 1301;
+    env.moved();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(activated, [], 'parcels cannot auto-activate above the threshold');
+    env.viewer.camera.positionCartographic.height = 1300;
+    env.moved();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(activated, ['Travis']);
+    const record = (id, acreage) => ({
+      county: 'Travis', parcelId: id,
+      property: { situsAddress: 'Source GIS Road', acres: acreage, geometry: env.polygon },
+    });
+    env.window.dispatchEvent(new env.Event('land:parcel-viewport', {
+      detail: { county: 'Travis', complete: true, reason: 'complete',
+        parcels: [record('00001', 1.1), record('00002', 2.2), record('00003', 3.3)] },
+    }));
+    const finder = find(env.body, (node) => node.id === 'land-discovery-finder')[0];
+    const results = find(env.body, (node) => node.id === 'ldos-discovery-results')[0];
+    const count = find(env.body, (node) => node.id === 'ldos-discovery-match-count')[0];
+    assert.equal(finder.hidden, false);
+    assert.equal(env.body.dataset.landBrowseResults, 'open');
+    assert.equal(env.body.dataset.landLayers, 'closed');
+    assert.equal(count.textContent, '3 mapped parcels');
+    assert.equal(find(results, (node) => node.className === 'ldos-discovery-result').length, 3);
+
+    const selections = [];
+    env.window.addEventListener('bdp:land-search', (event) => selections.push(event.detail));
+    const card = find(results, (node) => node.className === 'ldos-discovery-result')[1];
+    card.listeners.click();
+    assert.equal(selections[0].value, '00002', 'preserve leading zeros');
+    assert.equal(selections[0].cameraRangeMultiplier, 2.3);
+    env.window.dispatchEvent(new env.Event('land:parcel-viewport', {
+      detail: { county: 'Travis', complete: false, reason: 'focused-search', parcels: [] },
+    }));
+    assert.equal(finder.hidden, false, 'left list stays mounted during Property Intelligence');
+    assert.equal(find(results, (node) => node.className === 'ldos-discovery-result').length, 3);
+
+    let ascended = null;
+    env.window.addEventListener('land:discovery-free-zoomed-out', (event) => {
+      ascended = event.detail.county;
+    });
+    env.viewer.camera.positionCartographic.height = 1301;
+    env.moved();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(ascended, 'Travis');
+    assert.equal(finder.hidden, true);
+    assert.equal(env.body.dataset.landLayers, 'open');
   } finally {
     map.destroy();
   }
