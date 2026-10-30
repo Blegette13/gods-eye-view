@@ -7,6 +7,7 @@ import {
 import { summarizeDiscoveryCandidates } from './discoveryFeedback.js';
 import { fetchHighAltitudeDiscovery, HIGH_ALTITUDE_DISCOVERY_COUNTIES } from './highAltitudeDiscovery.js';
 import { fetchGeographicLabels } from './geographicLabels.js';
+import { frameFreeBrowse, mountCameraAltimeter } from './cameraAltitude.js';
 
 const icon = (className, text) => {
   const element = document.createElement('span');
@@ -56,6 +57,11 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     openProperty(candidate);
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
+  const altimeter = mountCameraAltimeter(viewer);
+  const sidebar = document.createElement('div');
+  sidebar.id = 'land-discovery-sidebar';
+  sidebar.setAttribute('aria-label', 'Land discovery tools');
+
   const legend = document.createElement('aside');
   legend.id = 'land-discovery-map-legend';
   legend.setAttribute('aria-label', 'County and radius map legend');
@@ -71,7 +77,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
   sourceLink.rel = 'noopener noreferrer';
   sourceLink.textContent = 'Boundaries: U.S. Census Bureau TIGERweb · preliminary mapping';
   legend.append(title, description, rows, sourceLink);
-  document.body.append(legend);
+  // The geography legend lives below the property results, not over the globe.
 
   // Guided search replaces the full layer registry as the primary left-panel
   // action. Source layers remain accessible on demand, never deleted.
@@ -188,7 +194,8 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
   });
   finder.append(finderKicker, finderTitle, matchCount, matchDetails, finderHelp,
     finderActions, labelsStatus, resultsHeading, results, moreButton);
-  document.body.append(finder);
+  sidebar.append(finder, legend);
+  document.body.append(sidebar);
 
   function openProperty(candidate) {
     const input = document.getElementById('location-search');
@@ -254,6 +261,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       document.body.dataset.landLayers = 'closed';
     }
     finder.hidden = !active;
+    legend.hidden = !active;
     moreButton.hidden = !active || sourcePreview?.state !== 'sample' || !sourcePreview.moreAvailable;
     if (!active) {
       document.body.dataset.landLayers = 'open';
@@ -447,7 +455,40 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     clearCandidateMarkers();
     updateFinder();
     if (!current || destroyed) {
-      status('No county selected. Choose a county in Edit criteria to display verified source boundaries.');
+      // No county is necessary for Free Exploration. Frame the current local
+      // district at a readable medium altitude, never a rooftop close-up or
+      // statewide overview, while preserving user's map controls and layers.
+      frameFreeBrowse(viewer);
+      status('Free browsing · county outlines shown for local context only.');
+      const cameraPoint = viewer.camera?.positionCartographic;
+      if (cameraPoint && Cesium.Math?.toDegrees) {
+        const lat = Cesium.Math.toDegrees(cameraPoint.latitude);
+        const lon = Cesium.Math.toDegrees(cameraPoint.longitude);
+        if (Number.isFinite(lat) && Number.isFinite(lon)
+            && lat >= 25 && lat <= 37 && lon >= -107 && lon <= -93) {
+          try {
+            const nearby = await fetchCounties(censusCountyUrl({
+              envelope: radiusEnvelope({ lat, lon }, 26),
+            }), signal);
+            if (signal.aborted || token !== sequence || destroyed) return;
+            if (nearby.length > 0 && nearby.length <= 16) {
+              const contextSource = await loadLineSource(nearby, '#869daf', 1.8);
+              if (signal.aborted || token !== sequence || destroyed) return;
+              await viewer.dataSources.add(contextSource);
+              sources.push(contextSource);
+              legend.hidden = false;
+              rows.replaceChildren();
+              addLegendLine('neighbor', 'Nearby Census county borders · navigation only');
+              description.textContent = 'Free exploration · no county selected or parcel matching applied.';
+              viewer.scene.requestRender?.();
+            }
+          } catch (error) {
+            if (signal.aborted || token !== sequence || destroyed) return;
+            console.warn('Free-browse contextual county outlines unavailable:', error);
+            legend.hidden = true;
+          }
+        }
+      }
       return;
     }
     const selected = countyForCriteria(current);
@@ -599,7 +640,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
 
   updateFinder();
   status('Choose a county to display public geographic reference boundaries.');
-  if (initialCriteria) void setCriteria(initialCriteria);
+  void setCriteria(initialCriteria);
 
   return Object.freeze({
     setCriteria,
@@ -610,13 +651,13 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       sourceScan?.abort();
       labelsScan?.abort();
       clearNavigationLabels();
+      altimeter.destroy();
       window.removeEventListener('land:parcel-viewport', onParcelViewport);
       window.removeEventListener('land:discovery-layer-result', onLayerResult);
       click.destroy();
       clearCandidateMarkers();
       void erase();
-      legend.remove();
-      finder.remove();
+      sidebar.remove();
       delete document.body.dataset.landProfile;
       delete document.body.dataset.landLayers;
     },
