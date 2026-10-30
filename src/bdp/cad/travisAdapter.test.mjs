@@ -158,3 +158,59 @@ test('malformed county source responses remain unavailable instead of inventing 
     globalThis.fetch = prior;
   }
 });
+
+test('dense Travis viewport retries 4 bounded county GIS tiles and renders a complete deduplicated set', async () => {
+  const prior = globalThis.fetch;
+  const bounds = { west:-97.8, south:30.2, east:-97.7, north:30.3 };
+  const requests = [];
+  try {
+    globalThis.fetch = async (url) => {
+      const qs = new URL(url).searchParams;
+      assert.equal(qs.get('geometryType'), 'esriGeometryEnvelope');
+      assert.equal(qs.get('f'), 'geojson');
+      const area = qs.get('geometry').split(',').map(Number);
+      requests.push(area);
+      if (requests.length === 1) {
+        return { ok:true, json:async()=>({
+          type:'FeatureCollection', features:[feature({PROP_ID:1})],
+          exceededTransferLimit:true,
+        }) };
+      }
+      const tileNumber = requests.length - 1;
+      return { ok:true, json:async()=>({
+        type:'FeatureCollection',
+        features: [feature({PROP_ID:9000}), feature({PROP_ID:8000+tileNumber})],
+      }) };
+    };
+    const parcels = await travisCadAdapter.fetchParcelsInBounds(bounds, {limit:500});
+    assert.deepEqual(parcels.map((x)=>x.parcelId),['9000','8001','8002','8003','8004']);
+    assert.equal(parcels.viewportCoverage.tiled, true);
+    assert.equal(parcels.viewportCoverage.tileQueries, 4);
+    assert.equal(parcels.viewportCoverage.receivedCount, 8);
+    assert.equal(parcels.viewportCoverage.omittedUnidentified, 0);
+    assert.equal(requests.length, 5);
+    assert.equal(Object.keys(parcels).includes('viewportCoverage'), false);
+  } finally { globalThis.fetch = prior; }
+});
+
+test('an unresolved dense viewport fails closed after bounded child queries', async () => {
+  const prior = globalThis.fetch;
+  let calls = 0;
+  try {
+    globalThis.fetch = async () => {
+      calls++;
+      return { ok:true, json:async()=>({
+        type:'FeatureCollection', features:[feature({PROP_ID:1})],
+        exceededTransferLimit:true,
+      }) };
+    };
+    const incomplete = await travisCadAdapter.fetchParcelsInBounds({
+      west:-97.8,south:30.2,east:-97.7,north:30.3,
+    },{limit:500});
+    assert.equal(incomplete.length,0);
+    assert.equal(incomplete.viewportCoverage.overLimit,true);
+    assert.equal(incomplete.viewportCoverage.tileAttempted,true);
+    assert.match(incomplete.viewportCoverage.tileFailureReason,/truncated/);
+    assert.ok(calls <= 21, 'one initial query and at most twenty child tiles');
+  } finally { globalThis.fetch = prior; }
+});
