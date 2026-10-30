@@ -193,6 +193,14 @@ The clicked parcel displayed **Acres: 0**, with no reported-value-per-acre calcu
 
 **Operator verification pending for this latest warning:** run `node --test src/bdp/valuation/acreageReview.test.mjs src/bdp/ui/propertyCard.test.mjs`, the full `npm.cmd test`, and `npm.cmd run build`; refresh the land workspace, click a parcel with a source-reported zero and verify the amber Acreage review warning appears above the collapsible evidence sections. This is a UI data-quality flag only, not a new source of area evidence.
 
+## Video acceptance: neighboring parcel transitions (38.5-second local capture)
+
+The operator supplied a 38.5-second browser recording showing multiple adjacent Travis County parcel selections. **Observed:** clicking different county GIS polygons updates the blue parcel selection and corresponding property card/address/owner promptly; the map remains at neighborhood scale without visibly reloading or snapping to another city. Property warnings continue to appear on the records shown.
+
+**Observed defect:** approximately **9–12 seconds** and **19–23 seconds** into the recording, the property card is absent while a cyan selected-parcel polygon remains drawn. This contradicts the intended close/deselect rule. The original card's close handler already calls the county layer's onHide cleanup; the exact cause of the lingering displayed outline is not proven from video alone. In particular, some Cesium scenes use request-render-on-demand, and the close button changes map entity materials without moving the camera.
+
+**Candidate fix committed:** `refreshParcelSelection()` now explicitly calls `viewer.scene.requestRender()` (when available) after every selected-parcel material update, including when onHide clears the selected ID. This does not alter source geometry, data manager state, or selection IDs. A new focused-lookup regression checks that closing the card clears selection and requests an additional render, and a source-derived fake-Cesium runtime check passed. **Not yet verified in the actual browser**: pull, run `node --test src/bdp/parcels/focusedLookup.test.mjs` then full `npm.cmd test`/build, and use the same live close/reselect sequence. If the outline still persists, inspect Cesium material assignment or conflicting selected datasource state rather than claiming the issue resolved.
+
 ## Non-negotiable regression checklist
 
 1. Cesium viewer, map stack and attribution render without legacy tracking layers.
