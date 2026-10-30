@@ -11,6 +11,13 @@ export function summarizeDiscoveryCandidates({ criteria, center, viewports = [],
   });
   const evaluable = Boolean(criteria.zip || criteria.acresMin !== null && criteria.acresMin !== undefined
     || criteria.acresMax !== null && criteria.acresMax !== undefined);
+  if (criteria.radiusMiles > 0 && (!center
+      || !Number.isFinite(center.lat) || !Number.isFinite(center.lon))) {
+    return Object.freeze({
+      state: 'unknown-geography', count: null, scanned: 0, pins: [],
+      message: 'Radius location unavailable · Census county geometry is required to evaluate distance. No property match count can be claimed.',
+    });
+  }
   if (!evaluable) return Object.freeze({
     state: 'needs-evidence', count: null, scanned: 0, pins: [],
     message: 'Add a ZIP or acreage preference for preliminary source matching. Budget and land use cannot be verified from county parcel data.',
