@@ -25,7 +25,20 @@ function validTexasView(latitude, longitude) {
 export function frameFreeBrowse(viewer, { duration = 1.3 } = {}) {
   const camera = viewer?.camera;
   if (!camera?.flyTo || !Cesium?.Cartesian3?.fromDegrees) return false;
-  const p = camera.positionCartographic;
+  // The camera can be tens of miles south of what the customer is looking
+  // at when tilted. Prefer the globe point at screen center; only use the
+  // camera's geographic position when a center pick is unavailable.
+  const canvas = viewer.scene?.canvas;
+  let look = null;
+  if (canvas && camera.pickEllipsoid && Cesium.Cartographic?.fromCartesian) {
+    const x = (canvas.clientWidth || canvas.width || 0) / 2;
+    const y = (canvas.clientHeight || canvas.height || 0) / 2;
+    const ground = camera.pickEllipsoid(
+      new Cesium.Cartesian2(x, y), viewer.scene?.globe?.ellipsoid,
+    );
+    if (ground) look = Cesium.Cartographic.fromCartesian(ground);
+  }
+  const p = look || camera.positionCartographic;
   const lat = Cesium.Math.toDegrees(p?.latitude ?? Number.NaN);
   const lon = Cesium.Math.toDegrees(p?.longitude ?? Number.NaN);
   const center = validTexasView(lat, lon)
