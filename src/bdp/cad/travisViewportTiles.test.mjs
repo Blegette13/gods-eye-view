@@ -89,7 +89,7 @@ test('provider geometry conflicts and bounded total size must not produce mislea
   });
   assert.equal(exceeds.complete, false);
   assert.match(exceeds.reason, /capacity/);
-  assert.throws(() => collectTravisViewportTiles({
+  await assert.rejects(collectTravisViewportTiles({
     bounds, limit:0, fetchTile: async () => [] }),
   /Invalid bounded/);
   assert.equal(MAX_TRAVIS_VIEWPORT_PARCELS,1000);
