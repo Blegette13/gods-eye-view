@@ -49,7 +49,7 @@ export function mountLandWorkspaces({ initialCriteria = null, onCriteriaChange =
   const mapButton = button('Map explorer', 'ldos-nav-button', () => open('map'));
   const boardButton = button('Acquisition board · 0', 'ldos-nav-button', () => open('acquisitions'));
   const refineButton = button('Edit criteria', 'ldos-nav-button ldos-nav-minor', async () => {
-    const edited = await showLandDiscoveryGate();
+    const edited = await showLandDiscoveryGate({ initialCriteria: criteria });
     if (edited !== null) {
       criteria = edited;
       onCriteriaChange?.(criteria);
@@ -102,7 +102,7 @@ export function mountLandWorkspaces({ initialCriteria = null, onCriteriaChange =
     criteriaBlock.replaceChildren();
     const top = make('div', 'ldos-board-criteria-top');
     top.append(make('h2', '', 'Your search criteria'), button('Update', 'ldos-board-link', async () => {
-      const edited = await showLandDiscoveryGate();
+      const edited = await showLandDiscoveryGate({ initialCriteria: criteria });
       if (edited !== null) {
         criteria = edited;
         onCriteriaChange?.(criteria);
