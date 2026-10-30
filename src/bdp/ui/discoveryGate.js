@@ -22,7 +22,7 @@ function inputFor(type, options = {}) {
 }
 
 /** First-run intake before the map/application is started. No network writes. */
-export function showLandDiscoveryGate() {
+export function showLandDiscoveryGate({ initialCriteria = null } = {}) {
   if (document.getElementById('land-discovery-gate')) {
     throw new Error('Land discovery gate is already mounted.');
   }
@@ -103,6 +103,15 @@ export function showLandDiscoveryGate() {
   const max = inputFor('number', {
     name: 'acresMax', min: '0', step: 'any', placeholder: 'Maximum',
   });
+  if (initialCriteria) {
+    county.value = initialCriteria.county || '';
+    radius.value = String(initialCriteria.radiusMiles ?? 0);
+    purpose.value = initialCriteria.purpose || '';
+    zip.value = initialCriteria.zip || '';
+    budget.value = initialCriteria.budgetMax ?? '';
+    min.value = initialCriteria.acresMin ?? '';
+    max.value = initialCriteria.acresMax ?? '';
+  }
 
   const row = document.createElement('div');
   row.className = 'ldos-criteria-grid';
