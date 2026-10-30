@@ -125,6 +125,7 @@ export function mountLandWorkspaces({ initialCriteria = null } = {}) {
           make('p', 'ldos-acquisition-id', `Parcel ID: ${entry.parcelId}`),
           make('p', 'ldos-acquisition-owner', `CAD-listed owner: ${entry.ownerReported}`),
           make('p', 'ldos-acquisition-acres', `Reported acres: ${entry.acresReported ?? 'UNKNOWN'}`),
+          make('p', 'ldos-acquisition-provider', `Source: ${entry.provider || 'UNKNOWN'}`),
           make('p', 'ldos-acquisition-unknown', `Source currency: ${entry.recordCurrency.toUpperCase()} · Not a listing or title verification`),
         );
         const findings = reviewLandCriteria(criteria, entry);
