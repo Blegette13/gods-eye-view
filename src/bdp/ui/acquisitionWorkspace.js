@@ -48,15 +48,19 @@ export function mountLandWorkspaces({ initialCriteria = null, onCriteriaChange =
   nav.setAttribute('aria-label', 'Land development workspace');
   const mapButton = button('Map explorer', 'ldos-nav-button', () => open('map'));
   const boardButton = button('Acquisition board · 0', 'ldos-nav-button', () => open('acquisitions'));
+  const browseButton = button('Browse freely', 'ldos-nav-button ldos-nav-minor', () => {
+    criteria = null;
+    onCriteriaChange?.(null);
+    renderBoard();
+    open('map');
+  });
   const refineButton = button('Edit criteria', 'ldos-nav-button ldos-nav-minor', async () => {
     const edited = await showLandDiscoveryGate({ initialCriteria: criteria });
-    if (edited !== null) {
-      criteria = edited;
-      onCriteriaChange?.(criteria);
-    }
+    criteria = edited;
+    onCriteriaChange?.(criteria);
     renderBoard();
   });
-  nav.append(mapButton, boardButton, refineButton);
+  nav.append(mapButton, boardButton, refineButton, browseButton);
 
   const board = make('main', 'ldos-acquisition-screen');
   board.id = 'land-acquisition-board';
@@ -86,6 +90,7 @@ export function mountLandWorkspaces({ initialCriteria = null, onCriteriaChange =
     document.body.dataset.landView = current;
     board.hidden = current !== 'acquisitions';
     mapButton.setAttribute('aria-current', current === 'map' ? 'page' : 'false');
+    browseButton.hidden = criteria === null;
     boardButton.setAttribute('aria-current', current === 'acquisitions' ? 'page' : 'false');
     if (current === 'acquisitions') {
       renderBoard();
@@ -103,10 +108,8 @@ export function mountLandWorkspaces({ initialCriteria = null, onCriteriaChange =
     const top = make('div', 'ldos-board-criteria-top');
     top.append(make('h2', '', 'Your search criteria'), button('Update', 'ldos-board-link', async () => {
       const edited = await showLandDiscoveryGate({ initialCriteria: criteria });
-      if (edited !== null) {
-        criteria = edited;
-        onCriteriaChange?.(criteria);
-      }
+      criteria = edited;
+      onCriteriaChange?.(criteria);
       renderBoard();
     }));
     const tags = make('div', 'ldos-board-criteria-tags');
