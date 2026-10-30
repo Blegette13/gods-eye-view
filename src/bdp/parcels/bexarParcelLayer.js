@@ -139,7 +139,7 @@ export function createCountyParcelLayer({
     else notifyViewportCandidates([], false, 'focused-search');
   }
 
-  async function focusSnapshot(parcels, { signal, selectedParcel = null } = {}) {
+  async function focusSnapshot(parcels, { signal, selectedParcel = null, cameraRangeMultiplier = 1 } = {}) {
     selectedParcelId = selectedParcel?.id || null;
     await replaceSnapshot(parcels, { signal, sourceKind: 'focused' });
     lastBoundsKey = '';
@@ -155,7 +155,7 @@ export function createCountyParcelLayer({
       // search still fits the full datasource as before.
       const offset = focusRange === null
         ? undefined
-        : new Cesium.HeadingPitchRange(0, -Cesium.Math.toRadians(70), focusRange);
+        : new Cesium.HeadingPitchRange(0, -Cesium.Math.toRadians(70), focusRange * cameraRangeMultiplier);
       await viewer.flyTo(dataSource, {
         duration: 1.15,
         ...(offset ? { offset } : {}),
@@ -164,7 +164,7 @@ export function createCountyParcelLayer({
     assertActive(signal);
   }
 
-  async function focusParcel(parcelOrAccountId, { signal } = {}) {
+  async function focusParcel(parcelOrAccountId, { signal, cameraRangeMultiplier = 1 } = {}) {
     if (!viewer || !propertyCard) throw new Error(`${adapter.county} parcel layer is not initialized`);
     if (!enabled) throw new Error(`${adapter.county} parcel layer must be enabled before parcel lookup`);
 
@@ -179,7 +179,11 @@ export function createCountyParcelLayer({
         return null;
       }
 
-      await focusSnapshot([parcel], { signal, selectedParcel: parcel });
+      await focusSnapshot([parcel], {
+        signal, selectedParcel: parcel,
+        cameraRangeMultiplier: Number.isFinite(cameraRangeMultiplier)
+          ? Math.max(1, Math.min(3, cameraRangeMultiplier)) : 1,
+      });
       showSelectedParcel(parcel);
       return parcel;
     } catch (error) {
