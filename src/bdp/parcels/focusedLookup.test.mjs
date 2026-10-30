@@ -5,7 +5,7 @@ import { runInNewContext } from 'node:vm';
 
 // Exercise the actual shared county layer lifecycle without starting Cesium,
 // touching official county services, or altering manager source registration.
-function layerFixture() {
+function layerFixture({ freeBrowsing = false } = {}) {
   const source = readFileSync(new URL('./bexarParcelLayer.js', import.meta.url), 'utf8')
     .replace(/^import .*;\s*$/gm, '')
     .replace(/^export default .*;\s*$/gm, '')
@@ -55,6 +55,8 @@ function layerFixture() {
   };
   const context = {
     Cesium: fakeCesium,
+    shouldDiscoverFreeParcels: (meters) => Number.isFinite(meters)
+      && meters >= 0 && meters <= 1300,
     DOMException,
     AbortController,
     console: { warn() {} },
@@ -78,6 +80,9 @@ function layerFixture() {
     },
     recommendedParcelFocusRange: () => 450,
   };
+  if (freeBrowsing) context.document = {
+    body: { dataset: { landProfile: 'browse' } },
+  };
   runInNewContext(source + '\nthis.createLayerForTest = createCountyParcelLayer;', context);
   const layer = context.createLayerForTest({
     adapter,
@@ -88,7 +93,10 @@ function layerFixture() {
   });
   const viewer = {
     scene: { canvas: {}, globe: { ellipsoid: {} }, requestRender: () => { calls.repaints += 1; } },
-    camera: { computeViewRectangle: () => ({ west: -97.8, east: -97.7, south: 30.2, north: 30.3 }) },
+    camera: {
+      positionCartographic: { height: freeBrowsing ? 2700 : 500 },
+      computeViewRectangle: () => ({ west: -97.8, east: -97.7, south: 30.2, north: 30.3 }),
+    },
     dataSources: { add: async () => {}, remove: () => {} },
     flyTo: async (_target, options) => calls.camera.push(options),
   };
@@ -184,5 +192,34 @@ test('closing selected property card clears its selection and requests a map rep
   calls.closeCard();
   assert.equal(calls.selectionIds.at(-1), null);
   assert.ok(calls.repaints > painted, 'closing must cause a fresh map frame');
+  layer.destroy();
+});
+
+test('free browsing gates ambient GIS polygons at 1.3km but retains selected property intelligence', async () => {
+  const { layer, calls, viewer, adapter } = layerFixture({ freeBrowsing: true });
+  adapter.fetchParcelsInBounds = async () => {
+    calls.viewport += 1;
+    return [{
+      id: '48453:302959', county: 'Travis', parcelId: '302959',
+      property: { geometry: { type:'Polygon', coordinates:[[
+        [-97.758,30.246],[-97.757,30.246],[-97.757,30.247],[-97.758,30.246],
+      ]] } },
+    }];
+  };
+  layer.init(viewer);
+  layer.enable();
+  assert.equal(await layer.update(viewer), true);
+  assert.equal(calls.viewport, 0, 'no parcel request above 1.3km');
+  viewer.camera.positionCartographic.height = 1300;
+  assert.equal(await layer.update(viewer), true);
+  assert.equal(calls.viewport, 1);
+  assert.equal(layer.getStats().count, 1);
+  viewer.camera.positionCartographic.height = 2700;
+  assert.equal(await layer.update(viewer), true);
+  assert.equal(calls.viewport, 1, 'zoom-out hides ambient parcels without querying');
+  await layer.focusParcel('302959');
+  assert.equal(await layer.update(viewer), true,
+    'an explicitly selected parcel keeps its intelligence and highlight');
+  assert.equal(calls.viewport, 1);
   layer.destroy();
 });
