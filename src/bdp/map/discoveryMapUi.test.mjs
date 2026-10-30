@@ -112,7 +112,7 @@ function fixture({ preview = null, named = null } = {}) {
     radiusLineCoordinates, radiusEnvelope, countyBoundaryLines,
     summarizeDiscoveryCandidates,
     HIGH_ALTITUDE_DISCOVERY_COUNTIES: ['Travis'],
-    fetchHighAltitudeDiscovery: async () => preview || { state: 'unsupported', results: [] },
+    fetchHighAltitudeDiscovery: async (options) => (typeof preview === 'function' ? preview(options) : preview) || { state: 'unsupported', results: [] },
     fetchGeographicLabels: async () => named || { cityLabels: [], highwayLabels: [], errors: [] },
   });
   return {
@@ -247,6 +247,44 @@ test('countywide source preview produces persistent clickable list before neighb
     const labelButton = find(env.body, (node) => node.className === 'ldos-label-toggle')[0];
     labelButton.listeners.click();
     assert.ok(geographicLabels.every((item) => item.show === false));
+  } finally {
+    map.destroy();
+  }
+});
+
+test('load-more respects bounded source pages and deduplicates candidates without losing cards', async () => {
+  const sourceRow = (id) => ({
+    county: 'Travis', parcelId: id, label: 'Example GIS address',
+    acresReported: 25, point: { lat: 30.24, lon: -97.75 },
+    evidence: ['Acreage (source reported)'],
+  });
+  const seenOffsets = [];
+  const env = fixture({
+    preview: async ({ offset = 0 }) => {
+      seenOffsets.push(offset);
+      return offset === 0
+        ? { state: 'sample', results: [sourceRow('001')], complete: false,
+            sampled: 80, moreAvailable: true, message: 'First bounded source sample.' }
+        : { state: 'sample', results: [sourceRow('001'), sourceRow('002')], complete: false,
+            sampled: 80, moreAvailable: false, message: 'Second bounded source page.' };
+    },
+  });
+  const criteria = normalizeLandCriteria({
+    county: 'Travis', acresMin: 10, acresMax: 60,
+  });
+  const map = env.create({ viewer: env.viewer, initialCriteria: criteria });
+  try {
+    await new Promise((resolve) => setImmediate(resolve));
+    const more = find(env.body, (node) => node.className === 'ldos-discovery-more')[0];
+    assert.equal(more.hidden, false);
+    await more.listeners.click();
+    const list = find(env.body, (node) => node.id === 'ldos-discovery-results')[0];
+    const cards = find(list, (node) => node.className === 'ldos-discovery-result');
+    assert.equal(cards.length, 2);
+    assert.deepEqual(seenOffsets, [0, 80]);
+    assert.equal(more.hidden, true);
+    const count = find(env.body, (node) => node.id === 'ldos-discovery-match-count')[0];
+    assert.match(count.textContent, /2 source-sample matches/);
   } finally {
     map.destroy();
   }
