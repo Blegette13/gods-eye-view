@@ -13,17 +13,17 @@ test('intended business use cannot be rated as legally allowed from county GIS d
   });
   assert.equal(result.label, 'Possible profile match');
   assert.equal(result.matched, 2);
-  assert.equal(result.unknown, 2);
+  assert.equal(result.unknown, 3);
   assert.equal(result.fitScore, null);
   assert.equal(result.checked, 2);
-  assert.equal(result.configured, 4);
+  assert.equal(result.configured, 5);
 });
 
 test('zero source acres cannot be treated as a verified rejection', () => {
   const profile = normalizeLandCriteria({ county: 'Travis', acresMin: 1 });
   const result = ratePreferenceEvidence(profile, { acresReported: 0 });
   assert.equal(result.label, 'Not rated');
-  assert.equal(result.unknown, 1);
+  assert.equal(result.unknown, 2);
   assert.equal(result.outside, 0);
 });
 
@@ -40,4 +40,19 @@ test('source-reported mismatch remains provisional and supported by counts', () 
 
 test('no profile means no rating', () => {
   assert.equal(ratePreferenceEvidence(null, {}).label, 'Not rated');
+});
+
+test('county-only goals reject parcels from other counties even with matching source acreage', () => {
+  const criteria = normalizeLandCriteria({ county: 'Bexar', acresMin: 1 });
+  const result = ratePreferenceEvidence(criteria, { county: 'Travis', acresReported: 15 });
+  assert.equal(result.label, 'Source-reported mismatch');
+  assert.equal(result.outside, 1);
+  assert.equal(result.fitScore, null);
+});
+
+test('a radius preference cannot be marked satisfied using county label alone', () => {
+  const criteria = normalizeLandCriteria({ county: 'Bexar', radiusMiles: 25, acresMin: 1 });
+  const result = ratePreferenceEvidence(criteria, { county: 'Bexar', acresReported: 15 });
+  assert.equal(result.unknown, 1);
+  assert.equal(result.matched, 1);
 });
