@@ -118,6 +118,54 @@ export function createStandaloneData({
   );
   defer(removeLandWorkspaceGuard);
 
+  // Explicit guided-discovery activation uses the same DataLayerManager
+  // visibility guards and county adapters as the native Map Layers panel.
+  // This does not auto-enable unrelated data feeds or bypass failed providers.
+  const guidedCountyIds = Object.freeze({
+    Bexar: 'bdp-bexar-parcels',
+    Travis: 'bdp-travis-parcels',
+    Williamson: 'bdp-williamson-parcels',
+    Hays: 'bdp-hays-parcels',
+    Dallas: 'bdp-dallas-parcels',
+    Harris: 'bdp-harris-parcels',
+  });
+  let guidedActivation = null;
+  const enableGuidedCounty = async (event) => {
+    const county = event?.detail?.county;
+    if (!Object.hasOwn(guidedCountyIds, county)) return;
+    guidedActivation?.abort();
+    guidedActivation = new AbortController();
+    const { signal } = guidedActivation;
+    try {
+      const id = guidedCountyIds[county];
+      const enabled = await dataManager.setEnabled(id, true, { origin: 'user', signal });
+      if (signal.aborted) return;
+      const layer = dataManager.layers.get(id);
+      const stats = layer?.getStats?.() || {};
+      window.dispatchEvent(new CustomEvent('land:discovery-layer-result', {
+        detail: {
+          county,
+          ok: enabled !== false && dataManager.isEnabled(id),
+          status: stats.status || 'unknown',
+          message: stats.lastError || stats.loadingLabel || 'Enable request was not successful',
+        },
+      }));
+    } catch (error) {
+      if (signal.aborted || error?.name === 'AbortError') return;
+      window.dispatchEvent(new CustomEvent('land:discovery-layer-result', {
+        detail: {
+          county, ok: false,
+          message: error instanceof Error ? error.message : 'County parcel source unavailable',
+        },
+      }));
+    }
+  };
+  window.addEventListener('land:discovery-enable-county', enableGuidedCounty);
+  defer(() => {
+    guidedActivation?.abort();
+    window.removeEventListener('land:discovery-enable-county', enableGuidedCounty);
+  });
+
   let parcelSearchController = null;
   const handleBdpLandSearch = async (event) => {
     const command = event?.detail;
