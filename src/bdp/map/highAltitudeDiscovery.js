@@ -12,9 +12,10 @@ import { suggestViewportParcels } from './candidateHints.js';
 export const HIGH_ALTITUDE_DISCOVERY_COUNTIES = Object.freeze(['Travis']);
 export const COUNTY_SAMPLE_LIMIT = 80;
 
-export function buildTravisDiscoveryUrl(criteria, center, limit = COUNTY_SAMPLE_LIMIT) {
+export function buildTravisDiscoveryUrl(criteria, center, limit = COUNTY_SAMPLE_LIMIT, offset = 0) {
   if (criteria?.county !== 'Travis') throw new Error('Travis high-altitude pilot only');
   if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error('Invalid query sample limit');
+  if (!Number.isInteger(offset) || offset < 0 || offset > 320) throw new Error('Invalid bounded discovery offset');
   const min = criteria.acresMin;
   const max = criteria.acresMax;
   const pred = ['PROP_ID IS NOT NULL'];
@@ -32,6 +33,7 @@ export function buildTravisDiscoveryUrl(criteria, center, limit = COUNTY_SAMPLE_
     where: pred.join(' AND '),
     orderByFields: 'OBJECTID',
     resultRecordCount: String(limit + 1),
+    resultOffset: String(offset),
   });
   if (criteria.radiusMiles > 0) {
     const box = radiusEnvelope(center, criteria.radiusMiles);
@@ -45,13 +47,13 @@ export function buildTravisDiscoveryUrl(criteria, center, limit = COUNTY_SAMPLE_
 }
 
 export async function fetchHighAltitudeDiscovery({
-  criteria, center, signal, limit = COUNTY_SAMPLE_LIMIT, fetcher = fetch,
+  criteria, center, signal, limit = COUNTY_SAMPLE_LIMIT, offset = 0, fetcher = fetch,
 } = {}) {
   if (!HIGH_ALTITUDE_DISCOVERY_COUNTIES.includes(criteria?.county)) {
     return Object.freeze({ state: 'unsupported', county: criteria?.county || null, results: [],
       scanned: 0, complete: false, message: 'High-altitude source discovery is currently enabled for Travis County only; other pilots retain manual map-view parcel exploration.' });
   }
-  const url = buildTravisDiscoveryUrl(criteria, center, limit);
+  const url = buildTravisDiscoveryUrl(criteria, center, limit, offset);
   const response = await fetcher(url, { signal });
   if (!response.ok) throw new Error(`County discovery service returned HTTP ${response.status}`);
   const data = await response.json();
@@ -97,6 +99,7 @@ export async function fetchHighAltitudeDiscovery({
   return Object.freeze({
     state: 'sample', county: 'Travis', complete: false,
     returned: data.features.length, sampled: Math.min(data.features.length, limit),
+    offset, moreAvailable: possiblyMore && offset < 320,
     unidentifiable, possiblyMore, results: Object.freeze(results), message,
   });
 }
