@@ -1,4 +1,5 @@
 import { normalizeParcel, validateParcel } from '../parcels/parcelSchema.js';
+import { collectTravisViewportTiles } from './travisViewportTiles.js';
 
 export const TRAVIS_COUNTY_FIPS = '48453';
 export const TRAVIS_PARCEL_LAYER_URL = 'https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD/MapServer/0';
@@ -153,7 +154,40 @@ export const travisCadAdapter = Object.freeze({
   },
   async fetchParcelsInBounds(bounds, options = {}) {
     const limit = limitWithin(options.limit, 999, 500);
-    return fetchFeatures(buildTravisBoundsUrl({ ...bounds, limit }), limit, options, { allowUnidentifiedViewport: true });
+    const initial = await fetchFeatures(buildTravisBoundsUrl({ ...bounds, limit }),
+      limit, options, { allowUnidentifiedViewport: true });
+    if (initial.viewportCoverage?.overLimit !== true) return initial;
+
+    // A broad county query can exceed ArcGIS limits even at 1.3 km. Retry
+    // only this bounded viewport as 4 GIS envelopes, subdividing overloaded
+    // quarters once more. Never render partial tiles as a complete parcel
+    // inventory. Exact parcel and owner searches remain strictly unchanged.
+    const tiled = await collectTravisViewportTiles({
+      bounds, limit, signal: options.signal,
+      fetchTile: (tile, { signal, limit: tileLimit }) =>
+        fetchFeatures(buildTravisBoundsUrl({ ...tile, limit: tileLimit }),
+          tileLimit, { signal }, { allowUnidentifiedViewport: true }),
+    });
+    if (!tiled.complete) {
+      Object.defineProperty(initial, 'viewportCoverage', {
+        value: Object.freeze({ ...initial.viewportCoverage,
+          tileQueries: tiled.queryCount,
+          tileAttempted: true,
+          tileFailureReason: tiled.reason,
+        }), enumerable: false, configurable: true,
+      });
+      return initial;
+    }
+    const results = tiled.parcels;
+    Object.defineProperty(results, 'viewportCoverage', {
+      value: Object.freeze({
+        receivedCount: tiled.receivedCount,
+        omittedUnidentified: tiled.omittedUnidentified,
+        tiled: true,
+        tileQueries: tiled.queryCount,
+      }), enumerable: false,
+    });
+    return results;
   },
 });
 
