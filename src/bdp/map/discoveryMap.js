@@ -7,7 +7,7 @@ import {
 import { summarizeDiscoveryCandidates } from './discoveryFeedback.js';
 import { fetchHighAltitudeDiscovery, HIGH_ALTITUDE_DISCOVERY_COUNTIES } from './highAltitudeDiscovery.js';
 import { fetchGeographicLabels } from './geographicLabels.js';
-import { frameFreeBrowse, mountCameraAltimeter } from './cameraAltitude.js';
+import { frameFreeBrowse, freeBrowseLookPoint, mountCameraAltimeter } from './cameraAltitude.js';
 
 const icon = (className, text) => {
   const element = document.createElement('span');
@@ -460,10 +460,10 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       // statewide overview, while preserving user's map controls and layers.
       frameFreeBrowse(viewer);
       status('Free browsing · county outlines shown for local context only.');
-      const cameraPoint = viewer.camera?.positionCartographic;
-      if (cameraPoint && Cesium.Math?.toDegrees) {
-        const lat = Cesium.Math.toDegrees(cameraPoint.latitude);
-        const lon = Cesium.Math.toDegrees(cameraPoint.longitude);
+      if (viewer.camera) {
+        const center = freeBrowseLookPoint(viewer);
+        const lat = center.latitude;
+        const lon = center.longitude;
         if (Number.isFinite(lat) && Number.isFinite(lon)
             && lat >= 25 && lat <= 37 && lon >= -107 && lon <= -93) {
           try {
