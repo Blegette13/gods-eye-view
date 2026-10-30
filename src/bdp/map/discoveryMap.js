@@ -7,7 +7,11 @@ import {
 import { summarizeDiscoveryCandidates } from './discoveryFeedback.js';
 import { fetchHighAltitudeDiscovery, HIGH_ALTITUDE_DISCOVERY_COUNTIES } from './highAltitudeDiscovery.js';
 import { fetchGeographicLabels } from './geographicLabels.js';
-import { frameFreeBrowse, freeBrowseLookPoint, mountCameraAltimeter } from './cameraAltitude.js';
+import { frameFreeBrowse, freeBrowseLookPoint, mountCameraAltimeter, cameraHeightMeters } from './cameraAltitude.js';
+import {
+  freeBrowseCountyUrl, countyFromFreeBrowseResponse, shouldDiscoverFreeParcels,
+  freeBrowseVisibleParcels, MAX_FREE_BROWSE_ROWS,
+} from './freeBrowseParcels.js';
 
 const icon = (className, text) => {
   const element = document.createElement('span');
@@ -44,6 +48,13 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
   let navLabels = [];
   let navLabelsEnabled = true;
   const MAX_RESULT_CARDS = 40;
+  let freeRows = null;
+  let freeCoverage = null;
+  let freeCounty = null;
+  let freeRequest = null;
+  let freeSequence = 0;
+  let freeMapLayersOpen = false;
+  let freeSnapshotPinned = false;
   const click = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
   click.setInputAction((movement) => {
     const hit = viewer.scene.pick(movement.position);
@@ -117,6 +128,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
   layersButton.addEventListener('click', () => {
     const open = document.body.dataset.landLayers !== 'open';
     document.body.dataset.landLayers = open ? 'open' : 'closed';
+    if (!current) freeMapLayersOpen = open;
     layersButton.setAttribute('aria-expanded', String(open));
     layersButton.textContent = open ? 'Hide map layers' : 'Map layers';
   });
@@ -234,7 +246,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       results.append(empty);
       return;
     }
-    for (const candidate of records.slice(0, MAX_RESULT_CARDS)) {
+    for (const candidate of records.slice(0, current ? MAX_RESULT_CARDS : MAX_FREE_BROWSE_ROWS)) {
       const row = document.createElement('li');
       const button = document.createElement('button');
       button.type = 'button';
@@ -246,7 +258,9 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       meta.textContent = candidate.county + ' · Parcel ' + candidate.parcelId +
         (typeof acres === 'number' && acres > 0 ? ' · ' + acres + ' reported ac' : ' · acreage UNKNOWN');
       const note = document.createElement('small');
-      note.textContent = 'Preliminary source match · View intelligence →';
+      note.textContent = current
+        ? 'Preliminary source match · View intelligence →'
+        : 'Mapped source parcel · View intelligence →';
       button.append(name, meta, note);
       button.addEventListener('click', () => openProperty(candidate));
       row.append(button);
@@ -264,9 +278,39 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     legend.hidden = !active;
     moreButton.hidden = !active || sourcePreview?.state !== 'sample' || !sourcePreview.moreAvailable;
     if (!active) {
-      document.body.dataset.landLayers = 'open';
+      // Free browsing never pretends that every parcel is for sale. The left
+      // list appears only after a real GIS snapshot has been rendered.
+      const hasSnapshot = Boolean(freeRows && freeCounty
+        && shouldDiscoverFreeParcels(cameraHeightMeters(viewer)));
+      document.body.dataset.landBrowseResults = hasSnapshot ? 'open' : 'closed';
+      finder.hidden = !hasSnapshot;
+      legend.hidden = true;
+      document.body.dataset.landLayers = hasSnapshot && !freeMapLayersOpen ? 'closed' : 'open';
+      layersButton.textContent = freeMapLayersOpen ? 'Hide map layers' : 'Map layers';
+      layersButton.setAttribute('aria-expanded', String(freeMapLayersOpen));
+      if (!hasSnapshot) return;
+      finderKicker.textContent = 'YOUR LAND SEARCH';
+      finderTitle.textContent = 'Nearby · ' + freeCounty + ' County';
+      matchCount.textContent = freeRows.length + ' mapped ' +
+        (freeRows.length === 1 ? 'parcel' : 'parcels');
+      matchDetails.textContent = (freeCoverage?.message || 'Source coverage unverified') +
+        (freeSnapshotPinned ? ' · Previous neighborhood snapshot; pan map to refresh.' : '');
+      finderHelp.textContent = 'Map-view GIS records only. Sale availability, legal use, ownership and financial suitability are unverified.';
+      enableParcels.hidden = true;
+      labelButton.hidden = true;
+      labelsStatus.hidden = true;
+      moreButton.hidden = true;
+      resultsHeading.textContent = 'Parcels in mapped neighborhood';
+      renderResultList(freeRows);
       return;
     }
+    document.body.dataset.landBrowseResults = 'closed';
+    finderKicker.textContent = 'YOUR LAND SEARCH';
+    finderHelp.textContent = 'Matches are preliminary GIS acreage/address evidence only. Budget, availability and permitted use remain UNKNOWN.';
+    enableParcels.hidden = false;
+    labelButton.hidden = false;
+    labelsStatus.hidden = false;
+    resultsHeading.textContent = 'Property results';
     const profile = current;
     finderTitle.textContent = profile.county + ' County' +
       (profile.radiusMiles ? ' · ' + profile.radiusMiles + ' mi' : '');
@@ -434,6 +478,14 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
 
   async function setCriteria(criteria) {
     const token = ++sequence;
+    freeRequest?.abort();
+    freeRequest = null;
+    freeSequence++;
+    freeRows = null;
+    freeCoverage = null;
+    freeCounty = null;
+    freeSnapshotPinned = false;
+    freeMapLayersOpen = false;
     sourceScan?.abort();
     sourceScan = null;
     labelsScan?.abort();
@@ -459,6 +511,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       // district at a readable medium altitude, never a rooftop close-up or
       // statewide overview, while preserving user's map controls and layers.
       frameFreeBrowse(viewer);
+      void activateFreeParcelDiscovery();
       status('Free browsing · county outlines shown for local context only.');
       if (viewer.camera) {
         const center = freeBrowseLookPoint(viewer);
@@ -618,15 +671,88 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     }
   }
 
+  async function activateFreeParcelDiscovery() {
+    if (current || destroyed) return;
+    const height = cameraHeightMeters(viewer);
+    if (!shouldDiscoverFreeParcels(height)) {
+      // At a higher vantage the layer manager will hide free-browse parcel
+      // geometry on its next managed refresh. UI never claims old results
+      // remain the currently rendered inventory.
+      freeRows = null;
+      freeCoverage = null;
+      freeSnapshotPinned = false;
+      updateFinder();
+      return;
+    }
+    const point = freeBrowseLookPoint(viewer);
+    const url = freeBrowseCountyUrl({ lat: point.latitude, lon: point.longitude });
+    if (!url) return;
+    freeRequest?.abort();
+    freeRequest = new AbortController();
+    const signal = freeRequest.signal;
+    const token = ++freeSequence;
+    try {
+      const response = await fetch(url, { signal });
+      if (!response.ok) throw new Error('Census lookup HTTP ' + response.status);
+      const county = countyFromFreeBrowseResponse(await response.json());
+      if (signal.aborted || destroyed || current || token !== freeSequence) return;
+      if (!county) {
+        freeRows = null;
+        freeCounty = null;
+        freeCoverage = null;
+        updateFinder();
+        return;
+      }
+      if (county !== freeCounty) {
+        freeRows = null;
+        freeCoverage = null;
+        freeSnapshotPinned = false;
+        freeCounty = county;
+        updateFinder();
+      }
+      // Calls exactly the existing guarded DataLayerManager. The manager
+      // refreshes the same enabled layer on each camera move, and the county
+      // adapter enforces viewport bounds, provider caps and 1.3km visibility.
+      window.dispatchEvent(new CustomEvent('land:discovery-enable-county', {
+        detail: { county, mode: 'free-browse' },
+      }));
+    } catch (error) {
+      if (signal.aborted || destroyed || current || token !== freeSequence) return;
+      console.warn('Free-browse Census county identification unavailable:', error);
+    }
+  }
+  const onFreeCameraStop = () => { void activateFreeParcelDiscovery(); };
+  const unlistenFreeCamera = viewer.camera?.moveEnd?.addEventListener?.(onFreeCameraStop);
+
   const onParcelViewport = (event) => {
-    const { county, complete, parcels } = event?.detail || {};
+    const { county, complete, parcels, reason } = event?.detail || {};
     if (typeof county !== 'string') return;
     viewportByCounty.set(county, {
       county,
       complete: complete === true,
-      reason: event?.detail?.reason || 'not-complete',
+      reason: reason || 'not-complete',
       parcels: complete && Array.isArray(parcels) ? parcels : [],
     });
+    if (!current && !destroyed && county === freeCounty) {
+      if (reason === 'focused-search') {
+        // Keep the list while the selected parcel intelligence card opens.
+        // Do not mislabel that list as the newly rendered entire viewport.
+        freeSnapshotPinned = true;
+        updateFinder();
+      } else if (reason === 'complete' || reason === 'partial') {
+        freeCoverage = freeBrowseVisibleParcels({county, parcels, complete, reason});
+        freeRows = freeCoverage.rows;
+        freeSnapshotPinned = false;
+        updateFinder();
+      } else if (reason === 'zoom-in' || reason === 'over-limit'
+          || reason === 'error') {
+        freeRows = null;
+        freeCoverage = null;
+        freeSnapshotPinned = false;
+        updateFinder();
+      }
+      return;
+    }
     if (!current || destroyed) return;
     renderCandidateMarkers();
     if (boundaryAvailable) {
@@ -650,6 +776,9 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       sequence++;
       sourceScan?.abort();
       labelsScan?.abort();
+      freeRequest?.abort();
+      freeSequence++;
+      if (typeof unlistenFreeCamera === 'function') unlistenFreeCamera();
       clearNavigationLabels();
       altimeter.destroy();
       window.removeEventListener('land:parcel-viewport', onParcelViewport);
@@ -660,6 +789,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       sidebar.remove();
       delete document.body.dataset.landProfile;
       delete document.body.dataset.landLayers;
+      delete document.body.dataset.landBrowseResults;
     },
   });
 }
