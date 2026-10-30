@@ -200,7 +200,12 @@ test('browse-without-profile retains old map layer UI and does not claim candida
     assert.equal(env.body.dataset.landLayers, 'open');
     assert.equal(env.viewer.freeBrowseFramed, true, 'free browsing triggers district-scale framing');
     const finder = find(env.body, (node) => node.id === 'land-discovery-finder')[0];
+    const legend = find(env.body, (node) => node.id === 'land-discovery-map-legend')[0];
+    const sidebar = find(env.body, (node) => node.id === 'land-discovery-sidebar')[0];
     assert.equal(finder.hidden, true);
+    assert.equal(legend.hidden, true, 'free browse must never overlay Map Layers with Search geography');
+    assert.deepEqual(sidebar.children, [finder, legend],
+      'guided mode stacks Search geography below results, not over the globe');
     assert.equal(env.markers.length, 0);
   } finally {
     map.destroy();
