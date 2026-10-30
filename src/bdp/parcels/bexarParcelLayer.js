@@ -3,6 +3,7 @@ import bexarCadAdapter from '../cad/bexarAdapter.js';
 import { createBdpPropertyCard } from '../ui/propertyCard.js';
 import { parcelGeoJsonWithBoundaries } from './parcelGeojson.js';
 import { styleSelectedParcelEntities, recommendedParcelFocusRange } from './parcelSelectionStyle.js';
+import { shouldDiscoverFreeParcels } from '../map/freeBrowseParcels.js';
 
 const MAX_VIEW_SPAN_DEGREES = 0.12;
 const QUERY_INTERVAL_MS = 30_000;
@@ -99,7 +100,7 @@ export function createCountyParcelLayer({
         complete,
         reason,
         // Only successful bounded source snapshots contribute actual parcels.
-        parcels: complete ? parcels : [],
+        parcels: complete || reason === 'partial' ? parcels : [],
       },
     }));
   }
@@ -300,6 +301,20 @@ export function createCountyParcelLayer({
       // unavailable. Never synthesize data or mark that viewport as complete.
       if (!enabled || loading || focusedLookupToken !== null) return true;
       viewer = targetViewer || viewer;
+      // Auto-loaded Free Explorer GIS polygons are rendered only at <=1.3 km
+      // WGS84 camera height; source query area/caps still govern completeness.
+      const freeMode = typeof document !== 'undefined'
+        && document.body?.dataset?.landProfile === 'browse';
+      const height = viewer?.camera?.positionCartographic?.height;
+      if (freeMode && !shouldDiscoverFreeParcels(height)) {
+        if (dataSource) dataSource.show = false;
+        lastBoundsKey = '';
+        status = 'zoom-in';
+        notifyViewportCandidates([], false, 'zoom-in');
+        viewer?.scene?.requestRender?.();
+        return true;
+      }
+      if (dataSource) dataSource.show = true;
       const rectangle = viewer?.camera?.computeViewRectangle(viewer.scene.globe.ellipsoid);
       const bounds = rectangleToBounds(rectangle);
 
