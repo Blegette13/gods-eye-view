@@ -108,18 +108,22 @@ test('user may skip or submit preferences before map UI is initialized', async (
     assert.equal(env.body.dataset.landEntry, 'pending');
     assert.ok(env.doc.getElementById('land-discovery-gate'));
     const fields = find(env.body, (node) => node.name);
+    fields.find((node) => node.name === 'county').value = 'Bexar';
+    fields.find((node) => node.name === 'radiusMiles').value = '25';
     fields.find((node) => node.name === 'purpose').value = 'Residential development';
     fields.find((node) => node.name === 'zip').value = '78205';
     fields.find((node) => node.name === 'budgetMax').value = '500000';
     const form = find(env.body, (node) => node.tagName === 'form')[0];
     form.listeners.submit[0]({ preventDefault() {} });
     const result = await pending;
+    assert.equal(result.county, 'Bexar');
+    assert.equal(result.radiusMiles, 25);
     assert.equal(result.zip, '78205');
     assert.equal(result.budgetMax, 500000);
     assert.equal(env.body.dataset.landEntry, 'complete');
     assert.equal(env.doc.getElementById('land-discovery-gate'), null);
     const skipped = showLandDiscoveryGate();
-    find(env.body, (node) => node.textContent === 'Explore without criteria'
+    find(env.body, (node) => node.textContent === 'Browse map without a search profile'
       && node.tagName === 'button')[0].listeners.click[0]();
     assert.equal(await skipped, null);
   } finally {
@@ -132,7 +136,7 @@ test('session shortlist creates separate stage board, moves parcel, and returns 
   let instance;
   try {
     instance = mountLandWorkspaces({ initialCriteria: {
-      purpose: 'Residential development', zip: '78205',
+      county: 'Bexar', radiusMiles: 25, purpose: 'Residential development', zip: '78205',
       budgetMax: 500000, acresMin: 2, acresMax: 10,
     } });
     assert.equal(env.body.dataset.landView, 'map');
