@@ -51,6 +51,7 @@ function fixture({ preview = null, named = null } = {}) {
   let flights = 0;
   let markerClicked = null;
   const viewer = {
+    camera: { positionCartographic: { height: 14000 } },
     scene: {
       canvas: {}, requestRender() {},
       pick: () => ({ id: markers[0] }),
@@ -204,6 +205,8 @@ test('browse-without-profile retains old map layer UI and does not claim candida
     const sidebar = find(env.body, (node) => node.id === 'land-discovery-sidebar')[0];
     assert.equal(finder.hidden, true);
     assert.equal(legend.hidden, true, 'free browse must never overlay Map Layers with Search geography');
+    assert.equal(env.sources.length, 1,
+      'regional Census border still renders after the geography card is hidden');
     assert.deepEqual(sidebar.children, [finder, legend],
       'guided mode stacks Search geography below results, not over the globe');
     assert.equal(env.markers.length, 0);
