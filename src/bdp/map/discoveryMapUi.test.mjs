@@ -112,6 +112,7 @@ function fixture({ preview = null, named = null } = {}) {
     radiusLineCoordinates, radiusEnvelope, countyBoundaryLines,
     summarizeDiscoveryCandidates,
     frameFreeBrowse: (view) => { view.freeBrowseFramed = true; },
+    freeBrowseLookPoint: () => ({ latitude: 30.27, longitude: -97.74 }),
     mountCameraAltimeter: () => ({ destroy() {} }),
     HIGH_ALTITUDE_DISCOVERY_COUNTIES: ['Travis'],
     fetchHighAltitudeDiscovery: async (options) => (typeof preview === 'function' ? preview(options) : preview) || { state: 'unsupported', results: [] },
