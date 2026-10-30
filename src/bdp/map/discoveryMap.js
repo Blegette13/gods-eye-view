@@ -128,6 +128,10 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     viewer.scene.requestRender?.();
   });
   finderActions.append(labelButton);
+  const labelsStatus = document.createElement('p');
+  labelsStatus.className = 'ldos-navigation-label-status';
+  labelsStatus.setAttribute('role', 'status');
+  labelsStatus.textContent = 'Map place and highway names: sourced from Census and TxDOT where available.';
   const resultsHeading = document.createElement('h3');
   resultsHeading.className = 'ldos-discovery-list-heading';
   resultsHeading.textContent = 'Property results';
@@ -183,7 +187,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     }
   });
   finder.append(finderKicker, finderTitle, matchCount, matchDetails, finderHelp,
-    finderActions, resultsHeading, results, moreButton);
+    finderActions, labelsStatus, resultsHeading, results, moreButton);
   document.body.append(finder);
 
   function openProperty(candidate) {
@@ -507,6 +511,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
         boundaryAvailable = true;
         neighborsVisible = neighbors.length > 0;
         labelsScan = new AbortController();
+        labelsStatus.textContent = 'Loading Census city and TxDOT highway labels…';
         const navController = labelsScan;
         void fetchGeographicLabels({
           countyFeature: county, point, radiusMiles: current.radiusMiles,
@@ -514,11 +519,15 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
         }).then((data) => {
           if (navController.signal.aborted || token !== sequence || destroyed) return;
           addNavigationLabels(data);
+          labelsStatus.textContent = (data.cityLabels.length + data.highwayLabels.length) +
+            ' sourced map names loaded · Census / TxDOT' +
+            (data.errors.length ? ' · some sources unavailable' : '');
           if (data.errors.length) {
             console.warn('Some sourced navigation labels are unavailable:', data.errors.join(', '));
           }
         }).catch((error) => {
           if (navController.signal.aborted || token !== sequence || destroyed) return;
+          labelsStatus.textContent = 'City/highway labels unavailable from source services; map remains navigable.';
           console.warn('Census/TxDOT map labels unavailable:', error);
         });
         // County discovery uses acreage predicates at the source itself. This
