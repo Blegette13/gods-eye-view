@@ -91,7 +91,19 @@ export function createCountyParcelLayer({
     if (signal?.aborted || !enabled || !viewer) throw new DOMException('Parcel request cancelled', 'AbortError');
   }
 
-  async function replaceSnapshot(parcels, { signal } = {}) {
+  function notifyViewportCandidates(parcels, complete = false) {
+    if (typeof window === 'undefined' || typeof CustomEvent === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('land:parcel-viewport', {
+      detail: {
+        county: adapter.county,
+        complete,
+        // Only successful bounded source snapshots contribute actual parcels.
+        parcels: complete ? parcels : [],
+      },
+    }));
+  }
+
+  async function replaceSnapshot(parcels, { signal, sourceKind = 'viewport' } = {}) {
     assertActive(signal);
     const next = await Cesium.GeoJsonDataSource.load(parcelGeoJsonWithBoundaries(parcels), {
       clampToGround: true,
@@ -121,11 +133,12 @@ export function createCountyParcelLayer({
     for (const parcel of parcels) parcelById.set(parcel.id, parcel);
     count = parcels.length;
     refreshParcelSelection();
+    if (sourceKind === 'viewport') notifyViewportCandidates(parcels, true);
   }
 
   async function focusSnapshot(parcels, { signal, selectedParcel = null } = {}) {
     selectedParcelId = selectedParcel?.id || null;
-    await replaceSnapshot(parcels, { signal });
+    await replaceSnapshot(parcels, { signal, sourceKind: 'focused' });
     lastBoundsKey = '';
     lastUpdate = Date.now();
     viewportCoverageWarning = '';
@@ -256,6 +269,7 @@ export function createCountyParcelLayer({
 
     disable() {
       enabled = false;
+      notifyViewportCandidates([], false);
       selectedParcelId = null;
       refreshParcelSelection();
       if (dataSource) dataSource.show = false;
@@ -313,6 +327,7 @@ export function createCountyParcelLayer({
           // that they must zoom closer or use a bounded parcel-ID search.
           // Existing explicitly selected source parcels are not invented,
           // changed or relabeled as a complete neighborhood snapshot.
+          notifyViewportCandidates([], false);
           viewportCoverageWarning = 'INCOMPLETE COVERAGE · Travis GIS parcel response exceeds the map request limit. Zoom closer or search by county parcel ID; boundaries for this view are not loaded.';
           lastUpdate = Date.now();
           lastError = null;
@@ -338,6 +353,7 @@ export function createCountyParcelLayer({
         return true;
       } catch (error) {
         if (error?.name === 'AbortError') return false;
+        notifyViewportCandidates([], false);
         lastError = error instanceof Error ? error.message : String(error);
         status = dataSource ? 'degraded' : 'unavailable';
         console.warn(`[BDP:${adapter.county}Parcels] refresh failed:`, error);
