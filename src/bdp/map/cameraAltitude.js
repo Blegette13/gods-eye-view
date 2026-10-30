@@ -21,10 +21,9 @@ function validTexasView(latitude, longitude) {
     && latitude >= 25 && latitude <= 37 && longitude >= -107 && longitude <= -93;
 }
 
-/** Free browsing is a district-scale view, independent of any search profile. */
-export function frameFreeBrowse(viewer, { duration = 1.3 } = {}) {
+export function freeBrowseLookPoint(viewer) {
   const camera = viewer?.camera;
-  if (!camera?.flyTo || !Cesium?.Cartesian3?.fromDegrees) return false;
+  if (!camera) return DEFAULT_TEXAS_PILOT_CENTER;
   // The camera can be tens of miles south of what the customer is looking
   // at when tilted. Prefer the globe point at screen center; only use the
   // camera's geographic position when a center pick is unavailable.
@@ -41,8 +40,17 @@ export function frameFreeBrowse(viewer, { duration = 1.3 } = {}) {
   const p = look || camera.positionCartographic;
   const lat = Cesium.Math.toDegrees(p?.latitude ?? Number.NaN);
   const lon = Cesium.Math.toDegrees(p?.longitude ?? Number.NaN);
-  const center = validTexasView(lat, lon)
-    ? { latitude: lat, longitude: lon } : DEFAULT_TEXAS_PILOT_CENTER;
+  return validTexasView(lat, lon)
+    ? Object.freeze({ latitude: lat, longitude: lon }) : DEFAULT_TEXAS_PILOT_CENTER;
+}
+
+/** Free browsing is a district-scale view, independent of any search profile. */
+export function frameFreeBrowse(viewer, { duration = 1.3 } = {}) {
+  const camera = viewer?.camera;
+  if (!camera?.flyTo || !Cesium?.Cartesian3?.fromDegrees) return false;
+  const center = freeBrowseLookPoint(viewer);
+  const lat = center.latitude;
+  const lon = center.longitude;
   const height = cameraHeightMeters(viewer);
   if (height !== null && height >= FREE_BROWSE_MIN_METERS
       && height <= FREE_BROWSE_MAX_METERS && validTexasView(lat, lon)) return false;
