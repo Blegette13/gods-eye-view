@@ -588,3 +588,72 @@ body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty)
     #top-center-actions { top: 196px; }
   #land-discovery-finder { top: 246px; }
 }
+
+/* Scroll the shortlist independently. The right property-intelligence card
+ * is unaffected so buyers can compare records while keeping the list open. */
+#land-discovery-finder {
+  max-height: calc(100dvh - 218px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+#land-discovery-finder .ldos-discovery-list-heading {
+  color: #254963;
+  font-size: 12px;
+  font-weight: 750;
+  margin: 16px 0 9px;
+  padding-top: 12px;
+  border-top: 1px solid #e0eaf1;
+}
+#ldos-discovery-results {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 7px;
+}
+#ldos-discovery-results .ldos-discovery-result-empty {
+  font: 500 11px/1.6 Inter, system-ui, sans-serif;
+  color: #6a8190;
+  padding: 12px 0;
+}
+#land-discovery-finder .ldos-discovery-result {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 11px 10px;
+  border: 1px solid #d6e4eb;
+  border-radius: 9px;
+  background: #f8fbfd;
+  text-align: left;
+  cursor: pointer;
+  color: #294760;
+  font-family: Inter, system-ui, sans-serif;
+}
+#land-discovery-finder .ldos-discovery-result:hover {
+  border-color: #88bbd8;
+  background: #eaf5fa;
+}
+#land-discovery-finder .ldos-discovery-result:focus-visible {
+  outline: 2px solid #2975a0;
+  outline-offset: 2px;
+}
+#land-discovery-finder .ldos-discovery-result strong {
+  color: #173e57;
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+#land-discovery-finder .ldos-discovery-result span {
+  color: #537086;
+  font-size: 10px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+#land-discovery-finder .ldos-discovery-result small {
+  color: #24769e;
+  font-size: 10px;
+  line-height: 1.3;
+}
+@media(max-width:720px) {
+  #land-discovery-finder { max-height: min(58dvh, 480px); }
+}
