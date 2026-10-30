@@ -169,14 +169,18 @@ export const travisCadAdapter = Object.freeze({
           tileLimit, { signal }, { allowUnidentifiedViewport: true }),
     });
     if (!tiled.complete) {
-      Object.defineProperty(initial, 'viewportCoverage', {
+      // Original ArcGIS response already marked over-limit and returned no
+      // parcels. Metadata is non-configurable: create a fresh empty bounded
+      // result rather than attempting to redefine an existing descriptor.
+      const incomplete = [];
+      Object.defineProperty(incomplete, 'viewportCoverage', {
         value: Object.freeze({ ...initial.viewportCoverage,
           tileQueries: tiled.queryCount,
           tileAttempted: true,
           tileFailureReason: tiled.reason,
-        }), enumerable: false, configurable: true,
+        }), enumerable: false,
       });
-      return initial;
+      return incomplete;
     }
     const results = tiled.parcels;
     Object.defineProperty(results, 'viewportCoverage', {
