@@ -680,3 +680,166 @@ body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty)
   grid-column: 1 / -1;
 }
 .ldos-workspace-nav [hidden] { display: none !important; }
+
+/* Step 31: align property search with the left product masthead.
+ * Workspace navigation occupies its own row rather than colliding with search. */
+body[data-bdp-product='land-development-os'] #land-search-bar {
+  top: 25px;
+  width: min(440px, calc(100vw - 32px));
+}
+body[data-bdp-product='land-development-os'] .ldos-workspace-nav {
+  top: 115px;
+  right: 20px;
+  left: auto;
+  z-index: 210;
+}
+body[data-bdp-product='land-development-os'] #top-center-actions {
+  top: 181px;
+}
+body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+  .ldos-workspace-nav { top: 160px; }
+body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+  #top-center-actions { top: 216px; }
+
+/* Search Results + geography legend now belong to ONE left rail.
+ * The results scroll, but the second card stays visible below them. */
+body[data-bdp-product='land-development-os'] #land-discovery-sidebar {
+  position: fixed;
+  z-index: 154;
+  top: 169px;
+  bottom: 70px;
+  left: clamp(16px, 3.2vw, 48px);
+  width: min(304px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+body[data-bdp-product='land-development-os'] #land-discovery-sidebar > * {
+  box-sizing: border-box;
+  pointer-events: auto;
+}
+body[data-bdp-product='land-development-os'] #land-discovery-sidebar #land-discovery-finder {
+  position: relative;
+  inset: auto;
+  top: auto;
+  left: auto;
+  right: auto;
+  width: 100%;
+  min-height: 100px;
+  flex: 1 1 auto;
+  max-height: none;
+  overflow-y: auto;
+  margin: 0;
+}
+body[data-bdp-product='land-development-os'] #land-discovery-sidebar #land-discovery-map-legend {
+  position: relative;
+  inset: auto;
+  top: auto;
+  bottom: auto;
+  right: auto;
+  left: auto;
+  width: 100%;
+  min-width: 0;
+  max-height: min(170px, 23dvh);
+  overflow-y: auto;
+  transform: none;
+  flex: 0 0 auto;
+  margin: 0;
+  z-index: 154;
+  padding: 10px 13px;
+}
+body[data-bdp-product='land-development-os'] #land-discovery-sidebar #land-discovery-map-legend[hidden],
+body[data-bdp-product='land-development-os'] #land-discovery-sidebar #land-discovery-finder[hidden] {
+  display: none !important;
+}
+body[data-bdp-product='land-development-os']:has(#bdp-property-card[style*='display: block'])
+  #land-discovery-sidebar #land-discovery-map-legend {
+  visibility: visible;
+  pointer-events: auto;
+}
+body[data-land-view='acquisitions'] #land-discovery-sidebar { display: none !important; }
+
+/* Camera height is sourced from Cesium, NOT terrain clearance or MSL. */
+#land-camera-altimeter {
+  position: fixed;
+  top: 181px;
+  right: 19px;
+  z-index: 175;
+  display: grid;
+  gap: 3px;
+  min-width: 128px;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  color: #24485e;
+  border: 1px solid #d8e4ed;
+  border-radius: 10px;
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 4px 20px rgba(20,40,60,.1);
+  font-family: Inter,system-ui,sans-serif;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+#land-camera-altimeter span {
+  color: #657c90;
+  font-size: 9px;
+  letter-spacing: .045em;
+  font-weight: 700;
+}
+#land-camera-altimeter strong {
+  color: #1b4e72;
+  font-size: 15px;
+}
+body[data-land-view='acquisitions'] #land-camera-altimeter,
+body[data-land-entry='pending'] #land-camera-altimeter { display:none!important; }
+
+@media (max-width: 1100px) {
+  body[data-bdp-product='land-development-os'] #land-search-bar { top: 17px; width: min(380px,calc(100vw - 32px)); }
+  body[data-bdp-product='land-development-os'] .ldos-workspace-nav { top: 117px; right: 12px; }
+  body[data-bdp-product='land-development-os'] #top-center-actions { top: 184px; }
+  body[data-bdp-product='land-development-os'] #land-discovery-sidebar { top: 180px; bottom: 66px; }
+  #land-camera-altimeter { top: 185px; right: 12px; }
+}
+@media (max-width: 720px) {
+  body[data-bdp-product='land-development-os'] #land-search-bar {
+    top: 80px;
+    width: calc(100vw - 24px);
+  }
+  body[data-bdp-product='land-development-os'] .ldos-workspace-nav {
+    top: 148px;
+    left: 8px;
+    right: 8px;
+    justify-content: center;
+  }
+  body[data-bdp-product='land-development-os'] #top-center-actions,
+  body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+    #top-center-actions {
+    top: 210px;
+    right: 12px;
+    left: auto;
+    transform: none;
+  }
+  body[data-bdp-product='land-development-os'] #land-discovery-sidebar {
+    top: 252px;
+    bottom: 60px;
+    left: 10px;
+    width: min(300px, calc(100vw - 20px));
+  }
+  body[data-bdp-product='land-development-os'] #land-discovery-sidebar #land-discovery-map-legend {
+    max-height: 120px;
+  }
+  #land-camera-altimeter {
+    top: auto;
+    bottom: 65px;
+    right: 11px;
+    padding: 7px 9px;
+    min-width: 112px;
+  }
+}
+@media (max-height: 690px) and (min-width: 721px) {
+  body[data-bdp-product='land-development-os'] #land-discovery-sidebar { top: 155px; bottom: 54px; }
+  body[data-bdp-product='land-development-os'] #land-discovery-sidebar #land-discovery-map-legend {
+    max-height: 112px;
+  }
+}
