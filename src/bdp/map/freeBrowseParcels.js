@@ -48,7 +48,8 @@ export function freeBrowseVisibleParcels({ county, parcels = [], complete = fals
   const found = new Map();
   for (const parcel of parcels) {
     const id = parcel?.parcelId;
-    if (parcel?.county !== county || typeof id !== 'string' || !/^\d+$/.test(id)
+    if (parcel?.county !== county || typeof id !== 'string'
+        || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(id)
         || !['Polygon','MultiPolygon'].includes(parcel?.property?.geometry?.type)) continue;
     const address = String(parcel.property?.situsAddress || '').trim();
     const acres = parcel.property?.acres;
