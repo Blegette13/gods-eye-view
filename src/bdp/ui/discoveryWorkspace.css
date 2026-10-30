@@ -383,3 +383,193 @@ body[data-land-entry='pending'] #land-discovery-map-legend { display: none; }
 @media(max-width: 650px) {
   #land-discovery-map-legend { top: 260px; max-width: calc(100vw - 18px); padding: 8px 10px; }
 }
+
+/* Step 29: Map-first discovery workspace. Keep the original geocoding input
+ * and Cesium actions, but stop the old HUD layout dominating the map. */
+body[data-bdp-product='land-development-os'] #land-search-bar {
+  top: 90px;
+  width: min(430px, calc(100vw - 32px));
+  padding: 8px 12px;
+  gap: 5px;
+  border-radius: 11px;
+}
+body[data-bdp-product='land-development-os'] #land-search-bar .land-search-heading {
+  font-size: 10px;
+  line-height: 1.25;
+}
+body[data-bdp-product='land-development-os'] #land-search-bar #location-search,
+body[data-bdp-product='land-development-os'] #land-search-bar #location-search.expanded {
+  padding: 9px 11px;
+  min-height: 37px;
+  font-size: 13px;
+}
+body[data-bdp-product='land-development-os'] #land-search-bar .land-search-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+body[data-bdp-product='land-development-os'] #land-search-bar .land-search-status:not(:empty) {
+  font-size: 11px;
+  line-height: 1.4;
+}
+/* Three retained Cesium map actions are relocated below the compact search. */
+body[data-bdp-product='land-development-os'] #top-center-actions {
+  top: 168px;
+}
+body[data-bdp-product='land-development-os'] #bdp-property-card {
+  top: 222px !important;
+  max-height: calc(100vh - 242px) !important;
+}
+
+/* Move the geographic key to the upper-right below workspace navigation.
+ * Hide it while the independent property information panel occupies that side. */
+body[data-bdp-product='land-development-os'] #land-discovery-map-legend {
+  top: 154px;
+  right: 24px;
+  left: auto;
+  transform: none;
+  width: min(285px, calc(100vw - 32px));
+  max-height: 132px;
+  overflow: auto;
+  z-index: 145;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+body[data-bdp-product='land-development-os'] #land-discovery-map-legend .ldos-map-legend-description {
+  font-size: 10px;
+  margin-block: 4px;
+}
+body[data-bdp-product='land-development-os'] #land-discovery-map-legend a { font-size: 9px; }
+body[data-bdp-product='land-development-os']:has(#bdp-property-card[style*='display: block'])
+  #land-discovery-map-legend {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* The guided-search panel replaces the long layer registry as the primary
+ * left sidebar. Layers are still available from its on-demand button. */
+#land-discovery-finder {
+  position: fixed;
+  top: 196px;
+  left: clamp(16px, 3.2vw, 48px);
+  z-index: 155;
+  width: min(304px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 17px;
+  border: 1px solid #d9e3ec;
+  border-radius: 16px;
+  color: #233e53;
+  background: rgba(255,255,255,.975);
+  box-shadow: 0 8px 27px rgba(20,40,61,.16);
+  font-family: Inter, system-ui, sans-serif;
+}
+#land-discovery-finder[hidden] { display: none !important; }
+#land-discovery-finder .ldos-finder-kicker {
+  display: block;
+  color: #396f97;
+  font-size: 10px;
+  letter-spacing: .09em;
+  font-weight: 750;
+}
+#land-discovery-finder h2 {
+  margin: 7px 0 13px;
+  font-size: 18px;
+  color: #17344a;
+  letter-spacing: -.025em;
+}
+#ldos-discovery-match-count {
+  display: block;
+  margin-bottom: 8px;
+  font: 750 19px/1.3 Inter, system-ui, sans-serif;
+  color: #176b5c;
+}
+#ldos-discovery-match-details {
+  margin: 0;
+  color: #4b6174;
+  font-size: 12px;
+  line-height: 1.55;
+}
+#land-discovery-finder .ldos-finder-help {
+  margin: 13px 0;
+  padding: 10px 0 0;
+  border-top: 1px solid #e0e9ef;
+  color: #60788a;
+  font-size: 10px;
+  line-height: 1.55;
+}
+#land-discovery-finder .ldos-finder-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+#land-discovery-finder .ldos-finder-actions button {
+  min-height: 38px;
+  padding: 8px;
+  border: 1px solid #cedeea;
+  border-radius: 9px;
+  background: #f4f8fb;
+  color: #27618a;
+  cursor: pointer;
+  font: 650 11px/1.3 Inter,system-ui,sans-serif;
+}
+#land-discovery-finder .ldos-finder-actions button:first-child {
+  background: #27658f;
+  color: #fff;
+  border-color: #27658f;
+}
+#land-discovery-finder .ldos-finder-actions button:disabled { opacity: .6; cursor: wait; }
+#land-discovery-finder .ldos-finder-actions button:focus-visible {
+  outline: 2px solid #236a98;
+  outline-offset: 2px;
+}
+body[data-land-profile='active'][data-land-layers='closed'] #data-panel {
+  display: none !important;
+}
+body[data-land-profile='active'][data-land-layers='open'] #left-panel-stack {
+  position: fixed !important;
+  top: 200px !important;
+  left: min(365px, 27vw) !important;
+  right: auto !important;
+  width: min(315px, 28vw) !important;
+  max-height: calc(100dvh - 230px);
+}
+body[data-land-view='acquisitions'] #land-discovery-finder { display: none !important; }
+body[data-land-view='acquisitions'] #land-discovery-map-legend { display: none !important; }
+#land-discovery-map-legend .ldos-map-key-candidate { background: #16866e; }
+
+@media(max-width: 1100px) {
+  body[data-bdp-product='land-development-os'] #land-search-bar { top: 70px; width: min(410px, calc(100vw - 32px)); }
+  body[data-bdp-product='land-development-os'] #top-center-actions { top: 147px; }
+  body[data-bdp-product='land-development-os'] #land-discovery-map-legend { top: 176px; right: 12px; max-height: 105px; }
+  #land-discovery-finder { top: 200px; width: min(280px, calc(100vw - 24px)); }
+}
+@media(max-width: 720px) {
+  body[data-bdp-product='land-development-os'] #land-search-bar {
+    top: 110px;
+    width: calc(100vw - 24px);
+  }
+  body[data-bdp-product='land-development-os'] #top-center-actions {
+    top: 174px;
+    right: 12px;
+    left: auto;
+    transform: none;
+  }
+  body[data-bdp-product='land-development-os'] #land-discovery-map-legend {
+    top: auto;
+    bottom: 56px;
+    right: 12px;
+    max-height: 94px;
+    width: min(250px, calc(100vw - 24px));
+  }
+  #land-discovery-finder {
+    top: 224px;
+    left: 12px;
+    width: min(300px, calc(100vw - 24px));
+    padding: 12px;
+  }
+  body[data-land-profile='active'][data-land-layers='open'] #left-panel-stack {
+    top: 430px !important;
+    left: 12px !important;
+    width: min(300px, calc(100vw - 24px)) !important;
+    max-height: 30vh;
+  }
+}
