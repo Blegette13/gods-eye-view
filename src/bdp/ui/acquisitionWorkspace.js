@@ -104,6 +104,7 @@ export function mountLandWorkspaces({ initialCriteria = null, onCriteriaChange =
   function renderBoard() {
     const entries = acquisitions.all();
     boardButton.textContent = `Acquisition board · ${entries.length}`;
+    browseButton.hidden = criteria === null;
     criteriaBlock.replaceChildren();
     const top = make('div', 'ldos-board-criteria-top');
     top.append(make('h2', '', 'Your search criteria'), button('Update', 'ldos-board-link', async () => {
