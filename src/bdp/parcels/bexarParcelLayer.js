@@ -325,6 +325,7 @@ export function createCountyParcelLayer({
       const bounds = rectangleToBounds(rectangle);
 
       if (!isCloseEnough(bounds)) {
+        if (freeMode && !selectedParcelId && dataSource) dataSource.show = false;
         status = viewportCoverageWarning ? 'degraded' : 'zoom-in';
         notifyViewportCandidates([], false, 'zoom-in');
         lastError = null;
@@ -358,6 +359,7 @@ export function createCountyParcelLayer({
           // Existing explicitly selected source parcels are not invented,
           // changed or relabeled as a complete neighborhood snapshot.
           notifyViewportCandidates([], false, 'over-limit');
+          if (freeMode && !selectedParcelId && dataSource) dataSource.show = false;
           viewportCoverageWarning = 'INCOMPLETE COVERAGE · Travis GIS parcel response exceeds the map request limit. Zoom closer or search by county parcel ID; boundaries for this view are not loaded.';
           lastUpdate = Date.now();
           lastError = null;
@@ -384,6 +386,7 @@ export function createCountyParcelLayer({
       } catch (error) {
         if (error?.name === 'AbortError') return false;
         notifyViewportCandidates([], false, 'error');
+        if (freeMode && !selectedParcelId && dataSource) dataSource.show = false;
         lastError = error instanceof Error ? error.message : String(error);
         status = dataSource ? 'degraded' : 'unavailable';
         console.warn(`[BDP:${adapter.county}Parcels] refresh failed:`, error);
