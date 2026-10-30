@@ -2,6 +2,7 @@ import {
   ACQUISITION_STAGES, createAcquisitionSession, reviewLandCriteria,
 } from '../acquisition/session.js';
 import { showLandDiscoveryGate } from './discoveryGate.js';
+import { ratePreferenceEvidence } from '../acquisition/preferenceRating.js';
 
 const make = (tag, className, text) => {
   const element = document.createElement(tag);
@@ -18,6 +19,8 @@ function button(label, className, callback) {
 function formatCriteria(criteria) {
   if (!criteria) return ['No preferences set'];
   const labels = [];
+  if (criteria.county) labels.push(`${criteria.county} County`);
+  if (criteria.radiusMiles > 0) labels.push(`${criteria.radiusMiles}-mile radius · Census center`);
   if (criteria.purpose) labels.push(criteria.purpose);
   if (criteria.zip) labels.push(`ZIP ${criteria.zip}`);
   if (criteria.budgetMax !== null) labels.push(`Budget ≤ $${criteria.budgetMax.toLocaleString('en-US')}`);
@@ -35,7 +38,7 @@ function formatCriteria(criteria) {
  * Not a CRM or a security boundary: auth + Postgres RLS-backed saves belong
  * to a later backend milestone. No localStorage persistence or account claims.
  */
-export function mountLandWorkspaces({ initialCriteria = null } = {}) {
+export function mountLandWorkspaces({ initialCriteria = null, onCriteriaChange = null } = {}) {
   const acquisitions = createAcquisitionSession();
   let criteria = initialCriteria;
   let current = 'map';
@@ -47,7 +50,10 @@ export function mountLandWorkspaces({ initialCriteria = null } = {}) {
   const boardButton = button('Acquisition board · 0', 'ldos-nav-button', () => open('acquisitions'));
   const refineButton = button('Edit criteria', 'ldos-nav-button ldos-nav-minor', async () => {
     const edited = await showLandDiscoveryGate();
-    if (edited !== null) criteria = edited;
+    if (edited !== null) {
+      criteria = edited;
+      onCriteriaChange?.(criteria);
+    }
     renderBoard();
   });
   nav.append(mapButton, boardButton, refineButton);
@@ -97,7 +103,10 @@ export function mountLandWorkspaces({ initialCriteria = null } = {}) {
     const top = make('div', 'ldos-board-criteria-top');
     top.append(make('h2', '', 'Your search criteria'), button('Update', 'ldos-board-link', async () => {
       const edited = await showLandDiscoveryGate();
-      if (edited !== null) criteria = edited;
+      if (edited !== null) {
+        criteria = edited;
+        onCriteriaChange?.(criteria);
+      }
       renderBoard();
     }));
     const tags = make('div', 'ldos-board-criteria-tags');
@@ -128,6 +137,18 @@ export function mountLandWorkspaces({ initialCriteria = null } = {}) {
           make('p', 'ldos-acquisition-provider', `Source: ${entry.provider || 'UNKNOWN'}`),
           make('p', 'ldos-acquisition-unknown', `Source currency: ${entry.recordCurrency.toUpperCase()} · Not a listing or title verification`),
         );
+        const fit = ratePreferenceEvidence(criteria, entry);
+        const rating = make('div', 'ldos-property-fit-rating');
+        rating.dataset.fit = fit.label === 'Source-reported mismatch' ? 'outside'
+          : fit.label === 'Possible profile match' ? 'possible' : 'unknown';
+        rating.append(
+          make('strong', '', `Profile fit · ${fit.label}`),
+          make('span', '', fit.configured
+            ? `${fit.matched} reported matches · ${fit.outside} outside · ${fit.unknown} unknown (${fit.configured} criteria)`
+            : 'No profile criteria to compare'),
+          make('small', '', 'Use-specific suitability and purchase value are NOT SCORED. Verify zoning, allowed business use, price and site constraints.'),
+        );
+        card.append(rating);
         const findings = reviewLandCriteria(criteria, entry);
         if (findings.length) {
           const matches = make('div', 'ldos-acquisition-findings');
