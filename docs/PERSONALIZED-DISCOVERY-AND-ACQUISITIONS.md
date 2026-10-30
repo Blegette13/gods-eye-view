@@ -36,3 +36,37 @@ Production discovery then needs **bounded, county-by-county parcel candidate sea
 8. Inspect keyboard navigation, screen reader dialog title, small displays and all map/data attribution.
 
 **No claim of a complete commercial discovery algorithm, user account persistence, secure saved portfolios or backend filters can be made until their own implementation and release gates are complete.**
+
+
+## Next iteration — county/radius-guided discovery and fit ratings (October 29, 2026)
+
+The intake now requires one of the **six implemented Texas pilot counties** for a guided search (Bexar, Travis, Williamson, Hays, Dallas, Harris). The radius menu allows **county only**, 5, 10, 25, or 50 miles. A separate **Browse map without a search profile** option remains; it is not a guided search and shows no selected county. Changing preferences pre-fills the previous selections and refreshes the geographic overlay.
+
+### Authoritative county and radius map
+
+The map uses a **live U.S. Census Bureau TIGERweb State_County/MapServer/1 County 2026-vintage GeoJSON service** rather than a guessed Texas county bounding rectangle. The selected county is identified by known five-digit Census GEOID, a blue county outline displays when the source responds, and neighboring county outlines appear in slate for nonzero radius where geographic data can be fetched. The search radius is a **geodesic circle centered at the Census county internal point (INTPT)**, drawn in orange; it is not a radius from every point on the county boundary or ZIP centroid. On map load, Cesium fits the selected county. If the Census source is unavailable or incomplete, the system reports this and does not manufacture county lines or suggest county lookup was successful.
+
+**Radius does not imply parcel adapter coverage.** A 25-mile ring can cross jurisdictions without data adapters. The six pilot county adapters retain their own viewport limits, incompleteness and source-currency caveats. The board can save source parcels without claiming an exhaustive radius search.
+
+### Provisional source-field candidate pins
+
+When a customer zooms into a **successfully completed bounded GIS viewport** and enables a county parcel layer, that layer emits a minimal internal viewport event containing its actual fetched normalized source parcels. The map projects up to **24 tentative green pins** only for geometries with at least one **reported ZIP or positive acreage field** matching the profile, no reported conflicting field, and a county/radius geography that fits the selected configuration. Pins are based on approximate centers of the **GIS polygon bounding boxes**, not surveyed centroids, and selecting a pin routes to the original exact parcel lookup. Over-limit, failed and disabled county layers clear their candidate hints. Missing price/use data are **UNKNOWN**; the pins are **not** listing inventory, clearance, entitlement, verified property matches or a complete countywide search. No candidate pin is shown for an unsupported property claim or budget-only/purpose-only profile.
+
+The source-based rating on the Acquisition Board is likewise **not a suitability score**: it displays a provisional label (*Possible profile match*, *Source-reported mismatch*, or *Not rated*), the count of sourced field matches/conflicts and unknown fields, with the numeric investment/development score deliberately withheld until enough corroborated business-use, asking-price and regulatory evidence is available. The user's stated intended use is an explicit **unverified factor** and cannot be inferred from GIS alone. This is a transparent step toward scoring without falsely suggesting a property is investment-grade.
+
+### Hazard and infrastructure markers — next integration gate
+
+Existing map overlays (FEMA flood hazard, wetlands, EPA cleanup sites, TXDOT access, energy/utilities and zoning) remain available in the Map Layers panel. Future **source-specific contextual icons** may summarize verified/qualified GIS map evidence *only* when the relevant provider, county, time range, confidence and geometry are known. Icons cannot stand in for legal flood determinations, buildability, utility capacity or environmental clearance. Sensitive facilities will not be spotlighted as speculative location pins.
+
+### Required local acceptance
+
+- Pull the new code, run `node --test src/bdp/acquisition/session.test.mjs src/bdp/acquisition/preferenceRating.test.mjs src/bdp/map/discoveryGeography.test.mjs src/bdp/map/candidateHints.test.mjs src/bdp/ui/acquisitionWorkspace.test.mjs`.
+- Run `npm.cmd test` and `npm.cmd run build`, then `npm.cmd run dev`.
+- Refresh: county is mandatory for guided entry. Verify missing county is rejected; selecting Travis + 10 miles displays a **sourced blue county line**, **orange radius**, and **slate nearby county boundaries** where Census fetch works.
+- Verify the globe flies to Travis County and all original property search, layer toggles, provenance and credits work; source outage produces clear error instead of guessed geography.
+- Zoom into Travis and enable Travis Parcels. With positive acreage/ZIP filters, green **possible match** pins may appear for records in the *current complete viewport only*. Search a pin or normal parcel, save it and inspect the board rating/caveats.
+- Change radius in Edit criteria; the Census overlay and pins should refresh without needing page reload, and saved board stages stay unchanged.
+- Test loading/failed/truncated viewports; candidate pins must disappear rather than imply completed coverage, and county-only must not include other counties.
+- Observe mobile map layout and Safari/Chrome event compatibility; test source GeoJSON fetch CORS and API availability separately. Release acceptance is pending local browser verification.
+
+**Known current limitations:** no countrywide county inventory, no reliable commercial asking/listing price source, no verified land-use suitability scoring, no full-server search over unvisited counties, no authenticated persisted acquisition profiles or pipelines, and no county GIS search completeness guarantee. The requirements for these functions belong in the account-authentication/PostGIS service phase, not browser-only heuristics.
