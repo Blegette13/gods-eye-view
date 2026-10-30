@@ -71,10 +71,14 @@ export function createCountyParcelLayer({
     styleSelectedParcelEntities(dataSource.entities.values, selectedParcelId, {
       parcelIdForEntity: (entity) => propertyValue(entity, 'bdpParcelId'),
       defaultOutline: normalOutline,
-      selectedOutline,
       defaultFill: normalFill,
+      selectedOutline,
       selectedFill,
     });
+    // A card-only click changes entity materials without camera movement.
+    // Explicitly request a frame so stale selected outlines cannot linger in
+    // Cesium scenes configured for request-on-demand rendering.
+    viewer?.scene?.requestRender?.();
   }
 
   function showSelectedParcel(parcel) {
