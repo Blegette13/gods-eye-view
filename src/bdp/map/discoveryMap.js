@@ -281,7 +281,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       // Free browsing never pretends that every parcel is for sale. The left
       // list appears only after a real GIS snapshot has been rendered.
       const hasSnapshot = Boolean(freeRows && freeCounty
-        && shouldDiscoverFreeParcels(cameraHeightMeters(viewer)));
+        && (freeSnapshotPinned || shouldDiscoverFreeParcels(cameraHeightMeters(viewer))));
       document.body.dataset.landBrowseResults = hasSnapshot ? 'open' : 'closed';
       finder.hidden = !hasSnapshot;
       legend.hidden = true;
@@ -680,9 +680,10 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       if (freeCounty) window.dispatchEvent(new CustomEvent('land:discovery-free-zoomed-out', {
         detail: { county: freeCounty },
       }));
-      freeRows = null;
-      freeCoverage = null;
-      freeSnapshotPinned = false;
+      if (!freeSnapshotPinned) {
+        freeRows = null;
+        freeCoverage = null;
+      }
       updateFinder();
       return;
     }
@@ -697,7 +698,8 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       const response = await fetch(url, { signal });
       if (!response.ok) throw new Error('Census lookup HTTP ' + response.status);
       const county = countyFromFreeBrowseResponse(await response.json());
-      if (signal.aborted || destroyed || current || token !== freeSequence) return;
+      if (signal.aborted || destroyed || current || token !== freeSequence
+          || !shouldDiscoverFreeParcels(cameraHeightMeters(viewer))) return;
       if (!county) {
         freeRows = null;
         freeCounty = null;
