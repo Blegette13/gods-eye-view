@@ -16,6 +16,9 @@ test('high-altitude source query is independent of camera and has bounded server
   const url = new URL(buildTravisDiscoveryUrl(criteria, center));
   assert.equal(url.searchParams.get('f'), 'geojson');
   assert.equal(url.searchParams.get('resultRecordCount'), String(COUNTY_SAMPLE_LIMIT + 1));
+  assert.equal(url.searchParams.get('resultOffset'), '0');
+  assert.equal(new URL(buildTravisDiscoveryUrl(criteria, center, COUNTY_SAMPLE_LIMIT, 80)).searchParams.get('resultOffset'), '80');
+  assert.throws(() => buildTravisDiscoveryUrl(criteria, center, COUNTY_SAMPLE_LIMIT, 401));
   assert.match(url.searchParams.get('where'), /tcad_acres >= 10/);
   assert.match(url.searchParams.get('where'), /tcad_acres <= 60/);
   assert.equal(url.searchParams.get('geometryType'), 'esriGeometryEnvelope');
