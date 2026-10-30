@@ -291,3 +291,26 @@ body[data-land-view='acquisitions'] #cesium-credits { visibility: hidden; }
   .ldos-acquisition-screen { padding: 115px 14px 30px; }
   .ldos-board-header { flex-wrap: wrap; }
 }
+
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-save-property {
+  display: block;
+  width: 100%;
+  min-height: 42px;
+  margin: 5px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #27658f;
+  border-radius: 9px;
+  color: #fff;
+  background: #27658f;
+  font: 700 12px Inter, system-ui, sans-serif;
+  line-height: 1.3;
+  text-align: center;
+  cursor: pointer;
+}
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-save-property:hover {
+  background: #174d73;
+}
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-save-property:focus-visible {
+  outline: 2px solid #1a537e;
+  outline-offset: 2px;
+}
