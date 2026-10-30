@@ -573,3 +573,18 @@ body[data-land-view='acquisitions'] #land-discovery-map-legend { display: none !
     max-height: 30vh;
   }
 }
+
+/* Search result messages may add a second text row. Globe actions must not
+ * overlap that row even when an explicit parcel lookup returns a long status. */
+body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+  #top-center-actions { top: 195px; }
+@media(max-width: 1100px) {
+  body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+    #top-center-actions { top: 181px; }
+}
+@media(max-width: 720px) {
+  body[data-bdp-product='land-development-os'] #top-center-actions,
+  body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+    #top-center-actions { top: 196px; }
+  #land-discovery-finder { top: 246px; }
+}
