@@ -61,3 +61,25 @@ test('budget and intended use alone cannot claim evaluated matches', () => {
   assert.equal(summary.count, null);
   assert.match(summary.message, /cannot be verified/);
 });
+
+test('missing Census radius origin never implies zero suitable parcels', () => {
+  const radiusCriteria = normalizeLandCriteria({ county: 'Travis', radiusMiles: 25, acresMin: 3 });
+  const result = summarizeDiscoveryCandidates({
+    criteria: radiusCriteria,
+    viewports: [{ county: 'Travis', complete: true, parcels: [property(1, 15)] }],
+  });
+  assert.equal(result.state, 'unknown-geography');
+  assert.equal(result.count, null);
+  assert.match(result.message, /Census county geometry is required/);
+});
+
+test('county-only counts ignore complete records belonging to other pilot counties', () => {
+  const only = summarizeDiscoveryCandidates({
+    criteria, viewports: [
+      { county: 'Travis', complete: true, parcels: [property(1, 15)] },
+      { county: 'Bexar', complete: true, parcels: [{ ...property(2, 20), county: 'Bexar' }] },
+    ],
+  });
+  assert.equal(only.count, 1);
+  assert.equal(only.scanned, 1);
+});
