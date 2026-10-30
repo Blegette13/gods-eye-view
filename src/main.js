@@ -3,6 +3,7 @@ import { describeError } from './standalone/errors.js';
 import { applyBdpGodsEyeUi } from './bdp/ui/godsEyeUi.js';
 import { showLandDiscoveryGate } from './bdp/ui/discoveryGate.js';
 import { mountLandWorkspaces } from './bdp/ui/acquisitionWorkspace.js';
+import { createDiscoveryMap } from './bdp/map/discoveryMap.js';
 import './bdp/ui/discoveryWorkspace.css';
 
 applyBdpGodsEyeUi();
@@ -18,8 +19,24 @@ const application = createStandaloneApplication({
 // Criteria remain only in this page memory, not a fake authenticated account.
 showLandDiscoveryGate()
   .then((initialCriteria) => {
-    mountLandWorkspaces({ initialCriteria });
-    return application.start();
+    let currentCriteria = initialCriteria;
+    let mapDiscovery = null;
+    mountLandWorkspaces({
+      initialCriteria,
+      onCriteriaChange(next) {
+        currentCriteria = next;
+        mapDiscovery?.setCriteria(next);
+      },
+    });
+    return application.start().then((components) => {
+      // The real Cesium viewer becomes available only after the native data,
+      // controls and mapping stack have all finished initializing.
+      mapDiscovery = createDiscoveryMap({
+        viewer: components.scene.viewer,
+        initialCriteria: currentCriteria,
+      });
+      return components;
+    });
   })
   .catch((error) => {
     console.error('Land workspace initialization failed:', error);
