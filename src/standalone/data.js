@@ -138,7 +138,13 @@ export function createStandaloneData({
     const { signal } = guidedActivation;
     try {
       const id = guidedCountyIds[county];
-      const enabled = await dataManager.setEnabled(id, true, { origin: 'user', signal });
+      // Repeat Free Explorer camera moves must refresh the already-enabled
+      // county source immediately; waiting for a timed layer poll would leave
+      // outdated neighborhood borders and counts on screen.
+      const alreadyOn = dataManager.isEnabled(id);
+      const enabled = alreadyOn
+        ? await dataManager.refreshLayer(id, { signal })
+        : await dataManager.setEnabled(id, true, { origin: 'user', signal });
       if (signal.aborted) return;
       const layer = dataManager.layers.get(id);
       const stats = layer?.getStats?.() || {};
