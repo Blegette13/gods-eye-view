@@ -843,3 +843,89 @@ body[data-land-entry='pending'] #land-camera-altimeter { display:none!important;
     max-height: 112px;
   }
 }
+
+/* Step 32 — Free browsing displays the original Map Layers registry.
+ * Geographic context remains drawn in Cesium, but the separate discovery
+ * legend must NEVER sit above the layer list outside a guided search. */
+body[data-bdp-product='land-development-os'][data-land-profile='browse']
+  #land-discovery-map-legend {
+  display: none !important;
+}
+body[data-bdp-product='land-development-os'][data-land-profile='browse']
+  #land-discovery-sidebar {
+  display: none !important;
+}
+
+/* Place the three native globe action buttons BESIDE the compact search
+ * at the same vertical height, instead of over the map several rows below.
+ * No new buttons or event bindings; this is CSS-only positioning. */
+body[data-bdp-product='land-development-os'] #top-center-actions,
+body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+  #top-center-actions {
+  top: 42px;
+  left: calc(50% + 232px);
+  right: auto;
+  transform: none;
+  z-index: 155;
+}
+
+/* Camera height uses unused top-right space, avoiding navigation, the
+ * property-card header and the status-expanded search layout. */
+body[data-bdp-product='land-development-os'] #land-camera-altimeter,
+body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+  #land-camera-altimeter {
+  top: 31px;
+  bottom: auto;
+  right: 20px;
+}
+
+@media(max-width: 1100px) and (min-width: 721px) {
+  body[data-bdp-product='land-development-os'] #top-center-actions,
+  body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+    #top-center-actions {
+    top: 34px;
+    left: calc(50% + 202px);
+    right: auto;
+    transform: none;
+  }
+  body[data-bdp-product='land-development-os'] #land-camera-altimeter,
+  body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+    #land-camera-altimeter {
+    top: 22px;
+    bottom: auto;
+    right: 12px;
+  }
+}
+
+@media(max-width: 720px) {
+  /* One-column phones cannot put map buttons beside a full-width search.
+   * Keep the native actions beneath the nav instead of overlapping fields. */
+  body[data-bdp-product='land-development-os'] #top-center-actions,
+  body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+    #top-center-actions {
+    top: 225px;
+    left: auto;
+    right: 12px;
+    transform: none;
+  }
+  body[data-bdp-product='land-development-os'] #land-camera-altimeter,
+  body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+    #land-camera-altimeter {
+    top: auto;
+    bottom: 65px;
+    right: 11px;
+  }
+  body[data-bdp-product='land-development-os'] #land-discovery-sidebar {
+    top: 276px;
+  }
+}
+@media(max-width: 500px) {
+  body[data-bdp-product='land-development-os'] #top-center-actions,
+  body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty))
+    #top-center-actions {
+    top: 263px;
+  }
+  body[data-bdp-product='land-development-os'] #land-discovery-sidebar {
+    top: 309px;
+  }
+}
