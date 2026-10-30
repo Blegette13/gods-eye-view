@@ -101,7 +101,9 @@ export function createAcquisitionSession() {
 export function reviewLandCriteria(criteria, entry) {
   const findings = [];
   if (criteria?.zip) {
-    const match = entry?.address?.match(/(?:^|\D)(\d{5})(?:\D|$)/);
+    // Only interpret a ZIP at the end of the situs address; a five-digit
+    // street number or arbitrary parcel text must not masquerade as a ZIP.
+    const match = entry?.address?.match(/(?:^|\s)(\d{5})(?:-\d{4})?\s*$/);
     findings.push(Object.freeze({
       field: 'ZIP (source address)',
       status: match ? (match[1] === criteria.zip ? 'reported-match' : 'reported-outside') : 'unknown',
