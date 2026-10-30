@@ -30,7 +30,7 @@ class Element {
   remove() { this.removed = true; }
 }
 
-function fixture() {
+function fixture({ preview = null, named = null } = {}) {
   const body = new Element('body');
   const input = { value: '' };
   const document = {
@@ -63,7 +63,7 @@ function fixture() {
       },
     },
     entities: {
-      add(entity) { markers.push(entity); },
+      add(entity) { markers.push(entity); return entity; },
       removeById(id) {
         const idx = markers.findIndex((entry) => entry.id === id);
         if (idx >= 0) markers.splice(idx, 1);
@@ -86,6 +86,7 @@ function fixture() {
     HeightReference: { CLAMP_TO_GROUND: 1 },
     Cartesian2: class {},
     DistanceDisplayCondition: class {},
+    LabelStyle: { FILL_AND_OUTLINE: 1 },
   };
   const polygon = { type: 'Polygon', coordinates: [[
     [-97.8, 30.2], [-97.7, 30.2], [-97.7, 30.3], [-97.8, 30.2],
@@ -110,6 +111,9 @@ function fixture() {
     censusCountyUrl, countyForCriteria, countyPoint, validateCountyFeatures,
     radiusLineCoordinates, radiusEnvelope, countyBoundaryLines,
     summarizeDiscoveryCandidates,
+    HIGH_ALTITUDE_DISCOVERY_COUNTIES: ['Travis'],
+    fetchHighAltitudeDiscovery: async () => preview || { state: 'unsupported', results: [] },
+    fetchGeographicLabels: async () => named || { cityLabels: [], highwayLabels: [], errors: [] },
   });
   return {
     create, body, window, Event, viewer, markers, sources, input, polygon,
@@ -194,6 +198,55 @@ test('browse-without-profile retains old map layer UI and does not claim candida
     const finder = find(env.body, (node) => node.id === 'land-discovery-finder')[0];
     assert.equal(finder.hidden, true);
     assert.equal(env.markers.length, 0);
+  } finally {
+    map.destroy();
+  }
+});
+
+test('countywide source preview produces persistent clickable list before neighborhood zoom', async () => {
+  const preliminary = {
+    county: 'Travis', parcelId: '000302959',
+    label: 'Sample Avenue, Austin TX',
+    acresReported: 22,
+    point: { lat: 30.24, lon: -97.755 }, evidence: ['Acreage (source reported)'],
+  };
+  const env = fixture({
+    preview: {
+      state: 'sample', results: [preliminary], returned: 81, complete: false,
+      message: '1 provisional match in bounded countywide sample; not exhaustive.',
+    },
+    named: {
+      cityLabels: [{ name: 'Austin', lat: 30.27, lon: -97.74, category: 'city' }],
+      highwayLabels: [{ name: 'IH 35', lat: 30.25, lon: -97.72, category: 'highway' }],
+      errors: [],
+    },
+  });
+  const criteria = normalizeLandCriteria({
+    county: 'Travis', radiusMiles: 10, acresMin: 10, acresMax: 60,
+  });
+  const map = env.create({ viewer: env.viewer, initialCriteria: criteria });
+  try {
+    await new Promise((resolve) => setImmediate(resolve));
+    const count = find(env.body, (node) => node.id === 'ldos-discovery-match-count')[0];
+    const results = find(env.body, (node) => node.id === 'ldos-discovery-results')[0];
+    assert.match(count.textContent, /1 source-sample match/);
+    const cards = find(results, (node) => node.className === 'ldos-discovery-result');
+    assert.equal(cards.length, 1);
+    assert.match(cards[0].textContent, /000302959/);
+    const selections = [];
+    env.window.addEventListener('bdp:land-search', (event) => selections.push(event.detail));
+    cards[0].listeners.click();
+    assert.equal(selections[0].value, '000302959');
+    assert.equal(selections[0].cameraRangeMultiplier, 2.3);
+    assert.equal(env.input.value, 'Travis parcel: 000302959');
+    assert.equal(env.body.dataset.landProfile, 'active', 'map search stays visible');
+    assert.ok(find(env.body, (node) => node.id === 'land-discovery-finder')[0]);
+    assert.equal(find(results, (node) => node.className === 'ldos-discovery-result').length, 1);
+    const geographicLabels = env.markers.filter((item) => item.id.startsWith('ldos-navigation:'));
+    assert.equal(geographicLabels.length, 2, 'real sourced city/highway names appear as map labels');
+    const labelButton = find(env.body, (node) => node.className === 'ldos-label-toggle')[0];
+    labelButton.listeners.click();
+    assert.ok(geographicLabels.every((item) => item.show === false));
   } finally {
     map.destroy();
   }
