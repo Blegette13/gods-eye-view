@@ -120,7 +120,7 @@ function fixture({ preview = null, named = null } = {}) {
     summarizeDiscoveryCandidates,
     freeBrowseCountyUrl, countyFromFreeBrowseResponse,
     shouldDiscoverFreeParcels, freeBrowseVisibleParcels,
-    MAX_FREE_BROWSE_ROWS: 500,
+    MAX_FREE_BROWSE_ROWS: 1000,
     cameraHeightMeters: (view) => view.camera.positionCartographic.height,
     frameFreeBrowse: (view) => { view.freeBrowseFramed = true; },
     freeBrowseLookPoint: () => ({ latitude: 30.27, longitude: -97.74 }),
