@@ -56,6 +56,10 @@ export function mountLandWorkspaces({ initialCriteria = null } = {}) {
   board.id = 'land-acquisition-board';
   board.hidden = true;
   board.setAttribute('aria-label', 'Acquisition board');
+  // Keep native select, button and keyboard controls working here while
+  // stopping upstream map shortcuts attached at document/window bubble phase.
+  board.addEventListener('keydown', (event) => event.stopPropagation());
+  nav.addEventListener('keydown', (event) => event.stopPropagation());
   const header = make('div', 'ldos-board-header');
   const headingBlock = make('div', '');
   headingBlock.append(
