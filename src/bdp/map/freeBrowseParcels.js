@@ -3,7 +3,7 @@ import { PILOT_COUNTIES } from '../acquisition/session.js';
 
 /** The existing altimeter is ellipsoid-relative, not ground clearance. */
 export const FREE_BROWSE_PARCEL_HEIGHT_METERS = 1300;
-export const MAX_FREE_BROWSE_ROWS = 500;
+export const MAX_FREE_BROWSE_ROWS = 1000;
 
 export function shouldDiscoverFreeParcels(height) {
   return Number.isFinite(height) && height >= 0 && height <= FREE_BROWSE_PARCEL_HEIGHT_METERS;
