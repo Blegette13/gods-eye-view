@@ -233,6 +233,7 @@ export function createStandaloneData({
 
       const parcel = await layer.focusParcel(command.value, {
         signal,
+        cameraRangeMultiplier: command.cameraRangeMultiplier,
       });
       if (signal.aborted) return;
 
