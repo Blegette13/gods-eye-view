@@ -70,6 +70,18 @@ test('matching is advisory only: asking price and permitted use always unknown',
   assert.ok(found.every((x) => !x.status.includes('verified')));
 });
 
+test('five-digit street numbers cannot masquerade as a source ZIP preference match', () => {
+  const criteria = normalizeLandCriteria({ zip: '12345' });
+  const entry = {
+    address: '12345 Main Street Austin TX 78704',
+    acresReported: null,
+  };
+  assert.equal(reviewLandCriteria(criteria, entry)[0].status, 'reported-outside');
+  assert.equal(reviewLandCriteria(criteria, {
+    ...entry, address: '12345 Main Street, Austin TX',
+  })[0].status, 'unknown');
+});
+
 test('session snapshots cannot be mutated by changing source objects afterwards', () => {
   const parcel = { county: 'Bexar', parcelId: '77', property: { situsAddress: 'A', acres: 3 } };
   const board = createAcquisitionSession();
