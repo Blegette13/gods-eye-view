@@ -657,3 +657,26 @@ body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty)
 @media(max-width:720px) {
   #land-discovery-finder { max-height: min(58dvh, 480px); }
 }
+
+#land-discovery-finder .ldos-discovery-more {
+  display: block;
+  width: 100%;
+  min-height: 38px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  color: #256788;
+  border: 1px solid #c5dce7;
+  border-radius: 9px;
+  background: #eaf5fb;
+  font: 700 11px/1.35 Inter, system-ui, sans-serif;
+  cursor: pointer;
+}
+#land-discovery-finder .ldos-discovery-more[hidden] { display: none !important; }
+#land-discovery-finder .ldos-discovery-more:disabled {
+  opacity: .65;
+  cursor: wait;
+}
+#land-discovery-finder .ldos-label-toggle {
+  grid-column: 1 / -1;
+}
+.ldos-workspace-nav [hidden] { display: none !important; }
