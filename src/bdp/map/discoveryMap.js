@@ -6,6 +6,7 @@ import {
 } from './discoveryGeography.js';
 import { summarizeDiscoveryCandidates } from './discoveryFeedback.js';
 import { fetchHighAltitudeDiscovery, HIGH_ALTITUDE_DISCOVERY_COUNTIES } from './highAltitudeDiscovery.js';
+import { fetchGeographicLabels } from './geographicLabels.js';
 
 const icon = (className, text) => {
   const element = document.createElement('span');
@@ -38,6 +39,9 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
   let boundaryAvailable = false;
   let sourcePreview = null;
   let sourceScan = null;
+  let labelsScan = null;
+  let navLabels = [];
+  let navLabelsEnabled = true;
   const MAX_RESULT_CARDS = 40;
   const click = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
   click.setInputAction((movement) => {
@@ -111,6 +115,19 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     layersButton.textContent = open ? 'Hide map layers' : 'Map layers';
   });
   finderActions.append(enableParcels, layersButton);
+  const labelButton = document.createElement('button');
+  labelButton.type = 'button';
+  labelButton.className = 'ldos-label-toggle';
+  labelButton.setAttribute('aria-pressed', 'true');
+  labelButton.textContent = 'City & highway labels: On';
+  labelButton.addEventListener('click', () => {
+    navLabelsEnabled = !navLabelsEnabled;
+    labelButton.setAttribute('aria-pressed', String(navLabelsEnabled));
+    labelButton.textContent = 'City & highway labels: ' + (navLabelsEnabled ? 'On' : 'Off');
+    for (const entity of navLabels) entity.show = navLabelsEnabled;
+    viewer.scene.requestRender?.();
+  });
+  finderActions.append(labelButton);
   const resultsHeading = document.createElement('h3');
   resultsHeading.className = 'ldos-discovery-list-heading';
   resultsHeading.textContent = 'Property results';
@@ -243,6 +260,43 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     row.append(icon(`ldos-map-key ldos-map-key-${kind}`, '—'), icon('', label));
     rows.append(row);
   }
+  function clearNavigationLabels() {
+    for (const entity of navLabels) viewer.entities.removeById(entity.id);
+    navLabels = [];
+    viewer.scene.requestRender?.();
+  }
+
+  function addNavigationLabels(data) {
+    clearNavigationLabels();
+    const taken = new Set();
+    for (const item of [...data.cityLabels, ...data.highwayLabels]) {
+      const key = item.category + ':' + item.name;
+      if (taken.has(key)) continue;
+      taken.add(key);
+      const isCity = item.category === 'city';
+      const entity = viewer.entities.add({
+        id: 'ldos-navigation:' + key,
+        position: Cesium.Cartesian3.fromDegrees(item.lon, item.lat, 120),
+        label: {
+          text: item.name,
+          font: isCity ? 'bold 15px sans-serif' : 'bold 12px sans-serif',
+          fillColor: Cesium.Color.WHITE,
+          outlineColor: Cesium.Color.fromCssColorString('#153e57'),
+          outlineWidth: 3,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          showBackground: !isCity,
+          backgroundColor: Cesium.Color.fromCssColorString('#173e56').withAlpha(0.78),
+          pixelOffset: new Cesium.Cartesian2(0, isCity ? -16 : -10),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, isCity ? 550000 : 170000),
+        },
+      });
+      entity.show = navLabelsEnabled;
+      navLabels.push(entity);
+    }
+    viewer.scene.requestRender?.();
+  }
+
   function clearCandidateMarkers() {
     for (const item of candidateMarkers) {
       viewer.entities.removeById('ldos-candidate:' + item.county + ':' + item.parcelId);
@@ -321,6 +375,9 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     const token = ++sequence;
     sourceScan?.abort();
     sourceScan = null;
+    labelsScan?.abort();
+    labelsScan = null;
+    clearNavigationLabels();
     sourcePreview = null;
     controller?.abort();
     controller = new AbortController();
@@ -400,6 +457,21 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
         }
         boundaryAvailable = true;
         neighborsVisible = neighbors.length > 0;
+        labelsScan = new AbortController();
+        const navController = labelsScan;
+        void fetchGeographicLabels({
+          countyFeature: county, point, radiusMiles: current.radiusMiles,
+          signal: navController.signal,
+        }).then((data) => {
+          if (navController.signal.aborted || token !== sequence || destroyed) return;
+          addNavigationLabels(data);
+          if (data.errors.length) {
+            console.warn('Some sourced navigation labels are unavailable:', data.errors.join(', '));
+          }
+        }).catch((error) => {
+          if (navController.signal.aborted || token !== sequence || destroyed) return;
+          console.warn('Census/TxDOT map labels unavailable:', error);
+        });
         // County discovery uses acreage predicates at the source itself. This
         // is bounded sampling, not an inaccurate promise of countywide counts.
         if (HIGH_ALTITUDE_DISCOVERY_COUNTIES.includes(current.county)) {
@@ -478,6 +550,8 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       controller?.abort();
       sequence++;
       sourceScan?.abort();
+      labelsScan?.abort();
+      clearNavigationLabels();
       window.removeEventListener('land:parcel-viewport', onParcelViewport);
       window.removeEventListener('land:discovery-layer-result', onLayerResult);
       click.destroy();
