@@ -134,8 +134,56 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
   const results = document.createElement('ol');
   results.id = 'ldos-discovery-results';
   results.setAttribute('aria-label', 'Preliminary property candidates');
+  const moreButton = document.createElement('button');
+  moreButton.type = 'button';
+  moreButton.className = 'ldos-discovery-more';
+  moreButton.textContent = 'Load more county source records';
+  moreButton.hidden = true;
+  moreButton.addEventListener('click', async () => {
+    const snapshot = sourcePreview;
+    if (!current || snapshot?.state !== 'sample' || !snapshot.moreAvailable
+        || snapshot.sampled >= 320) return;
+    const token = sequence;
+    sourceScan?.abort();
+    sourceScan = new AbortController();
+    const signal = sourceScan.signal;
+    moreButton.disabled = true;
+    moreButton.textContent = 'Loading more source records…';
+    try {
+      const page = await fetchHighAltitudeDiscovery({
+        criteria: current, center: censusCenter,
+        offset: snapshot.sampled, signal,
+      });
+      if (signal.aborted || token !== sequence || destroyed) return;
+      const seen = new Map();
+      for (const record of [...snapshot.results, ...page.results]) {
+        seen.set(record.county + ':' + record.parcelId, record);
+      }
+      const combined = [...seen.values()];
+      const loaded = snapshot.sampled + page.sampled;
+      sourcePreview = {
+        ...page,
+        results: combined,
+        sampled: loaded,
+        moreAvailable: page.moreAvailable && loaded < 320,
+        message: combined.length + ' provisional candidates among ' + loaded +
+          ' sampled Travis GIS records. This is NOT a complete county/radius search.',
+      };
+      renderCandidateMarkers();
+    } catch (error) {
+      if (signal.aborted || token !== sequence || destroyed) return;
+      matchDetails.textContent = 'Additional source page unavailable: ' + (error?.message || 'Source failure') +
+        '. Previously fetched candidates remain visible.';
+    } finally {
+      if (!signal.aborted && token === sequence && !destroyed) {
+        moreButton.disabled = false;
+        moreButton.textContent = 'Load more county source records';
+        moreButton.hidden = !sourcePreview?.moreAvailable;
+      }
+    }
+  });
   finder.append(finderKicker, finderTitle, matchCount, matchDetails, finderHelp,
-    finderActions, resultsHeading, results);
+    finderActions, resultsHeading, results, moreButton);
   document.body.append(finder);
 
   function openProperty(candidate) {
@@ -202,6 +250,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       document.body.dataset.landLayers = 'closed';
     }
     finder.hidden = !active;
+    moreButton.hidden = !active || sourcePreview?.state !== 'sample' || !sourcePreview.moreAvailable;
     if (!active) {
       document.body.dataset.landLayers = 'open';
       return;
