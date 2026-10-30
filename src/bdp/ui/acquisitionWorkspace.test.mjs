@@ -94,8 +94,16 @@ function withDOM() {
 
 test('startup waits for questionnaire resolution before calling the Cesium application start', () => {
   const main = readFileSync(new URL('../../main.js', import.meta.url), 'utf8');
-  assert.ok(main.includes('showLandDiscoveryGate()'));
-  assert.ok(main.indexOf('showLandDiscoveryGate()') < main.indexOf('return application.start();'));
+  const intake = main.indexOf('showLandDiscoveryGate()');
+  const resolved = main.indexOf('.then((initialCriteria) => {', intake);
+  const startup = main.indexOf('return application.start().then((components) => {', resolved);
+  const mapReady = main.indexOf('mapDiscovery = createDiscoveryMap(', startup);
+  assert.ok(intake >= 0, 'the questionnaire must open on launch');
+  assert.ok(resolved > intake, 'startup must wait for questionnaire completion');
+  assert.ok(startup > resolved, 'Cesium startup must occur inside the resolved intake');
+  assert.ok(mapReady > startup, 'county overlays require the initialized Cesium viewer');
+  assert.equal(main.slice(intake, startup).includes('application.start('), false,
+    'no premature Cesium startup before onboarding');
   const html = readFileSync(new URL('../../../index.html', import.meta.url), 'utf8');
   assert.match(html, /<body data-land-entry="pending">/);
   assert.match(html, /:not\(#land-discovery-gate\)/);
