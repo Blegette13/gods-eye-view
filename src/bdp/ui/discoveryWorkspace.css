@@ -314,3 +314,72 @@ body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-save-proper
   outline: 2px solid #1a537e;
   outline-offset: 2px;
 }
+
+/* Sourced county outline vs geodesic search-radius legend. Search radius
+ * comes from a Census county internal point, not inferred parcel coverage. */
+#land-discovery-map-legend {
+  position: fixed;
+  z-index: 1650;
+  top: 314px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(360px, calc(100vw - 24px));
+  box-sizing: border-box;
+  padding: 11px 14px;
+  border: 1px solid #dce7ef;
+  border-radius: 12px;
+  color: #20445c;
+  background: rgba(255, 255, 255, .965);
+  box-shadow: 0 3px 15px rgba(15, 36, 53, .13);
+  font: 500 11px/1.45 Inter, system-ui, sans-serif;
+}
+#land-discovery-map-legend strong { font-size: 12px; }
+#land-discovery-map-legend .ldos-map-legend-description {
+  margin: 5px 0 6px;
+  line-height: 1.45;
+  color: #536a7e;
+}
+#land-discovery-map-legend .ldos-map-legend-rows { display: grid; gap: 3px; }
+#land-discovery-map-legend .ldos-map-legend-item { display: flex; align-items: center; gap: 8px; }
+#land-discovery-map-legend .ldos-map-key {
+  width: 23px;
+  height: 3px;
+  display: inline-block;
+  flex-shrink: 0;
+  font-size: 0;
+  border-radius: 999px;
+}
+#land-discovery-map-legend .ldos-map-key-county { background: #1b64ab; }
+#land-discovery-map-legend .ldos-map-key-neighbor { background: #8397a8; }
+#land-discovery-map-legend .ldos-map-key-radius { background: #d47c39; }
+#land-discovery-map-legend a {
+  display: block;
+  margin-top: 6px;
+  font-size: 9px;
+  color: #376e91;
+  overflow-wrap: anywhere;
+}
+body[data-land-view='acquisitions'] #land-discovery-map-legend { display: none; }
+body[data-land-entry='pending'] #land-discovery-map-legend { display: none; }
+
+.ldos-property-fit-rating {
+  display: grid;
+  gap: 5px;
+  margin: 13px 0;
+  padding: 9px 10px;
+  border: 1px solid #cfdfe9;
+  border-radius: 9px;
+  background: #f2f7fa;
+  font: 500 10px/1.4 Inter, system-ui, sans-serif;
+  color: #425e73;
+}
+.ldos-property-fit-rating strong { font-size: 11px; color: #245576; }
+.ldos-property-fit-rating small { color: #6b7c89; font-size: 10px; }
+.ldos-property-fit-rating[data-fit='possible'] { background: #edf8f2; border-color: #b5dec8; }
+.ldos-property-fit-rating[data-fit='outside'] { background: #fff6e5; border-color: #ead19f; }
+@media(max-width: 900px) {
+  #land-discovery-map-legend { top: 275px; width: 310px; }
+}
+@media(max-width: 650px) {
+  #land-discovery-map-legend { top: 260px; max-width: calc(100vw - 18px); padding: 8px 10px; }
+}
