@@ -234,7 +234,10 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     controller?.abort();
     controller = new AbortController();
     const signal = controller.signal;
+    const wasGuided = Boolean(current?.county);
     current = criteria?.county ? criteria : null;
+    if (current && !wasGuided) document.body.dataset.landLayers = 'closed';
+    if (!current) document.body.dataset.landLayers = 'open';
     await erase();
     censusCenter = null;
     boundaryAvailable = false;
