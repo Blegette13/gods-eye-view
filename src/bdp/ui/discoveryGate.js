@@ -1,4 +1,4 @@
-import { LAND_PURPOSES, normalizeLandCriteria } from '../acquisition/session.js';
+import { LAND_PURPOSES, PILOT_COUNTIES, SEARCH_RADII_MILES, normalizeLandCriteria } from '../acquisition/session.js';
 
 function field(labelText, input, hint = '') {
   const group = document.createElement('label');
@@ -47,7 +47,7 @@ export function showLandDiscoveryGate() {
   heading.textContent = 'Find land that fits your plan.';
   const description = document.createElement('p');
   description.id = 'ldos-welcome-description';
-  description.textContent = 'Tell us what you are looking for. Your criteria will organize this session and help you review potential acquisitions without hiding parcels with missing data.';
+  description.textContent = 'Start by choosing a county. Add a search radius and your goals to guide map exploration and review possible acquisitions. This preview does not automatically verify qualifying properties.';
 
   const form = document.createElement('form');
   form.className = 'ldos-welcome-form';
@@ -65,6 +65,30 @@ export function showLandDiscoveryGate() {
     option.textContent = name;
     purpose.append(option);
   }
+  const county = document.createElement('select');
+  county.name = 'county';
+  county.required = true;
+  const chooseCounty = document.createElement('option');
+  chooseCounty.value = '';
+  chooseCounty.textContent = 'Choose a Texas county';
+  county.append(chooseCounty);
+  for (const item of PILOT_COUNTIES) {
+    const option = document.createElement('option');
+    option.value = item.name;
+    option.textContent = `${item.name} County`;
+    county.append(option);
+  }
+  const radius = document.createElement('select');
+  radius.name = 'radiusMiles';
+  for (const miles of SEARCH_RADII_MILES) {
+    const option = document.createElement('option');
+    option.value = String(miles);
+    option.textContent = miles === 0
+      ? 'Selected county only'
+      : `${miles} miles from county center · may cross borders`;
+    radius.append(option);
+  }
+
   const budget = inputFor('number', {
     name: 'budgetMax', min: '0', step: 'any',
     placeholder: 'e.g. 500000', inputMode: 'decimal',
@@ -88,7 +112,13 @@ export function showLandDiscoveryGate() {
     field('Minimum acres', min),
     field('Maximum acres', max),
   );
-  form.append(field('What do you need the land for?', purpose), row);
+  const locationRow = document.createElement('div');
+  locationRow.className = 'ldos-criteria-grid';
+  locationRow.append(
+    field('Search county · required', county, 'Pilot service coverage currently supports six Texas counties.'),
+    field('Search radius', radius, '0 searches the chosen county; larger radii are measured from its Census internal point. Nearby counties may have no parcel feed.'),
+  );
+  form.append(locationRow, field('What do you need the land for?', purpose), row);
 
   const error = document.createElement('p');
   error.className = 'ldos-criteria-error';
@@ -104,7 +134,7 @@ export function showLandDiscoveryGate() {
   const skip = document.createElement('button');
   skip.type = 'button';
   skip.className = 'ldos-welcome-skip';
-  skip.textContent = 'Explore without criteria';
+  skip.textContent = 'Browse map without a search profile';
   const begin = document.createElement('button');
   begin.type = 'submit';
   begin.className = 'ldos-welcome-continue';
@@ -135,6 +165,7 @@ export function showLandDiscoveryGate() {
       event.preventDefault();
       try {
         const criteria = normalizeLandCriteria({
+          county: county.value, radiusMiles: radius.value,
           purpose: purpose.value, zip: zip.value, budgetMax: budget.value,
           acresMin: min.value, acresMax: max.value,
         });
@@ -144,6 +175,6 @@ export function showLandDiscoveryGate() {
         error.textContent = cause.message;
       }
     });
-    purpose.focus();
+    county.focus();
   });
 }
