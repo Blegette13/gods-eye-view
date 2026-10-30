@@ -111,6 +111,8 @@ function fixture({ preview = null, named = null } = {}) {
     censusCountyUrl, countyForCriteria, countyPoint, validateCountyFeatures,
     radiusLineCoordinates, radiusEnvelope, countyBoundaryLines,
     summarizeDiscoveryCandidates,
+    frameFreeBrowse: (view) => { view.freeBrowseFramed = true; },
+    mountCameraAltimeter: () => ({ destroy() {} }),
     HIGH_ALTITUDE_DISCOVERY_COUNTIES: ['Travis'],
     fetchHighAltitudeDiscovery: async (options) => (typeof preview === 'function' ? preview(options) : preview) || { state: 'unsupported', results: [] },
     fetchGeographicLabels: async () => named || { cityLabels: [], highwayLabels: [], errors: [] },
@@ -195,6 +197,7 @@ test('browse-without-profile retains old map layer UI and does not claim candida
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(env.body.dataset.landProfile, 'browse');
     assert.equal(env.body.dataset.landLayers, 'open');
+    assert.equal(env.viewer.freeBrowseFramed, true, 'free browsing triggers district-scale framing');
     const finder = find(env.body, (node) => node.id === 'land-discovery-finder')[0];
     assert.equal(finder.hidden, true);
     assert.equal(env.markers.length, 0);
