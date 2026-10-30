@@ -4,7 +4,7 @@ import {
   validateCountyFeatures, radiusLineCoordinates, radiusEnvelope,
   countyBoundaryLines,
 } from './discoveryGeography.js';
-import { suggestViewportParcels } from './candidateHints.js';
+import { summarizeDiscoveryCandidates } from './discoveryFeedback.js';
 
 const icon = (className, text) => {
   const element = document.createElement('span');
@@ -33,6 +33,8 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
   let censusCenter = null;
   let candidateMarkers = [];
   const viewportByCounty = new Map();
+  let neighborsVisible = false;
+  let boundaryAvailable = false;
   const click = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
   click.setInputAction((movement) => {
     const hit = viewer.scene.pick(movement.position);
@@ -65,6 +67,86 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
   legend.append(title, description, rows, sourceLink);
   document.body.append(legend);
 
+  // Guided search replaces the full layer registry as the primary left-panel
+  // action. Source layers remain accessible on demand, never deleted.
+  const finder = document.createElement('aside');
+  finder.id = 'land-discovery-finder';
+  finder.setAttribute('aria-label', 'Guided property discovery');
+  const finderKicker = document.createElement('span');
+  finderKicker.className = 'ldos-finder-kicker';
+  finderKicker.textContent = 'YOUR LAND SEARCH';
+  const finderTitle = document.createElement('h2');
+  const matchCount = document.createElement('strong');
+  matchCount.id = 'ldos-discovery-match-count';
+  matchCount.setAttribute('aria-live', 'polite');
+  const matchDetails = document.createElement('p');
+  matchDetails.id = 'ldos-discovery-match-details';
+  const finderHelp = document.createElement('p');
+  finderHelp.className = 'ldos-finder-help';
+  finderHelp.textContent = 'Matches are preliminary GIS acreage/address evidence only. Budget, availability and permitted use remain UNKNOWN.';
+  const finderActions = document.createElement('div');
+  finderActions.className = 'ldos-finder-actions';
+  const enableParcels = document.createElement('button');
+  enableParcels.type = 'button';
+  enableParcels.textContent = 'Enable county parcels';
+  const layersButton = document.createElement('button');
+  layersButton.type = 'button';
+  layersButton.textContent = 'Map layers';
+  layersButton.setAttribute('aria-expanded', 'false');
+  layersButton.setAttribute('aria-controls', 'data-panel');
+  enableParcels.addEventListener('click', () => {
+    if (!current?.county) return;
+    enableParcels.disabled = true;
+    enableParcels.textContent = 'Enabling…';
+    window.dispatchEvent(new CustomEvent('land:discovery-enable-county', {
+      detail: { county: current.county },
+    }));
+  });
+  layersButton.addEventListener('click', () => {
+    const open = document.body.dataset.landLayers !== 'open';
+    document.body.dataset.landLayers = open ? 'open' : 'closed';
+    layersButton.setAttribute('aria-expanded', String(open));
+    layersButton.textContent = open ? 'Hide map layers' : 'Map layers';
+  });
+  finderActions.append(enableParcels, layersButton);
+  finder.append(finderKicker, finderTitle, matchCount, matchDetails, finderHelp, finderActions);
+  document.body.append(finder);
+
+  function updateFinder() {
+    const active = Boolean(current?.county);
+    document.body.dataset.landProfile = active ? 'active' : 'browse';
+    finder.hidden = !active;
+    if (!active) {
+      document.body.dataset.landLayers = 'open';
+      return;
+    }
+    const profile = current;
+    finderTitle.textContent = profile.county + ' County' +
+      (profile.radiusMiles ? ' · ' + profile.radiusMiles + ' mi' : '');
+    const summary = summarizeDiscoveryCandidates({
+      criteria: current,
+      center: censusCenter,
+      viewports: [...viewportByCounty.values()],
+    });
+    matchCount.textContent = summary.count === null
+      ? 'Not evaluated yet'
+      : summary.count + ' possible ' + (summary.count === 1 ? 'match' : 'matches');
+    matchDetails.textContent = summary.message;
+  }
+  const onLayerResult = (event) => {
+    if (!current || event?.detail?.county !== current.county) return;
+    enableParcels.disabled = false;
+    enableParcels.textContent = event.detail.ok ? 'Refresh county parcels' : 'Retry county parcels';
+    if (!event.detail.ok) {
+      matchDetails.textContent = 'County parcel layer unavailable: ' + event.detail.message +
+        '. No source-backed results can be claimed.';
+    } else if (event.detail.status === 'zoom-in') {
+      matchDetails.textContent = 'Parcel layer enabled. Zoom closer to a neighborhood to load source records and evaluate matching parcels.';
+    }
+  };
+  window.addEventListener('land:discovery-layer-result', onLayerResult);
+
+
   function addLegendLine(kind, label) {
     const row = document.createElement('div');
     row.className = 'ldos-map-legend-item';
@@ -80,41 +162,38 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
 
   function renderCandidateMarkers() {
     clearCandidateMarkers();
-    if (!current || !censusCenter) return 0;
-    for (const data of viewportByCounty.values()) {
-      if (!data.complete || candidateMarkers.length >= 24) continue;
-      const candidates = suggestViewportParcels({
-        criteria: current, parcels: data.parcels, center: censusCenter,
-        limit: 24 - candidateMarkers.length,
+    const summary = summarizeDiscoveryCandidates({
+      criteria: current, center: censusCenter,
+      viewports: [...viewportByCounty.values()],
+    });
+    for (const candidate of summary.pins) {
+      viewer.entities.add({
+        id: 'ldos-candidate:' + candidate.county + ':' + candidate.parcelId,
+        name: candidate.label,
+        position: Cesium.Cartesian3.fromDegrees(candidate.point.lon, candidate.point.lat),
+        point: {
+          pixelSize: 11,
+          color: Cesium.Color.fromCssColorString('#16866e'),
+          outlineColor: Cesium.Color.WHITE,
+          outlineWidth: 2,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+        label: {
+          text: 'Possible source match',
+          fillColor: Cesium.Color.WHITE,
+          showBackground: true,
+          backgroundColor: Cesium.Color.fromCssColorString('#1a4153').withAlpha(0.9),
+          font: '12px sans-serif',
+          pixelOffset: new Cesium.Cartesian2(0, -20),
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 30000),
+        },
       });
-      for (const candidate of candidates) {
-        viewer.entities.add({
-          id: 'ldos-candidate:' + candidate.county + ':' + candidate.parcelId,
-          name: candidate.label,
-          position: Cesium.Cartesian3.fromDegrees(candidate.point.lon, candidate.point.lat),
-          point: {
-            pixelSize: 11,
-            color: Cesium.Color.fromCssColorString('#16866e'),
-            outlineColor: Cesium.Color.WHITE,
-            outlineWidth: 2,
-            heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-            disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          },
-          label: {
-            text: 'Possible match · ' + candidate.evidence.length + ' sourced field(s)',
-            fillColor: Cesium.Color.WHITE,
-            showBackground: true,
-            backgroundColor: Cesium.Color.fromCssColorString('#1a4153').withAlpha(0.9),
-            font: '12px sans-serif',
-            pixelOffset: new Cesium.Cartesian2(0, -20),
-            distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 30000),
-          },
-        });
-        candidateMarkers.push(candidate);
-      }
+      candidateMarkers.push(candidate);
     }
+    updateFinder();
     viewer.scene.requestRender?.();
-    return candidateMarkers.length;
+    return summary;
   }
 
   function status(message, { withNearby = false, withRadius = false } = {}) {
@@ -155,7 +234,11 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     current = criteria?.county ? criteria : null;
     await erase();
     censusCenter = null;
+    boundaryAvailable = false;
+    neighborsVisible = false;
+    viewportByCounty.clear();
     clearCandidateMarkers();
+    updateFinder();
     if (!current || destroyed) {
       status('No county selected. Choose a county in Edit criteria to display verified source boundaries.');
       return;
@@ -174,6 +257,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       const point = countyPoint(county);
       if (!point) throw new Error('Census county internal point was not returned');
       censusCenter = point;
+      updateFinder();
       let neighbors = [];
       let neighborsUnavailable = false;
       if (current.radiusMiles > 0) {
@@ -217,11 +301,13 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
           await viewer.dataSources.add(source);
           sources.push(source);
         }
-        const hints = renderCandidateMarkers();
+        boundaryAvailable = true;
+        neighborsVisible = neighbors.length > 0;
+        const summary = renderCandidateMarkers();
         status(
           neighborsUnavailable
             ? 'Source county line loaded; neighboring boundaries unavailable. Radius is a distance guide.'
-            : hints + ' preliminary parcel pins in loaded map views (maximum 24). Not a complete county inventory. Zoom closer and enable parcels for local suggestions.',
+            : 'Source geometry only · match totals appear in the left search panel for loaded parcel views.',
           { withRadius: current.radiusMiles > 0, withNearby: neighbors.length > 0 },
         );
         await viewer.flyTo(main, { duration: 1.5 });
@@ -245,15 +331,18 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       complete: complete === true,
       parcels: complete && Array.isArray(parcels) ? parcels : [],
     });
-    if (!current || !censusCenter || destroyed) return;
-    const n = renderCandidateMarkers();
-    status(n + ' preliminary markers from complete loaded map views (max 24). Not countywide; prices and permitted uses UNKNOWN. Click a green pin for the source parcel.', {
-      withRadius: current.radiusMiles > 0,
-      withNearby: rows.textContent?.includes('Neighbor county borders') ?? false,
-    });
+    if (!current || destroyed) return;
+    renderCandidateMarkers();
+    if (boundaryAvailable) {
+      status('Boundary colors show geography only. Match counts reflect the current loaded map view.', {
+        withRadius: current.radiusMiles > 0,
+        withNearby: neighborsVisible,
+      });
+    }
   };
   window.addEventListener('land:parcel-viewport', onParcelViewport);
 
+  updateFinder();
   status('Choose a county to display public geographic reference boundaries.');
   if (initialCriteria) void setCriteria(initialCriteria);
 
@@ -264,10 +353,14 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       controller?.abort();
       sequence++;
       window.removeEventListener('land:parcel-viewport', onParcelViewport);
+      window.removeEventListener('land:discovery-layer-result', onLayerResult);
       click.destroy();
       clearCandidateMarkers();
       void erase();
       legend.remove();
+      finder.remove();
+      delete document.body.dataset.landProfile;
+      delete document.body.dataset.landLayers;
     },
   });
 }
