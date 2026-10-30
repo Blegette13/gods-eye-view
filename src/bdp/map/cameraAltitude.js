@@ -52,8 +52,12 @@ export function frameFreeBrowse(viewer, { duration = 1.3 } = {}) {
   const lat = center.latitude;
   const lon = center.longitude;
   const height = cameraHeightMeters(viewer);
+  const raw = camera.positionCartographic;
+  const rawLat = Cesium.Math.toDegrees(raw?.latitude ?? Number.NaN);
+  const rawLon = Cesium.Math.toDegrees(raw?.longitude ?? Number.NaN);
   if (height !== null && height >= FREE_BROWSE_MIN_METERS
-      && height <= FREE_BROWSE_MAX_METERS && validTexasView(lat, lon)) return false;
+      && height <= FREE_BROWSE_MAX_METERS
+      && validTexasView(lat, lon) && validTexasView(rawLat, rawLon)) return false;
   camera.flyTo({
     destination: Cesium.Cartesian3.fromDegrees(center.longitude, center.latitude, FREE_BROWSE_HEIGHT_METERS),
     orientation: {
@@ -87,10 +91,12 @@ export function mountCameraAltimeter(viewer) {
   }
   refresh();
   const remove = viewer?.camera?.changed?.addEventListener?.(refresh) ?? null;
+  const removeAfterFlight = viewer?.camera?.moveEnd?.addEventListener?.(refresh) ?? null;
   return Object.freeze({
     refresh,
     destroy() {
       if (typeof remove === 'function') remove();
+      if (typeof removeAfterFlight === 'function') removeAfterFlight();
       badge.remove();
     },
   });
