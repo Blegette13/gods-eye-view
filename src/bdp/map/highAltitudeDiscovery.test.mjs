@@ -64,5 +64,5 @@ test('a real unambiguous sampled source record yields a provisional zoom-indepen
   assert.equal(result.results.length, 1);
   assert.equal(result.results[0].parcelId, '302959');
   assert.equal(result.results[0].acresReported, 20);
-  assert.match(result.message, /not exhaustive/i);
+  assert.match(result.message, /not (?:an )?exhaustive/i);
 });
