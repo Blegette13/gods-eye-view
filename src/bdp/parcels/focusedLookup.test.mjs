@@ -11,7 +11,7 @@ function layerFixture() {
     .replace(/^export default .*;\s*$/gm, '')
     .replace(/^export /gm, '');
 
-  const calls = { viewport: 0, specific: 0, render: 0, cards: [], camera: [] };
+  const calls = { viewport: 0, specific: 0, render: 0, cards: [], camera: [], repaints: 0, selectionIds: [], closeCard: null };
   const parcel = {
     id: '48453:302959',
     parcelId: '302959',
@@ -59,13 +59,23 @@ function layerFixture() {
     AbortController,
     console: { warn() {} },
     bexarCadAdapter: adapter,
-    createBdpPropertyCard: () => ({
-      show: (record) => calls.cards.push(record.parcelId),
-      hide: () => calls.cards.push('hidden'),
-      destroy() {},
-    }),
+    createBdpPropertyCard: ({ onHide } = {}) => {
+      const hide = () => {
+        calls.cards.push('hidden');
+        onHide?.();
+      };
+      calls.closeCard = hide;
+      return {
+        show: (record) => calls.cards.push(record.parcelId),
+        hide,
+        destroy() {},
+      };
+    },
     parcelGeoJsonWithBoundaries: () => ({ type: 'FeatureCollection', features: [] }),
-    styleSelectedParcelEntities: () => 0,
+    styleSelectedParcelEntities: (_entities, selectedId) => {
+      calls.selectionIds.push(selectedId);
+      return selectedId ? 1 : 0;
+    },
     recommendedParcelFocusRange: () => 450,
   };
   runInNewContext(source + '\nthis.createLayerForTest = createCountyParcelLayer;', context);
@@ -77,7 +87,7 @@ function layerFixture() {
     source: 'Travis County GIS',
   });
   const viewer = {
-    scene: { canvas: {}, globe: { ellipsoid: {} } },
+    scene: { canvas: {}, globe: { ellipsoid: {} }, requestRender: () => { calls.repaints += 1; } },
     camera: { computeViewRectangle: () => ({ west: -97.8, east: -97.7, south: 30.2, north: 30.3 }) },
     dataSources: { add: async () => {}, remove: () => {} },
     flyTo: async (_target, options) => calls.camera.push(options),
@@ -157,5 +167,22 @@ test('dense viewport stays available but warns of incomplete GIS coverage', asyn
   const parcel = await layer.focusParcel('302959');
   assert.equal(parcel.parcelId, '302959');
   assert.equal(calls.specific, 1);
+  layer.destroy();
+});
+
+test('closing selected property card clears its selection and requests a map repaint', async () => {
+  const { layer, calls, viewer } = layerFixture();
+  layer.init(viewer);
+  layer.enable();
+  await layer.focusParcel('302959');
+  assert.equal(calls.selectionIds.at(-1), '48453:302959');
+  const painted = calls.repaints;
+  assert.ok(painted > 0, 'selection should be drawn as soon as it is chosen');
+
+  // The card's own X invokes onHide; there is no camera change to cause an
+  // incidental Cesium render. The layer must explicitly request a new frame.
+  calls.closeCard();
+  assert.equal(calls.selectionIds.at(-1), null);
+  assert.ok(calls.repaints > painted, 'closing must cause a fresh map frame');
   layer.destroy();
 });
