@@ -115,6 +115,9 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
   function updateFinder() {
     const active = Boolean(current?.county);
     document.body.dataset.landProfile = active ? 'active' : 'browse';
+    if (active && !document.body.dataset.landLayers) {
+      document.body.dataset.landLayers = 'closed';
+    }
     finder.hidden = !active;
     if (!active) {
       document.body.dataset.landLayers = 'open';
