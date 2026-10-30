@@ -120,6 +120,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     if (current) addLegendLine('county', `${current.county} County (Census)`);
     if (withNearby) addLegendLine('neighbor', 'Neighbor county borders (context only)');
     if (withRadius) addLegendLine('radius', `${current.radiusMiles}-mile radius from Census county internal point`);
+    if (candidateMarkers.length) addLegendLine('candidate', 'Green pins: tentative source-acreage / address matches');
     description.textContent = message;
   }
 
@@ -244,7 +245,10 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     });
     if (!current || !censusCenter || destroyed) return;
     const n = renderCandidateMarkers();
-    description.textContent = n + ' preliminary markers from a complete loaded map view, maximum 24. Not countywide inventory; asking prices and allowed business uses remain UNKNOWN. Click a pin for its source record.';
+    status(n + ' preliminary markers from complete loaded map views (max 24). Not countywide; prices and permitted uses UNKNOWN. Click a green pin for the source parcel.', {
+      withRadius: current.radiusMiles > 0,
+      withNearby: rows.textContent?.includes('Neighbor county borders') ?? false,
+    });
   };
   window.addEventListener('land:parcel-viewport', onParcelViewport);
 
