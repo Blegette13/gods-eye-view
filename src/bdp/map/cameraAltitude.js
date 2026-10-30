@@ -32,10 +32,15 @@ export function freeBrowseLookPoint(viewer) {
   if (canvas && camera.pickEllipsoid && Cesium.Cartographic?.fromCartesian) {
     const x = (canvas.clientWidth || canvas.width || 0) / 2;
     const y = (canvas.clientHeight || canvas.height || 0) / 2;
-    const ground = camera.pickEllipsoid(
-      new Cesium.Cartesian2(x, y), viewer.scene?.globe?.ellipsoid,
-    );
-    if (ground) look = Cesium.Cartographic.fromCartesian(ground);
+    try {
+      const ground = camera.pickEllipsoid(
+        new Cesium.Cartesian2(x, y), viewer.scene?.globe?.ellipsoid,
+      );
+      if (ground) look = Cesium.Cartographic.fromCartesian(ground);
+    } catch {
+      // Photorealistic 3D stacks can temporarily lack a pickable ellipsoid;
+      // use the safe camera geographic position rather than block free browse.
+    }
   }
   const p = look || camera.positionCartographic;
   const lat = Cesium.Math.toDegrees(p?.latitude ?? Number.NaN);
