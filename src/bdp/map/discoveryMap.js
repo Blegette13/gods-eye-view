@@ -240,9 +240,11 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     if (!records.length) {
       const empty = document.createElement('li');
       empty.className = 'ldos-discovery-result-empty';
-      empty.textContent = sourcePreview?.state === 'loading'
-        ? 'Searching the county source…'
-        : 'No preview results available. Try another acreage range, or browse the map.';
+      empty.textContent = !current
+        ? 'No confirmed complete parcel list for this map view yet.'
+        : sourcePreview?.state === 'loading'
+          ? 'Searching the county source…'
+          : 'No preview results available. Try another acreage range, or browse the map.';
       results.append(empty);
       return;
     }
@@ -280,7 +282,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     if (!active) {
       // Free browsing never pretends that every parcel is for sale. The left
       // list appears only after a real GIS snapshot has been rendered.
-      const hasSnapshot = Boolean(freeRows && freeCounty
+      const hasSnapshot = Boolean(freeCoverage && freeCounty
         && (freeSnapshotPinned || shouldDiscoverFreeParcels(cameraHeightMeters(viewer))));
       document.body.dataset.landBrowseResults = hasSnapshot ? 'open' : 'closed';
       finder.hidden = !hasSnapshot;
@@ -291,8 +293,9 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       if (!hasSnapshot) return;
       finderKicker.textContent = 'YOUR LAND SEARCH';
       finderTitle.textContent = 'Nearby · ' + freeCounty + ' County';
-      matchCount.textContent = freeRows.length + ' mapped ' +
-        (freeRows.length === 1 ? 'parcel' : 'parcels');
+      matchCount.textContent = freeCoverage?.count === null
+        ? 'Not evaluated yet'
+        : freeRows.length + ' mapped ' + (freeRows.length === 1 ? 'parcel' : 'parcels');
       matchDetails.textContent = (freeCoverage?.message || 'Source coverage unverified') +
         (freeSnapshotPinned ? ' · Previous neighborhood snapshot; pan map to refresh.' : '');
       finderHelp.textContent = 'Map-view GIS records only. Sale availability, legal use, ownership and financial suitability are unverified.';
@@ -708,8 +711,9 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
         return;
       }
       if (county !== freeCounty) {
-        freeRows = null;
-        freeCoverage = null;
+        freeRows = [];
+        freeCoverage = { count: null, complete: false,
+          message: 'Checking county GIS parcel coverage at this camera view…' };
         freeSnapshotPinned = false;
         freeCounty = county;
         updateFinder();
@@ -748,10 +752,18 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
         freeRows = freeCoverage.rows;
         freeSnapshotPinned = false;
         updateFinder();
-      } else if (reason === 'zoom-in' || reason === 'over-limit'
-          || reason === 'error') {
-        freeRows = null;
-        freeCoverage = null;
+      } else if (['loading','zoom-in','over-limit','error'].includes(reason)) {
+        freeRows = [];
+        freeCoverage = {
+          count: null, complete: false,
+          message: reason === 'loading'
+            ? 'Loading real county parcel polygons for this map view…'
+            : reason === 'over-limit'
+              ? 'County GIS response is too dense for complete coverage at this viewpoint. Zoom closer; no total can be claimed.'
+              : reason === 'error'
+                ? 'County GIS service unavailable. Parcel coverage is UNKNOWN; retry or browse another area.'
+                : 'County GIS viewport exceeds the safe spatial range. Zoom closer or adjust the view.',
+        };
         freeSnapshotPinned = false;
         updateFinder();
       }
