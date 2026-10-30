@@ -47,7 +47,7 @@ export function showLandDiscoveryGate({ initialCriteria = null } = {}) {
   heading.textContent = 'Find land that fits your plan.';
   const description = document.createElement('p');
   description.id = 'ldos-welcome-description';
-  description.textContent = 'Start by choosing a county. Add a search radius and your goals to guide map exploration and review possible acquisitions. This preview does not automatically verify qualifying properties.';
+  description.textContent = 'Choose a county to run a guided land search, or browse the map freely without selecting one. Guided results are preliminary and do not establish availability or development clearance.';
 
   const form = document.createElement('form');
   form.className = 'ldos-welcome-form';
@@ -144,6 +144,7 @@ export function showLandDiscoveryGate({ initialCriteria = null } = {}) {
   skip.type = 'button';
   skip.className = 'ldos-welcome-skip';
   skip.textContent = 'Browse map without a search profile';
+  skip.setAttribute('aria-label', 'Browse freely — no county or search profile required');
   const begin = document.createElement('button');
   begin.type = 'submit';
   begin.className = 'ldos-welcome-continue';
@@ -169,9 +170,21 @@ export function showLandDiscoveryGate({ initialCriteria = null } = {}) {
       if (event.key === 'Escape') complete(null);
     };
     document.addEventListener('keydown', onKey);
-    skip.addEventListener('click', () => complete(null));
+    skip.addEventListener('click', () => {
+      error.textContent = '';
+      complete(null);
+    });
     form.addEventListener('submit', (event) => {
       event.preventDefault();
+      // The primary Enter action must not trap a first-time free browser in
+      // county validation when they provided NO guided search preferences.
+      const nothingChosen = !county.value && !purpose.value && !zip.value &&
+        !budget.value && !min.value && !max.value && Number(radius.value) === 0;
+      if (nothingChosen) {
+        error.textContent = '';
+        complete(null);
+        return;
+      }
       try {
         const criteria = normalizeLandCriteria({
           county: county.value, radiusMiles: radius.value,
