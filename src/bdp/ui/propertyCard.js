@@ -940,22 +940,27 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
 
     const actions = document.createElement('div');
     actions.className = 'bdp-property-actions';
-    const shortlist = actionButton('bookmark_add', 'Add to session acquisition shortlist');
-    shortlist.title = 'Add to acquisition board (session only)';
-    shortlist.addEventListener('click', () => {
-      // The workspace converts this public parcel into a minimal, temporary
-      // snapshot. Do not persist evidence or promise a private account.
-      window.dispatchEvent(new CustomEvent('land:acquisition-add', {
-        detail: { parcel },
-      }));
-    });
     const collapse = actionButton('keyboard_arrow_up', 'Collapse property intelligence');
     const close = actionButton('close', 'Close property intelligence');
-    actions.append(shortlist, collapse, close);
+    actions.append(collapse, close);
     header.append(titles, actions);
 
     const body = document.createElement('div');
     body.className = 'bdp-property-body';
+
+    const shortlist = document.createElement('button');
+    shortlist.type = 'button';
+    shortlist.className = 'bdp-save-property';
+    shortlist.textContent = '＋ Save property to acquisition board';
+    shortlist.title = 'Session-only shortlist — not saved to an account';
+    shortlist.addEventListener('click', () => {
+      // The workspace converts this public parcel to a minimal, temporary
+      // snapshot. Never persist provider data in a fake customer account.
+      window.dispatchEvent(new CustomEvent('land:acquisition-add', {
+        detail: { parcel },
+      }));
+    });
+    body.append(shortlist);
 
     const acreageReview = reviewReportedAcreage(parcel.property?.acres);
     const acreageReviewRow = acreageReview ? row('Acreage review', acreageReview.message) : null;
