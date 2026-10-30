@@ -940,9 +940,18 @@ export function createBdpPropertyCard({ screeningLoader = fetchBdpParcelIntellig
 
     const actions = document.createElement('div');
     actions.className = 'bdp-property-actions';
+    const shortlist = actionButton('bookmark_add', 'Add to session acquisition shortlist');
+    shortlist.title = 'Add to acquisition board (session only)';
+    shortlist.addEventListener('click', () => {
+      // The workspace converts this public parcel into a minimal, temporary
+      // snapshot. Do not persist evidence or promise a private account.
+      window.dispatchEvent(new CustomEvent('land:acquisition-add', {
+        detail: { parcel },
+      }));
+    });
     const collapse = actionButton('keyboard_arrow_up', 'Collapse property intelligence');
     const close = actionButton('close', 'Close property intelligence');
-    actions.append(collapse, close);
+    actions.append(shortlist, collapse, close);
     header.append(titles, actions);
 
     const body = document.createElement('div');
