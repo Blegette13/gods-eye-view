@@ -975,3 +975,78 @@ body[data-bdp-product='land-development-os']:has(#land-search-status:not(:empty)
     left: auto;
   }
 }
+
+
+/* Step 33: Free Explorer lists real bounded GIS parcels when the camera
+ * reaches <=1.3 km above WGS84. Never obstruct the original layer controls
+ * until a source snapshot has actually been rendered. */
+body[data-bdp-product='land-development-os'][data-land-profile='browse'][data-land-browse-results='open']
+  #land-discovery-sidebar {
+  display: flex !important;
+  top: 169px;
+}
+body[data-bdp-product='land-development-os'][data-land-profile='browse'][data-land-browse-results='open']
+  #land-discovery-sidebar #land-discovery-finder {
+  display: block !important;
+  min-height: 150px;
+  max-height: 100%;
+}
+body[data-bdp-product='land-development-os'][data-land-profile='browse'][data-land-browse-results='open']
+  #land-discovery-sidebar #land-discovery-map-legend {
+  display: none !important;
+}
+body[data-bdp-product='land-development-os'][data-land-profile='browse'][data-land-browse-results='open'][data-land-layers='closed']
+  #left-panel-stack {
+  display: none !important;
+}
+body[data-bdp-product='land-development-os'][data-land-profile='browse'][data-land-browse-results='open'][data-land-layers='open']
+  #left-panel-stack {
+  top: 169px !important;
+  left: min(370px, 29vw) !important;
+  width: min(306px, 27vw) !important;
+  max-height: calc(100dvh - 252px) !important;
+}
+body[data-bdp-product='land-development-os'] #land-discovery-finder [hidden] {
+  display: none !important;
+}
+body[data-bdp-product='land-development-os'] #land-discovery-finder
+  .ldos-finder-actions:has(button:first-child[hidden]) {
+  grid-template-columns: 1fr;
+}
+
+/* Align Property Intelligence's TOP edge with Your Land Search while making
+ * its bottom independent of the Provider Settings chip and Cesium credits.
+ * The large evidence report scrolls within its own panel. */
+body[data-bdp-product='land-development-os'] #bdp-property-card {
+  top: 169px !important;
+  bottom: 84px !important;
+  height: auto !important;
+  max-height: calc(100dvh - 253px) !important;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@media(max-width:1100px) and (min-width:721px) {
+  body[data-bdp-product='land-development-os'] #bdp-property-card {
+    top: 180px !important;
+    bottom: 84px !important;
+    max-height: calc(100dvh - 264px) !important;
+  }
+}
+@media(max-width:720px) {
+  body[data-bdp-product='land-development-os'] #bdp-property-card {
+    top: 285px !important;
+    bottom: 70px !important;
+    max-height: calc(100dvh - 355px) !important;
+  }
+  body[data-bdp-product='land-development-os'][data-land-profile='browse'][data-land-browse-results='open']
+    #land-discovery-sidebar {
+    top: 276px;
+  }
+}
+@media(max-height:600px) and (min-width:721px) {
+  body[data-bdp-product='land-development-os'] #bdp-property-card {
+    top: 127px !important;
+    bottom: 72px !important;
+    max-height: calc(100dvh - 199px) !important;
+  }
+}
