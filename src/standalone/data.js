@@ -166,6 +166,19 @@ export function createStandaloneData({
       }));
     }
   };
+  // A map moving ABOVE the 1.3 km Free Explorer threshold must immediately
+  // conceal any previously cached parcel outlines. Never re-enable a layer
+  // that the operator manually switched off.
+  const clearElevatedFreeParcels = (event) => {
+    const county = event?.detail?.county;
+    const id = guidedCountyIds[county];
+    if (!id || !dataManager.isEnabled(id)) return;
+    void dataManager.refreshLayer(id).catch((error) => {
+      console.warn('Free-browse elevated parcel refresh unavailable:', error);
+    });
+  };
+  window.addEventListener('land:discovery-free-zoomed-out', clearElevatedFreeParcels);
+  defer(() => window.removeEventListener('land:discovery-free-zoomed-out', clearElevatedFreeParcels));
   window.addEventListener('land:discovery-enable-county', enableGuidedCounty);
   defer(() => {
     guidedActivation?.abort();
