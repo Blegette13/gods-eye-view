@@ -2,7 +2,7 @@ import { CENSUS_COUNTY_SOURCE, validateCountyFeatures } from './discoveryGeograp
 import { PILOT_COUNTIES } from '../acquisition/session.js';
 
 /** The existing altimeter is ellipsoid-relative, not ground clearance. */
-export const FREE_BROWSE_PARCEL_HEIGHT_METERS = 1300;
+export const FREE_BROWSE_PARCEL_HEIGHT_METERS = 2400;
 export const MAX_FREE_BROWSE_ROWS = 1000;
 
 export function shouldDiscoverFreeParcels(height) {
