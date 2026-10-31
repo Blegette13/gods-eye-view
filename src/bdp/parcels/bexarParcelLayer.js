@@ -367,7 +367,9 @@ export function createCountyParcelLayer({
         // satisfy the next near-identical camera position without repeating
         // requests to the public GIS service.
         let parcels = progressive
-          ? progressiveCache.reuse({ county: adapter.county, viewBounds: bounds })
+          ? progressiveCache.reuse({
+            county: adapter.county, viewBounds: bounds, cameraHeightMeters: height,
+          })
           : null;
         if (!parcels) {
           parcels = await adapter.fetchParcelsInBounds(bounds, {
