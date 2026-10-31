@@ -12,6 +12,7 @@ import {
   freeBrowseCountyUrl, countyFromFreeBrowseResponse, shouldDiscoverFreeParcels,
   freeBrowseVisibleParcels, MAX_FREE_BROWSE_ROWS,
 } from './freeBrowseParcels.js';
+import { filterAndSortMappedParcels } from './parcelListView.js';
 
 const icon = (className, text) => {
   const element = document.createElement('span');
@@ -153,6 +154,47 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
   const resultsHeading = document.createElement('h3');
   resultsHeading.className = 'ldos-discovery-list-heading';
   resultsHeading.textContent = 'Property results';
+  const freeFilters = document.createElement('section');
+  freeFilters.id = 'ldos-free-parcel-filters';
+  freeFilters.setAttribute('aria-label', 'Filter mapped county parcel records');
+  freeFilters.hidden = true;
+  const filterText = document.createElement('input');
+  filterText.type = 'search';
+  filterText.maxLength = 120;
+  filterText.placeholder = 'Find address or parcel ID';
+  filterText.setAttribute('aria-label', 'Filter by source-reported address or parcel ID');
+  const filterMin = document.createElement('input');
+  filterMin.type = 'number';
+  filterMin.min = '0';
+  filterMin.step = 'any';
+  filterMin.placeholder = 'Min acres';
+  filterMin.setAttribute('aria-label', 'Minimum source-reported acres');
+  const filterMax = document.createElement('input');
+  filterMax.type = 'number';
+  filterMax.min = '0';
+  filterMax.step = 'any';
+  filterMax.placeholder = 'Max acres';
+  filterMax.setAttribute('aria-label', 'Maximum source-reported acres');
+  const acresRow = document.createElement('div');
+  acresRow.className = 'ldos-free-filter-acres';
+  acresRow.append(filterMin, filterMax);
+  const filterSort = document.createElement('select');
+  filterSort.setAttribute('aria-label', 'Sort mapped county source parcels');
+  for (const [value,label] of [
+    ['address','Address A to Z'],
+    ['acres-desc','Reported acreage: largest first'],
+    ['acres-asc','Reported acreage: smallest first'],
+  ]) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    filterSort.append(option);
+  }
+  filterSort.value = 'address';
+  const filterCount = document.createElement('p');
+  filterCount.className = 'ldos-free-filter-count';
+  filterCount.setAttribute('aria-live','polite');
+  freeFilters.append(filterText, acresRow, filterSort, filterCount);
   const results = document.createElement('ol');
   results.id = 'ldos-discovery-results';
   results.setAttribute('aria-label', 'Preliminary property candidates');
@@ -205,7 +247,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     }
   });
   finder.append(finderKicker, finderTitle, matchCount, matchDetails, finderHelp,
-    finderActions, labelsStatus, resultsHeading, results, moreButton);
+    finderActions, labelsStatus, resultsHeading, freeFilters, results, moreButton);
   sidebar.append(finder, legend);
   document.body.append(sidebar);
 
@@ -235,13 +277,35 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     return [...collected.values()];
   }
 
+  function renderFilteredFreeList() {
+    const filtered = filterAndSortMappedParcels(freeRows || [], {
+      search: filterText.value, minAcres: filterMin.value,
+      maxAcres: filterMax.value, sort: filterSort.value,
+    });
+    const full = freeRows?.length || 0;
+    filterCount.textContent = filtered.invalidRange
+      ? 'Minimum acres exceeds maximum. Adjust the list filters.'
+      : filtered.records.length + ' of ' + full + ' sourced parcels shown' +
+        (filtered.unknownExcluded
+          ? ' · ' + filtered.unknownExcluded + ' with UNKNOWN acreage excluded by acreage filter.'
+          : ' · Sale status and permitted uses remain UNKNOWN.');
+    renderResultList(filtered.records);
+  }
+  for (const control of [filterText,filterMin,filterMax,filterSort]) {
+    control.addEventListener(control === filterSort ? 'change' : 'input', () => {
+      if (!current && freeCoverage?.count !== null) renderFilteredFreeList();
+    });
+  }
+
   function renderResultList(records) {
     results.replaceChildren();
     if (!records.length) {
       const empty = document.createElement('li');
       empty.className = 'ldos-discovery-result-empty';
       empty.textContent = !current
-        ? 'No confirmed complete parcel list for this map view yet.'
+        ? freeCoverage?.count === null
+          ? 'Map coverage is not yet established for these source records.'
+          : 'No sourced parcels match these LIST filters. This is not an availability or zoning determination.'
         : sourcePreview?.state === 'loading'
           ? 'Searching the county source…'
           : 'No preview results available. Try another acreage range, or browse the map.';
@@ -290,6 +354,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       document.body.dataset.landLayers = hasSnapshot && !freeMapLayersOpen ? 'closed' : 'open';
       layersButton.textContent = freeMapLayersOpen ? 'Hide map layers' : 'Map layers';
       layersButton.setAttribute('aria-expanded', String(freeMapLayersOpen));
+      freeFilters.hidden = !hasSnapshot || freeCoverage?.count === null;
       if (!hasSnapshot) return;
       finderKicker.textContent = 'YOUR LAND SEARCH';
       finderTitle.textContent = 'Nearby · ' + freeCounty + ' County';
@@ -304,10 +369,11 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       labelsStatus.hidden = true;
       moreButton.hidden = true;
       resultsHeading.textContent = 'Parcels in mapped neighborhood';
-      renderResultList(freeRows);
+      renderFilteredFreeList();
       return;
     }
     document.body.dataset.landBrowseResults = 'closed';
+    freeFilters.hidden = true;
     finderKicker.textContent = 'YOUR LAND SEARCH';
     finderHelp.textContent = 'Matches are preliminary GIS acreage/address evidence only. Budget, availability and permitted use remain UNKNOWN.';
     enableParcels.hidden = false;
