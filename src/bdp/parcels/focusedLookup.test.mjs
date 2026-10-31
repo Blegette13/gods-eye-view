@@ -56,7 +56,7 @@ function layerFixture({ freeBrowsing = false } = {}) {
   const context = {
     Cesium: fakeCesium,
     shouldDiscoverFreeParcels: (meters) => Number.isFinite(meters)
-      && meters >= 0 && meters <= 1300,
+      && meters >= 0 && meters <= 2400,
     createProgressiveParcelCache: () => ({
       reuse: () => null,
       add: () => null,
@@ -200,7 +200,7 @@ test('closing selected property card clears its selection and requests a map rep
   layer.destroy();
 });
 
-test('free browsing gates ambient GIS polygons at 1.3km but retains selected property intelligence', async () => {
+test('free browsing gates ambient GIS polygons at 2.4km but retains selected property intelligence', async () => {
   const { layer, calls, viewer, adapter } = layerFixture({ freeBrowsing: true });
   adapter.fetchParcelsInBounds = async () => {
     calls.viewport += 1;
@@ -214,8 +214,8 @@ test('free browsing gates ambient GIS polygons at 1.3km but retains selected pro
   layer.init(viewer);
   layer.enable();
   assert.equal(await layer.update(viewer), true);
-  assert.equal(calls.viewport, 0, 'no parcel request above 1.3km');
-  viewer.camera.positionCartographic.height = 1300;
+  assert.equal(calls.viewport, 0, 'no parcel request above 2.4km');
+  viewer.camera.positionCartographic.height = 2400;
   assert.equal(await layer.update(viewer), true);
   assert.equal(calls.viewport, 1);
   assert.equal(layer.getStats().count, 1);
@@ -229,7 +229,7 @@ test('free browsing gates ambient GIS polygons at 1.3km but retains selected pro
   layer.destroy();
 });
 
-test('1.3km Free Explorer renders sourced central parcel footprint as PARTIAL, not full-map clearance', async () => {
+test('2.4km Free Explorer renders sourced central parcel footprint as PARTIAL, not full-map clearance', async () => {
   const { layer, calls, viewer, adapter } = layerFixture({ freeBrowsing: true });
   const bounds = { west: -97.775, south: 30.225, east: -97.725, north: 30.275 };
   adapter.fetchParcelsInBounds = async (_area, options) => {
@@ -250,7 +250,7 @@ test('1.3km Free Explorer renders sourced central parcel footprint as PARTIAL, n
   };
   layer.init(viewer);
   layer.enable();
-  viewer.camera.positionCartographic.height = 1300;
+  viewer.camera.positionCartographic.height = 2400;
   assert.equal(await layer.update(viewer), true);
   const stats=layer.getStats();
   assert.equal(calls.viewport,1);
