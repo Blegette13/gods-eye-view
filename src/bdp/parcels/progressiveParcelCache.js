@@ -1,4 +1,4 @@
-import { centerViewportBounds } from '../cad/travisViewportTiles.js';
+import { centerViewportBounds, travisFocalScalesForHeight } from '../cad/travisViewportTiles.js';
 
 export const PROGRESSIVE_CACHE_WINDOW_LIMIT = 6;
 export const PROGRESSIVE_CACHE_RECORD_LIMIT = 1000;
@@ -136,11 +136,13 @@ export function createProgressiveParcelCache({
     while (windows.size > maxWindows) windows.delete(windows.keys().next().value);
     return collect(county,viewBounds,boundedCandidates(county,viewBounds));
   }
-  function reuse({county,viewBounds}={}) {
+  function reuse({county,viewBounds,cameraHeightMeters}={}) {
     if (!county || !isBounds(viewBounds)) return null;
-    // Reuse only when *one* known source window fully covers the new center
-    // footprint. Never fill a hole from adjacent cached snapshots.
-    const focus = centerViewportBounds(viewBounds,0.5);
+    // Match the camera-height-dependent source-query envelope. A 2.4km
+    // search uses a smaller verified center than a 700m viewport. Reuse only
+    // when one completed source window fully covers that actual query area.
+    const focus = centerViewportBounds(viewBounds,
+      travisFocalScalesForHeight(cameraHeightMeters)[0]);
     const candidates = boundedCandidates(county,viewBounds);
     if (!candidates.some((item)=>contains(item.bounds,focus))) return null;
     return collect(county,viewBounds,candidates.map((item)=>({...item,fromCache:true})));
