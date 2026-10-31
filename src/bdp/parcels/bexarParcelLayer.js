@@ -68,7 +68,7 @@ export function createCountyParcelLayer({
   const selectedOutline = Cesium.Color.fromCssColorString('#42c5ed').withAlpha(0.98);
   const normalFill = Cesium.Color.fromCssColorString('#ffffff').withAlpha(0.055);
   const selectedFill = Cesium.Color.fromCssColorString('#2289bd').withAlpha(0.24);
-  const focalBoundary = Cesium.Color.fromCssColorString('#d98c35').withAlpha(0.97);
+  const focalBoundary = Cesium.Color.fromCssColorString('#d98c35').withAlpha(0.82);
 
   function refreshParcelSelection() {
     if (!dataSource) return;
@@ -82,7 +82,7 @@ export function createCountyParcelLayer({
     for (const entity of dataSource.entities.values) {
       if (entity.polyline && propertyValue(entity, 'bdpFocusFootprint')) {
         entity.polyline.material = focalBoundary;
-        entity.polyline.width = 4;
+        entity.polyline.width = 3;
       }
     }
     // A card-only click changes entity materials without camera movement.
