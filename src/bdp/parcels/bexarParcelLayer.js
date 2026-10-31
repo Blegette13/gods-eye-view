@@ -317,7 +317,7 @@ export function createCountyParcelLayer({
       // unavailable. Never synthesize data or mark that viewport as complete.
       if (!enabled || loading || focusedLookupToken !== null) return true;
       viewer = targetViewer || viewer;
-      // Auto-loaded Free Explorer GIS polygons are rendered only at <=1.3 km
+      // Auto-loaded Free Explorer GIS polygons are rendered only at <=2.4 km
       // WGS84 camera height; source query area/caps still govern completeness.
       const freeMode = typeof document !== 'undefined'
         && document.body?.dataset?.landProfile === 'browse';
@@ -375,6 +375,7 @@ export function createCountyParcelLayer({
             signal: requestController.signal,
             // Only Free Explorer's Travis viewport can use partial windows.
             focusOnDense: progressive,
+            cameraHeightMeters: progressive ? height : undefined,
           });
           if (progressive && parcels.viewportCoverage?.focalOnly === true) {
             parcels = progressiveCache.add({
