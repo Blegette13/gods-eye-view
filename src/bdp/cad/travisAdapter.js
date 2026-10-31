@@ -1,5 +1,5 @@
 import { normalizeParcel, validateParcel } from '../parcels/parcelSchema.js';
-import { collectTravisViewportTiles, centerViewportBounds } from './travisViewportTiles.js';
+import { collectTravisViewportTiles, centerViewportBounds, travisFocalScalesForHeight } from './travisViewportTiles.js';
 
 export const TRAVIS_COUNTY_FIPS = '48453';
 export const TRAVIS_PARCEL_LAYER_URL = 'https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD/MapServer/0';
@@ -154,67 +154,83 @@ export const travisCadAdapter = Object.freeze({
   },
   async fetchParcelsInBounds(bounds, options = {}) {
     const limit = limitWithin(options.limit, 999, 500);
-    const initial = await fetchFeatures(buildTravisBoundsUrl({ ...bounds, limit }),
-      limit, options, { allowUnidentifiedViewport: true });
-    if (initial.viewportCoverage?.overLimit !== true) return initial;
+    const free = options.focusOnDense === true;
+    const highCamera = free && Number.isFinite(options.cameraHeightMeters)
+      && options.cameraHeightMeters > 1600;
+    const request = (footprint, { signal = options.signal } = {}) =>
+      fetchFeatures(buildTravisBoundsUrl({ ...footprint, limit }),
+        limit, { signal }, { allowUnidentifiedViewport: true });
 
-    // A broad county query can exceed ArcGIS limits even at 1.3 km. Retry
-    // only this bounded viewport as 4 GIS envelopes, subdividing overloaded
-    // quarters once more. Never render partial tiles as a complete parcel
-    // inventory. Exact parcel and owner searches remain strictly unchanged.
-    // For dense free-exploration views, prioritize an honestly delimited
-    // central half-width/half-height window (25% of the screen area) rather
-    // than hiding EVERY boundary until users zoom to rooftop altitude.
-    // Selection is ONLY for a known complete source tile footprint, never
-    // invented parcels in the unqueried outer map. Keep regular manual and
-    // guided county layers unchanged.
-    const focusBounds = options.focusOnDense === true
-      ? centerViewportBounds(bounds, 0.5) : null;
-    const targetBounds = focusBounds || bounds;
-    const first = focusBounds
-      ? await fetchFeatures(buildTravisBoundsUrl({ ...focusBounds, limit }),
-        limit, options, { allowUnidentifiedViewport: true })
-      : initial;
-    let completed = first.viewportCoverage?.overLimit !== true
-      ? { complete: true, parcels: first,
-        receivedCount: first.viewportCoverage?.receivedCount ?? first.length,
-        omittedUnidentified: first.viewportCoverage?.omittedUnidentified ?? 0,
-        queryCount: 0 }
-      : await collectTravisViewportTiles({
+    // Manual / guided county layers still try to load the ENTIRE viewport.
+    // Above 1.6km, Free Explorer goes directly to an altitude-scaled central
+    // window instead: the full urban viewport is known to overflow the source
+    // and requesting it repeatedly just increases public GIS traffic.
+    const original = highCamera ? null : await request(bounds);
+    if (original && !original.viewportCoverage?.overLimit) return original;
+
+    let completed = null;
+    let targetBounds = bounds;
+    let attemptedFocalQueries = 0;
+    let latest = original;
+    if (free) {
+      // Each subsequent query is smaller, centered on the actual visible
+      // geographic footprint. Nothing outside a completed source envelope is
+      // represented as evaluated. At most THREE direct focal probes.
+      for (const scale of travisFocalScalesForHeight(options.cameraHeightMeters)) {
+        targetBounds = centerViewportBounds(bounds, scale);
+        latest = await request(targetBounds);
+        attemptedFocalQueries++;
+        if (!latest.viewportCoverage?.overLimit) {
+          completed = {
+            complete: true, parcels: latest,
+            receivedCount: latest.viewportCoverage?.receivedCount ?? latest.length,
+            omittedUnidentified: latest.viewportCoverage?.omittedUnidentified ?? 0,
+            queryCount: 0,
+          };
+          break;
+        }
+      }
+    }
+
+    // When every directly bounded focus window is still too dense, try the
+    // existing capped (4 + 16) ArcGIS tile strategy on the SMALLEST window.
+    // In manual mode retain the original full-viewport tiling semantics.
+    if (!completed) {
+      completed = await collectTravisViewportTiles({
         bounds: targetBounds, limit, signal: options.signal,
         fetchTile: (tile, { signal, limit: tileLimit }) =>
           fetchFeatures(buildTravisBoundsUrl({ ...tile, limit: tileLimit }),
             tileLimit, { signal }, { allowUnidentifiedViewport: true }),
       });
+    }
     if (!completed.complete) {
-      // Never display a falsely complete window. The county's original
-      // capped source still reports unknown coverage to the operator.
       const incomplete = [];
       Object.defineProperty(incomplete, 'viewportCoverage', {
-        value: Object.freeze({ ...initial.viewportCoverage,
+        value: Object.freeze({
+          ...(latest?.viewportCoverage || {}),
+          overLimit: true,
           tileQueries: completed.queryCount,
           tileAttempted: true,
           tileFailureReason: completed.reason,
-          ...(focusBounds ? { attemptedCentralFootprint: true } : {}),
+          ...(free ? { attemptedCentralFootprint: true, focalAttempts: attemptedFocalQueries } : {}),
         }), enumerable: false,
       });
       return incomplete;
     }
-    // fetchFeatures attaches a non-configurable viewportCoverage property
-    // to its returned array. Copy the direct central response before adding
-    // the focal provenance, rather than redefining immutable source metadata.
+    // The original ArcGIS array includes immutable viewportCoverage metadata.
+    // Copy direct source results rather than redefining that descriptor.
     const results = completed.queryCount === 0
       ? [...completed.parcels] : completed.parcels;
-    // A returned list is a source-backed COMPLETE snapshot only for its
-    // actual query footprint. Larger visible area remains unassessed.
     Object.defineProperty(results, 'viewportCoverage', {
       value: Object.freeze({
         receivedCount: completed.receivedCount,
         omittedUnidentified: completed.omittedUnidentified,
         tiled: completed.queryCount > 0,
         tileQueries: completed.queryCount,
-        ...(focusBounds
-          ? { focalOnly: true, focalBounds: Object.freeze(focusBounds) } : {}),
+        ...(free
+          ? { focalOnly: true, focalBounds: Object.freeze(targetBounds),
+            focalAttempts: attemptedFocalQueries }
+          : {}),
       }), enumerable: false,
     });
     return results;
