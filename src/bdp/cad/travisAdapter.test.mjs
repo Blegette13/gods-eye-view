@@ -268,3 +268,58 @@ test('capped central footprint still reports UNKNOWN instead of a falsely comple
     assert.ok(requests <= 22);
   } finally {globalThis.fetch=prior;}
 });
+
+test('2.4km Free Explorer avoids a known-overflow full-screen request and recovers narrower real GIS envelopes', async () => {
+  const prior = globalThis.fetch;
+  const full = { west:-97.8, south:30.2, east:-97.7, north:30.3 };
+  const sent = [];
+  try {
+    globalThis.fetch = async (url) => {
+      const rect = new URL(url).searchParams.get('geometry').split(',').map(Number);
+      sent.push(rect);
+      return {ok:true,json:async()=>sent.length === 1
+        ? {type:'FeatureCollection',features:[feature({PROP_ID:1})],exceededTransferLimit:true}
+        : {type:'FeatureCollection',features:[feature({PROP_ID:12345})]}};
+    };
+    const records = await travisCadAdapter.fetchParcelsInBounds(full,{
+      focusOnDense:true,cameraHeightMeters:2400,limit:500,
+    });
+    assert.equal(sent.length,2,'no full-screen GIS request at 2.4km, only two bounded probes');
+    assert.ok(sent[0][0] > full.west && sent[0][2] < full.east);
+    assert.ok(sent[0][1] > full.south && sent[0][3] < full.north);
+    assert.ok(sent[1][0] > sent[0][0] && sent[1][2] < sent[0][2],
+      'a capped first neighborhood query becomes a smaller complete query');
+    assert.equal(records.length,1);
+    assert.equal(records[0].parcelId,'12345');
+    assert.equal(records.viewportCoverage.focalOnly,true);
+    assert.equal(records.viewportCoverage.focalAttempts,2);
+    assert.equal(records.viewportCoverage.receivedCount,1);
+    assert.deepEqual(sent[1],[
+      records.viewportCoverage.focalBounds.west,
+      records.viewportCoverage.focalBounds.south,
+      records.viewportCoverage.focalBounds.east,
+      records.viewportCoverage.focalBounds.north,
+    ]);
+  } finally {globalThis.fetch=prior;}
+});
+
+test('2.4km all capped source windows stay unknown without inventing property borders', async () => {
+  const prior=globalThis.fetch;
+  let calls=0;
+  try {
+    globalThis.fetch=async()=> {
+      calls++;
+      return {ok:true,json:async()=>({
+        type:'FeatureCollection',features:[],exceededTransferLimit:true,
+      })};
+    };
+    const records=await travisCadAdapter.fetchParcelsInBounds({
+      west:-97.8,south:30.2,east:-97.7,north:30.3,
+    },{focusOnDense:true,cameraHeightMeters:2400,limit:500});
+    assert.equal(records.length,0);
+    assert.equal(records.viewportCoverage.overLimit,true);
+    assert.equal(records.viewportCoverage.attemptedCentralFootprint,true);
+    assert.equal(records.viewportCoverage.focalAttempts,3);
+    assert.ok(calls <= 23,'three bounded probes plus at most twenty child tiles');
+  } finally {globalThis.fetch=prior;}
+});
