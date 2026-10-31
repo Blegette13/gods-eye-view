@@ -65,8 +65,10 @@ export function freeBrowseVisibleParcels({ county, parcels = [], complete = fals
   const full = complete === true && reason === 'complete';
   return Object.freeze({
     rows, count: rows.length, complete: full,
-    message: coverage?.focalOnly === true
-      ? rows.length + ' sourced parcels inside the orange central discovery window. This is PARTIAL MAP COVERAGE; areas outside the outline were not searched. Properties are NOT verified for sale.'
+    message: coverage?.progressive === true
+      ? rows.length + ' sourced parcels across multiple orange GIS windows. PARTIAL MAP COVERAGE: areas outside the outlined windows were not searched. Previously loaded windows can be up to two minutes old. Properties are NOT verified for sale.'
+      : coverage?.focalOnly === true
+        ? rows.length + ' sourced parcels intersecting the orange central discovery window. This is PARTIAL MAP COVERAGE; areas outside the outline were not searched. Properties are NOT verified for sale.'
       : full
         ? rows.length + ' identifiable source parcels in this bounded map view. They are NOT verified for sale.'
         : rows.length + ' identifiable parcels displayed from PARTIAL source coverage. More records may exist here.',
