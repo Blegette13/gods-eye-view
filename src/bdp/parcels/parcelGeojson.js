@@ -6,8 +6,25 @@
  * (including holes and MultiPolygon parts) visible and pickable without changing
  * the CAD geometry or creating synthetic parcel identities.
  */
-export function parcelGeoJsonWithBoundaries(parcels) {
+export function parcelGeoJsonWithBoundaries(parcels, { focalBounds = null } = {}) {
   const features = [];
+  if (focalBounds) {
+    const { west, south, east, north } = focalBounds;
+    if (![west, south, east, north].every(Number.isFinite)
+        || west >= east || south >= north) {
+      throw new Error('Invalid sourced focus footprint');
+    }
+    // The orange outline is a QUERY footprint, not a parcel/legal boundary.
+    // Only parcels inside its complete GIS response can be claimed mapped.
+    features.push({
+      type: 'Feature', id: 'land-discovery-focus-footprint',
+      geometry: { type: 'LineString', coordinates: [
+        [west, south], [east, south], [east, north],
+        [west, north], [west, south],
+      ] },
+      properties: { bdpFocusFootprint: true, bdpParcelId: null },
+    });
+  }
   for (const parcel of parcels) {
     const geometry = parcel.property?.geometry;
     if (!geometry) continue;
