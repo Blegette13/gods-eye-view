@@ -238,3 +238,22 @@ npm.cmd test
 npm.cmd run build
 ```
 Stop the current dev server first, then restart `npm.cmd run dev` in its usual PowerShell window and hard-refresh Chrome. Test Free Explorer **without a search county** in the same Travis neighborhood at **2.4 km → 2.2 km → 1.3 km → 700 m**. When the source completes, orange bounding windows and source-only property list entries should appear earlier. Inspect the UI’s actual height units (e.g. **300 m**, not 300 km). Pan to a neighboring area; preserved source windows must be visibly delineated and never imply countywide completeness. Open a property’s right-side intelligence, and confirm the compact source disclosure remains accessible. A service over-limit still displays UNKNOWN rather than a false zero/approval.
+
+
+## Step 39 — clean parcel-discovery coverage outline (2026-10-31)
+
+The customer's live screenshots now confirm **644 mapped GIS parcels at 2.4 km**, **562 at 1.6 km**, **562 at 1.1 km**, and **352 at 589 m**, alongside a working selected source polygon and the right-hand Property Intelligence panel. These are actual *rendered-source parcel counts in bounded queried GIS neighborhoods*, NOT properties for sale and NOT claims of complete visible-screen coverage.
+
+The remaining visual problem: every overlapping recent GIS source window was independently drawn as a thick orange rectangle, creating distracting orange crossing lines on top of parcels. The renderer now derives the **exact planar union of up to 12 source-query axis-aligned envelopes**, renders only the **exterior perimeter and any interior unsearched holes**, and discards redundant internal seams. Disjoint windows remain disjoint, and tangent-only windows do not become a falsely connected contiguous polygon. The union does **not** change cache coverage logic, fetched parcel IDs, source list counts, GIS requests, recorded source geometry, selected property highlights, or unverified/partial coverage warnings. Orange boundaries are slightly thinner and more translucent. Region outlines remain explicitly *GIS search footprints*, not county borders, survey lines or legal property boundaries.
+
+Unit tests validate single, overlapping, edge-adjacent, nested, disjoint and point-touching query windows, as well as unsearched interior holes and preservation of selectable GeoJSON parcel polygons. Additional deterministic source-derived randomized sampling checked 120 multi-window scenarios against their true geometric union without finding a mismatch. Full Node tests, build and real Cesium rendering must still be verified locally.
+
+**Local QA**
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/parcels/sourceFootprintUnion.test.mjs src/bdp/parcels/parcelGeojson.test.mjs src/bdp/parcels/progressiveParcelCache.test.mjs src/bdp/parcels/focusedLookup.test.mjs
+npm.cmd test
+npm.cmd run build
+```
+
+Then restart the dev server and use Free Explorer at **2.4 km**, panning across nearby Travis neighborhoods: overlapping source areas should form **clean perimeter outlines instead of six stacked orange boxes**; parcels and orange outlines remain aligned. When coverage windows are separate, both perimeter loops should remain, without bridging unsurveyed areas. Select a property; verify the cyan source parcel highlight, acquisition action, original exact lookup, left source list and evidence caveats still operate.
