@@ -257,3 +257,20 @@ npm.cmd run build
 ```
 
 Then restart the dev server and use Free Explorer at **2.4 km**, panning across nearby Travis neighborhoods: overlapping source areas should form **clean perimeter outlines instead of six stacked orange boxes**; parcels and orange outlines remain aligned. When coverage windows are separate, both perimeter loops should remain, without bridging unsurveyed areas. Select a property; verify the cyan source parcel highlight, acquisition action, original exact lookup, left source list and evidence caveats still operate.
+
+
+## Step 39 — Operator acceptance and Step 40 handoff (2026-10-31)
+
+**Operator-verified:** All local tests passed after the clean-source-outline change. Two browser screenshots at approximately **1.1 km camera height** show **345** and **354** source-mapped Travis County parcels respectively, crisp white parcel boundaries, visibly cleaner orange sourced-search perimeters (no busy internal overlap lattice), and the persistent left-side source-results/filter interface. The 354 count includes one property with explicitly **UNKNOWN acreage**; these source observations must not be interpreted as properties for sale or verified legal/buildable opportunities. This is a human local test report, not an independent automated CI run by the assistant. **Step 39 visual acceptance: PASS.**
+
+### Step 40 — Next engineering objective: indexed source-backed geographic coverage
+
+Proceed in independently testable increments. Do **not** bypass today's county source request caps, display-count limits or parcel provenance rules just to fill the map.
+
+1. **Coverage and performance baseline.** Instrument GIS request count, completed source footprint area, cache reuse, response latency, viewport parcel count, Cesium entity count and cancellation behavior. Distinguish real source data, unavailable services and unqueried territory. Provide no sale or suitability claims.
+2. **Server-side, source-verifiable parcel index.** Design an append/reconcile ingestion workflow for county-authorized parcel geometries into existing PostgreSQL/PostGIS infrastructure, using county + immutable source parcel IDs, source/version/retrieval timestamps, source license terms and invalidation. Unknown or obsolete data remains marked and is never silently considered current. Preserve security/session boundaries and existing RLS.
+3. **Bounded geographic page/tile API.** Expose an indexed geographic query with stable cursor or tile IDs, backpressure, appropriate hard limits and honest per-tile completeness/coverage states. An incomplete tile never certifies the map outside or inside its unreturned records. Only use data for which provider rights and distribution permit the intended operation.
+4. **Cesium incremental rendering.** Replace full-layer swaps with visibility-scoped incremental parcel updates, source record deduplication and eviction. Prioritize selected parcel/card continuity and a controlled geometry/CPU/memory budget; keep the proven 2.4 km free-browse experience as a regression baseline.
+5. **User navigation and acquisition workflow.** Keep the concise search/filter panel, avoid UI overlap, preserve selection when panning and require source-backed evidence for every deal-screen metric or profile match.
+
+No Step 40 infrastructure is claimed implemented by this acceptance note. A scoped implementation proposal and explicit data-provider constraints should precede introducing a new persistent ingestion endpoint.
