@@ -223,3 +223,37 @@ test('free browsing gates ambient GIS polygons at 1.3km but retains selected pro
   assert.equal(calls.viewport, 1);
   layer.destroy();
 });
+
+test('1.3km Free Explorer renders sourced central parcel footprint as PARTIAL, not full-map clearance', async () => {
+  const { layer, calls, viewer, adapter } = layerFixture({ freeBrowsing: true });
+  const bounds = { west: -97.775, south: 30.225, east: -97.725, north: 30.275 };
+  adapter.fetchParcelsInBounds = async (_area, options) => {
+    calls.viewport++;
+    assert.equal(options.focusOnDense, true,
+      'only free-browse county GIS requests may use central focal coverage');
+    const records = [{
+      id: '48453:000012', county:'Travis', parcelId:'000012',
+      source:{ sourceNotice:'Unverified CAD observation' },
+      property: { geometry: { type:'Polygon', coordinates:[[
+        [-97.755,30.245],[-97.754,30.245],[-97.754,30.246],[-97.755,30.245],
+      ]] } },
+    }];
+    Object.defineProperty(records,'viewportCoverage',{value:{
+      focalOnly:true,focalBounds:bounds,receivedCount:1,omittedUnidentified:0,
+    }});
+    return records;
+  };
+  layer.init(viewer);
+  layer.enable();
+  viewer.camera.positionCartographic.height = 1300;
+  assert.equal(await layer.update(viewer), true);
+  const stats=layer.getStats();
+  assert.equal(calls.viewport,1);
+  assert.equal(stats.count,1);
+  assert.equal(stats.status,'degraded',
+    'a complete focal source query does NOT establish full-screen coverage');
+  assert.match(stats.loadingLabel,/central viewing window only/i);
+  assert.equal(stats.available,true,'provisional source records remain usable');
+  assert.equal(calls.render,1);
+  layer.destroy();
+});
