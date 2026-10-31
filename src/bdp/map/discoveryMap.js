@@ -257,7 +257,11 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     window.dispatchEvent(new CustomEvent('bdp:land-search', {
       detail: {
         kind: 'parcel', county: candidate.county,
-        value: candidate.parcelId, cameraRangeMultiplier: 2.3,
+        // The selected source polygon already gets a geometry-derived
+        // camera range with surrounding streets. Using 2.3x here pushed
+        // 5–7 acre parcels out to 2.8–3.9 km in recorded browser QA, too
+        // far away for practical parcel inspection.
+        value: candidate.parcelId, cameraRangeMultiplier: 1.15,
       },
     }));
   }
