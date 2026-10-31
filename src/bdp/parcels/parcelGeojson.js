@@ -1,3 +1,5 @@
+import { unionSourceWindowOutlines } from './sourceFootprintUnion.js';
+
 /**
  * Convert already-validated county parcel polygons into Cesium GeoJSON features.
  *
@@ -12,23 +14,15 @@ export function parcelGeoJsonWithBoundaries(parcels, {
   const features = [];
   const outlines = Array.isArray(focalBoundsList) ? focalBoundsList
     : focalBounds ? [focalBounds] : [];
-  if (outlines.length > 12) throw new Error('Too many source footprint outlines');
-  outlines.forEach((bounds, index) => {
-    const { west, south, east, north } = bounds || {};
-    if (![west, south, east, north].every(Number.isFinite)
-        || west >= east || south >= north) {
-      throw new Error('Invalid sourced focus footprint');
-    }
-    // The orange outline is a QUERY footprint, not a parcel/legal boundary.
-    // Only parcels inside its complete GIS response can be claimed mapped.
+  // Exterior boundary of the UNION of the actually queried envelopes,
+  // including holes and separate components. Redundant internal orange
+  // seams are omitted; no outside area is treated as source-verified.
+  unionSourceWindowOutlines(outlines).forEach((ring, index) => {
     features.push({
       type: 'Feature', id: index === 0
         ? 'land-discovery-focus-footprint'
         : 'land-discovery-focus-footprint-' + index,
-      geometry: { type: 'LineString', coordinates: [
-        [west, south], [east, south], [east, north],
-        [west, north], [west, south],
-      ] },
+      geometry: { type: 'LineString', coordinates: ring },
       properties: { bdpFocusFootprint: true, bdpParcelId: null },
     });
   });
