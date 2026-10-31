@@ -62,6 +62,10 @@ export function createProgressiveParcelCache({
     throw new Error('Invalid progressive parcel cache budget');
   }
   const windows = new Map();
+  // Date.now() has millisecond resolution: adjacent camera snapshots often
+  // share a timestamp. A monotonic index guarantees the newly fetched window
+  // is prioritized when the 1,000-parcel display budget cannot include both.
+  let nextSequence = 0;
   function sweep() {
     const time = now();
     for (const [key,item] of windows) {
@@ -72,7 +76,7 @@ export function createProgressiveParcelCache({
     sweep();
     return [...windows.values()]
       .filter((item)=>item.county === county && intersects(item.bounds,viewBounds))
-      .sort((a,b)=>b.loadedAt-a.loadedAt);
+      .sort((a,b)=>b.loadedAt-a.loadedAt || b.sequence-a.sequence);
   }
   function collect(county, viewBounds, items) {
     const selectedWindows = [];
@@ -128,7 +132,7 @@ export function createProgressiveParcelCache({
     const key = county + ':' + normalizedKey(footprint);
     windows.delete(key);
     windows.set(key,{ county, bounds:Object.freeze({...footprint}),
-      records:[...records], loadedAt:now(), fromCache:false });
+      records:[...records], loadedAt:now(), sequence:++nextSequence, fromCache:false });
     while (windows.size > maxWindows) windows.delete(windows.keys().next().value);
     return collect(county,viewBounds,boundedCandidates(county,viewBounds));
   }
