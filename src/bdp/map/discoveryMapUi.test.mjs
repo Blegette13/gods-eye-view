@@ -262,7 +262,8 @@ test('countywide source preview produces persistent clickable list before neighb
     env.window.addEventListener('bdp:land-search', (event) => selections.push(event.detail));
     cards[0].listeners.click();
     assert.equal(selections[0].value, '000302959');
-    assert.equal(selections[0].cameraRangeMultiplier, 2.3);
+    assert.equal(selections[0].cameraRangeMultiplier, 1.15,
+      'source-list click should frame the real parcel and nearby streets, not zoom to regional scale');
     assert.equal(env.input.value, 'Travis parcel: 000302959');
     assert.equal(env.body.dataset.landProfile, 'active', 'map search stays visible');
     assert.ok(find(env.body, (node) => node.id === 'land-discovery-finder')[0]);
@@ -353,7 +354,8 @@ test('1.3km free browsing auto-resolves county and lists every rendered GIS parc
     const card = find(results, (node) => node.className === 'ldos-discovery-result')[1];
     card.listeners.click();
     assert.equal(selections[0].value, '00002', 'preserve leading zeros');
-    assert.equal(selections[0].cameraRangeMultiplier, 2.3);
+    assert.equal(selections[0].cameraRangeMultiplier, 1.15,
+      'source-list click should frame the real parcel and nearby streets, not zoom to regional scale');
     env.window.dispatchEvent(new env.Event('land:parcel-viewport', {
       detail: { county: 'Travis', complete: false, reason: 'focused-search', parcels: [] },
     }));
