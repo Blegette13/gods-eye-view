@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  subdivideViewport, centerViewportBounds, collectTravisViewportTiles,
+  subdivideViewport, centerViewportBounds, travisFocalScalesForHeight, collectTravisViewportTiles,
   MAX_TRAVIS_VIEWPORT_TILE_QUERIES, MAX_TRAVIS_VIEWPORT_PARCELS,
 } from './travisViewportTiles.js';
 
@@ -123,4 +123,19 @@ test('central discovery footprint occupies 25 percent of viewport area and never
   assert.throws(() => centerViewportBounds(bounds, 0));
   assert.throws(() => centerViewportBounds(bounds, 1));
   assert.throws(() => centerViewportBounds(null));
+});
+
+test('at 2.4km the GIS center window shrinks with altitude, not the legal parcel geometry', () => {
+  const low = travisFocalScalesForHeight(700);
+  const mid = travisFocalScalesForHeight(1300);
+  const high = travisFocalScalesForHeight(2400);
+  assert.deepEqual(low, [0.5, 0.35, 0.25]);
+  assert.deepEqual(mid, low);
+  assert.ok(high[0] > 0.25 && high[0] < 0.3, '2.4km center envelope remains a navigable neighborhood');
+  assert.ok(high[1] < high[0] && high[2] < high[1]);
+  for (const scale of high) {
+    const window = centerViewportBounds(bounds, scale);
+    assert.ok(window.west > bounds.west && window.east < bounds.east);
+    assert.ok(window.south > bounds.south && window.north < bounds.north);
+  }
 });
