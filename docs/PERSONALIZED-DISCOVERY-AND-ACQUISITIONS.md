@@ -186,3 +186,33 @@ npm.cmd test
 npm.cmd run build
 ```
 Restart `npm.cmd run dev`, refresh Chrome, and revisit the same Travis area at ~**1.3 km**, then **1.1 km**, then **700 m**. At higher heights expect a **clearly outlined PARTIAL central footprint** with sourced parcel rows when the center is within limits; at ~700 m expect the original complete screen snapshot, with no focal outline. In both cases, parcel click must open the right-side Property Intelligence and preserve Source/UNKNOWN disclaimers. If an entire focal window is still capped, expect the unchanged explicit incomplete coverage message; do not advertise zero matches.
+
+
+## Step 37 — Progressive parcel cache and neighborhood list navigation (2026-10-31)
+
+The operator's live 1.3 km / 1.1 km / 700 m screenshots confirmed the source-backed **orange central search window** and distinct parcel lists (408, 334 and 183 real GIS source records). The next improvement aims to make the map fluid across consecutive pans without weakening coverage/evidence controls. **This is an initial in-tab cache and source-list interface, not a production vector-tile streaming engine.**
+
+### Progressive GIS windows
+
+- The existing **Travis County Free Explorer only** may retain at most **six** fully identifiable GIS central-query windows for **two minutes**. No client disk, account or shared database persistence is involved; the cache is cleared if the source layer is disabled or destroyed.
+- On moving the map, a fresh central query window can be merged with previously sourced windows that intersect the current viewport. Separate orange query-footprint outlines identify what portions were actually queried. Source parcels are deduplicated by their exact county GIS ID, and only actual recorded geometries are used. Records outside the current viewport are not included in the list.
+- A near-identical camera position can reuse a recent source window **only when that known, completed source envelope contains the new central query footprint**; a mosaic of adjacent areas is not mistaken for seamless coverage. Cached windows can be at most two minutes old and are explicitly labeled as such.
+- At most **1,000 unique polygons** are displayed in the combined viewport. A previously loaded source window is either fully admitted or excluded: the cache never silently chops a known-complete window and represents the chopped portion as covered. Conflicting geometry under one source ID causes that older window to be skipped. Over-limit, truncated, unidentifiable or partially identified responses are never cached as complete.
+- When the whole visible viewport is sourced and complete, regular county parcel presentation remains available. When central windows are used, the entire screen is **PARTIAL MAP COVERAGE**; no assessment is inferred outside the orange outlines. Parcel sale, entitlement, ownership/title status and developability remain UNKNOWN absent independent sources.
+
+### Your Land Search: compact source list navigation
+
+Once the real bounded GIS parcel snapshot is available, customers can **search by reported address or parcel ID**, optionally filter on a **minimum or maximum source-reported acreage**, and sort by **street address / acreage ascending / acreage descending**. Counts distinguish **all mapped source parcels** from **the filtered display subset**. Missing or zero source acreage remains UNKNOWN (excluded from numeric acreage filters; sorted last) rather than treated as zero developable acreage. List filters do **not** apply legal, business, asking-price, availability, title, or entitlement clearance, and they do **not** alter underlying map geometry. Property selection continues to use exact existing county/parcel lookup and the Property Intelligence card.
+
+### Required verification
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/parcels/progressiveParcelCache.test.mjs src/bdp/map/parcelListView.test.mjs src/bdp/parcels/parcelGeojson.test.mjs src/bdp/parcels/focusedLookup.test.mjs src/bdp/map/discoveryMapUi.test.mjs
+npm.cmd test
+npm.cmd run build
+```
+
+Restart `npm.cmd run dev`, refresh Chrome and enter Free Explorer in Travis County. At **1.3 km**, confirm the real source window, property list and filters; pan moderately to a neighboring area while remaining at/under 1.3 km. Where previous windows intersect the current view, they should remain separately outlined alongside newly retrieved windows, subject to the 1,000-record limit. The exact number of orange windows depends on how much their actual source envelopes overlap the current camera view. Pan back into a recent fully queried center and confirm a rapid cached view; after expiry or leaving supported coverage, new records must require a new successful GIS request. Test sorting and acreage range controls, verify that a filtered count does **not** alter the total mapped count or map footprints, and open one parcel's Property Intelligence without losing the results list. Confirm Provider Settings and Cesium credits remain unobstructed.
+
+**Testing status:** new pure Node tests cover TTL, hard source-count and source-window caps, no cross-county reuse, deduplication, UNKNOWN acreage semantics and list order. A map-level UI regression checks that list filters never change mapped source totals. Preliminary source-derived JavaScript parsing/simulations passed, but full Node suite, Vite build, real-browser responsiveness and live county service request volume still require local confirmation. The backend/vector-tile layer, distributed caching, countywide indexing and automated performance profiling remain separate planned stages.
