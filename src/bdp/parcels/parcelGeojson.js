@@ -6,10 +6,15 @@
  * (including holes and MultiPolygon parts) visible and pickable without changing
  * the CAD geometry or creating synthetic parcel identities.
  */
-export function parcelGeoJsonWithBoundaries(parcels, { focalBounds = null } = {}) {
+export function parcelGeoJsonWithBoundaries(parcels, {
+  focalBounds = null, focalBoundsList = null,
+} = {}) {
   const features = [];
-  if (focalBounds) {
-    const { west, south, east, north } = focalBounds;
+  const outlines = Array.isArray(focalBoundsList) ? focalBoundsList
+    : focalBounds ? [focalBounds] : [];
+  if (outlines.length > 12) throw new Error('Too many source footprint outlines');
+  outlines.forEach((bounds, index) => {
+    const { west, south, east, north } = bounds || {};
     if (![west, south, east, north].every(Number.isFinite)
         || west >= east || south >= north) {
       throw new Error('Invalid sourced focus footprint');
@@ -17,14 +22,16 @@ export function parcelGeoJsonWithBoundaries(parcels, { focalBounds = null } = {}
     // The orange outline is a QUERY footprint, not a parcel/legal boundary.
     // Only parcels inside its complete GIS response can be claimed mapped.
     features.push({
-      type: 'Feature', id: 'land-discovery-focus-footprint',
+      type: 'Feature', id: index === 0
+        ? 'land-discovery-focus-footprint'
+        : 'land-discovery-focus-footprint-' + index,
       geometry: { type: 'LineString', coordinates: [
         [west, south], [east, south], [east, north],
         [west, north], [west, south],
       ] },
       properties: { bdpFocusFootprint: true, bdpParcelId: null },
     });
-  }
+  });
   for (const parcel of parcels) {
     const geometry = parcel.property?.geometry;
     if (!geometry) continue;
