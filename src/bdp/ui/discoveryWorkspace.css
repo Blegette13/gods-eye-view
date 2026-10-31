@@ -1091,3 +1091,34 @@ body[data-bdp-product='land-development-os'] #bdp-property-card {
   color: #526d83;
   margin: 0;
 }
+
+
+/* Step 38 — keep source warnings available without crowding out property
+ * results. The critical PARTIAL/UNKNOWN coverage banner always stays above. */
+#land-discovery-finder .ldos-free-source-notes {
+  margin: 9px 0 7px;
+  padding: 7px 9px;
+  border: 1px solid #dce6ed;
+  border-radius: 8px;
+  background: #f7fafc;
+  color: #4e687b;
+  font: 500 10px/1.45 Inter, system-ui, sans-serif;
+}
+#land-discovery-finder .ldos-free-source-notes[hidden] { display:none !important; }
+#land-discovery-finder .ldos-free-source-notes summary {
+  cursor: pointer;
+  font-weight: 650;
+  color: #41677f;
+}
+#land-discovery-finder .ldos-free-source-notes summary:focus-visible {
+  outline: 2px solid #2779a9;
+  outline-offset: 2px;
+}
+#land-discovery-finder .ldos-free-source-notes p {
+  margin: 7px 0 2px;
+}
+body[data-land-profile='browse'] #land-discovery-finder
+  .ldos-discovery-list-heading {
+  margin-top: 9px;
+  padding-top: 9px;
+}
