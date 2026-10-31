@@ -15,11 +15,11 @@ const county = (name, geoid) => ({
 });
 const fc = (features) => ({ type: 'FeatureCollection', features });
 
-test('free parcel activation is a 1.3km camera-height gate, not a county requirement', () => {
-  assert.equal(FREE_BROWSE_PARCEL_HEIGHT_METERS, 1300);
+test('free parcel activation is a 2.4km camera-height gate, not a county requirement', () => {
+  assert.equal(FREE_BROWSE_PARCEL_HEIGHT_METERS, 2400);
   assert.equal(shouldDiscoverFreeParcels(1299), true);
-  assert.equal(shouldDiscoverFreeParcels(1300), true);
-  assert.equal(shouldDiscoverFreeParcels(1301), false);
+  assert.equal(shouldDiscoverFreeParcels(2400), true);
+  assert.equal(shouldDiscoverFreeParcels(2401), false);
   assert.equal(shouldDiscoverFreeParcels(2700), false);
   assert.equal(shouldDiscoverFreeParcels(NaN), false);
   assert.equal(shouldDiscoverFreeParcels(null), false);
