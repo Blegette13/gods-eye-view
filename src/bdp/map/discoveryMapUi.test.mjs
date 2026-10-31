@@ -316,7 +316,7 @@ test('load-more respects bounded source pages and deduplicates candidates withou
   }
 });
 
-test('1.3km free browsing auto-resolves county and lists every rendered GIS parcel', async () => {
+test('2.4km free browsing auto-resolves county and lists every rendered GIS parcel', async () => {
   const env = fixture();
   const activated = [];
   env.window.addEventListener('land:discovery-enable-county',
@@ -324,11 +324,11 @@ test('1.3km free browsing auto-resolves county and lists every rendered GIS parc
   const map = env.create({ viewer: env.viewer });
   try {
     await new Promise((resolve) => setImmediate(resolve));
-    env.viewer.camera.positionCartographic.height = 1301;
+    env.viewer.camera.positionCartographic.height = 2401;
     env.moved();
     await new Promise((resolve) => setImmediate(resolve));
     assert.deepEqual(activated, [], 'parcels cannot auto-activate above the threshold');
-    env.viewer.camera.positionCartographic.height = 1300;
+    env.viewer.camera.positionCartographic.height = 2400;
     env.moved();
     await new Promise((resolve) => setImmediate(resolve));
     assert.deepEqual(activated, ['Travis']);
@@ -366,7 +366,7 @@ test('1.3km free browsing auto-resolves county and lists every rendered GIS parc
     env.window.addEventListener('land:discovery-free-zoomed-out', (event) => {
       ascended = event.detail.county;
     });
-    env.viewer.camera.positionCartographic.height = 1301;
+    env.viewer.camera.positionCartographic.height = 2401;
     env.moved();
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(ascended, 'Travis');
@@ -380,7 +380,7 @@ test('1.3km free browsing auto-resolves county and lists every rendered GIS parc
     // When the customer returns to neighborhood viewing, a fresh real GIS
     // snapshot unpins the old list. Ascending without a selected snapshot
     // then restores the normal county-free map layers UI.
-    env.viewer.camera.positionCartographic.height = 1300;
+    env.viewer.camera.positionCartographic.height = 2400;
     env.moved();
     await new Promise((resolve) => setImmediate(resolve));
     env.window.dispatchEvent(new env.Event('land:parcel-viewport', {
@@ -390,10 +390,10 @@ test('1.3km free browsing auto-resolves county and lists every rendered GIS parc
     assert.equal(count.textContent, '1 mapped parcel',
       'a new bounded map response replaces the previous neighborhood snapshot');
     assert.equal(finder.hidden, false);
-    env.viewer.camera.positionCartographic.height = 1301;
+    env.viewer.camera.positionCartographic.height = 2401;
     env.moved();
     await new Promise((resolve) => setImmediate(resolve));
-    assert.equal(finder.hidden, true, 'unselected ambient parcels hide above 1.3km');
+    assert.equal(finder.hidden, true, 'unselected ambient parcels hide above 2.4km');
     assert.equal(env.body.dataset.landLayers, 'open');
   } finally {
     map.destroy();
@@ -405,7 +405,7 @@ test('Free Explorer neighborhood filters change only visible source list, not ma
   const map = env.create({viewer:env.viewer});
   try {
     await new Promise((resolve)=>setImmediate(resolve));
-    env.viewer.camera.positionCartographic.height = 1300;
+    env.viewer.camera.positionCartographic.height = 2400;
     env.moved();
     await new Promise((resolve)=>setImmediate(resolve));
     const records = [
