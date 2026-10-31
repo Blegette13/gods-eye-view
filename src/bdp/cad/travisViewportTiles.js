@@ -25,6 +25,19 @@ export function centerViewportBounds(bounds, scale = 0.5) {
     east: east - lonPad, north: north - latPad };
 }
 
+/**
+ * Size a complete, centrally sourced GIS discovery window for the current
+ * WGS84 camera height. Keeping the ground footprint approximately stable
+ * at 2.4 km prevents a high camera from issuing a 2-4x larger GIS query.
+ * These are QUERY envelopes, never legal parcel or county boundaries.
+ * A dense source can still reject all three windows; never claim coverage.
+ */
+export function travisFocalScalesForHeight(heightMeters) {
+  const baseline = Number.isFinite(heightMeters) && heightMeters > 1600
+    ? Math.min(0.5, Math.max(0.16, 650 / heightMeters)) : 0.5;
+  return [baseline, baseline * 0.7, baseline * 0.5];
+}
+
 export function subdivideViewport(bounds) {
   const { west, south, east, north } = bounds || {};
   if (![west, south, east, north].every(Number.isFinite) || west >= east || south >= north) {
