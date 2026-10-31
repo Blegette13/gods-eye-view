@@ -164,3 +164,25 @@ npm.cmd test
 npm.cmd run build
 ```
 Then restart `npm.cmd run dev`, select *Browse map without a search profile*, visit the same Travis neighborhood, and compare at **1.3 km → 1.1 km → lower**. Expect recoverable truncated viewports to display parcel borders and matching source-list rows; hard-cap/exhausted viewports must show an explicit incomplete-coverage warning rather than fabricated parcels. Confirm that clicking one list row opens Property Intelligence on the right without covering Provider Settings and that selecting an exact parcel ID still works. Model-side source inspection does not substitute for live official GIS/provider behavior and the full Windows Node suite.
+
+
+## Step 36 — Source-bounded central parcel discovery at ~1.3 km (2026-10-31)
+
+Customer screenshots verified the preceding adaptive Travis tiling works at **~705–780 metres** (the camera widget shows **m**, not km) and loads **995 source-parcel polygons with matching left-list records**, but at **1.3 km and 1.1 km** the citywide camera viewport remains above the strict 1,000-parcel map/entity safeguard. Thus the **1.3 km trigger was working**; full-viewport data could not safely be called complete at that higher altitude. Simply increasing the hard entity cap to several thousand risks sluggish Cesium redraws, unnecessary county GIS traffic, and misleading full-map counts.
+
+Step 36 adds an alternative **source-bounded central focus footprint**, *only for automatically activated Free Explorer Travis GIS viewports*. When the full viewport is explicitly provider-capped, it queries the **central half of its width and height (25% of the visible map area)** using a real ArcGIS envelope, and applies the same bounded adaptive 2x2/4x4 tile fetch if that focal envelope is still too dense. The focal query remains subject to **at most 20 extra sequential tile requests** and **1,000 distinct parcel geometries**. If even the focal window cannot be completed, the view stays **NOT EVALUATED/UNKNOWN**. No guessed tract geometry, sale inventory, title/ownership, buildability, or county suitability is introduced.
+
+If the focal GIS query completes, its exact source-backed parcels appear as pickable boundary lines plus the left-side property list **without forcing rooftop zoom**. A **distinct warm-orange geographic outline** marks the query's actual bounds, separating the **mapped center** from the **unsearched rest of the visible screen**. The left side explicitly labels **PARTIAL MAP COVERAGE** and states that the area outside the outline was not searched. Parcel source notes and data-layer status also disclose the central-only coverage; a full viewport is never claimed. The map row list keeps exact source parcel IDs and preliminary GIS caveats. Customers can pan to investigate the next neighborhood. At closer heights where a full viewport query succeeds (as shown in the 705 m screenshot), the system continues displaying **full bounded viewport coverage**, with no orange partial footprint.
+
+This is a performance-conscious intermediate stage, **not a finished tiled parcel streaming system** or a claim that all visible parcels are covered at 1.3 km. In cities with >1,000 identifiable records inside even the central focus, still further zoom or an indexed PostGIS vector-tile backend will be required. County source quotas and latency still apply; other pilot counties' adapters remain unchanged. The original Cesium/God's Eye viewer, property intelligence, acquisition board, RLS, evidence rules and source links are retained.
+
+**Regression testing:** new cases exercise central-footprint bounds, exact ArcGIS fallback URL, source coverage metadata, hard-cap failure semantics, unique non-parcel query-outline identifier, focal partial status in the shared county renderer, and accurate left-panel disclosure. Model-side parser/source simulations passed for a capped full viewport recovering source parcels in a smaller center, its distinct orange footprint, and partial list disclosure. **Full Node tests/build and the live Travis County service remain to be verified locally.**
+
+Suggested local smoke check:
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/cad/travisAdapter.test.mjs src/bdp/cad/travisViewportTiles.test.mjs src/bdp/parcels/parcelGeojson.test.mjs src/bdp/parcels/focusedLookup.test.mjs src/bdp/map/freeBrowseParcels.test.mjs
+npm.cmd test
+npm.cmd run build
+```
+Restart `npm.cmd run dev`, refresh Chrome, and revisit the same Travis area at ~**1.3 km**, then **1.1 km**, then **700 m**. At higher heights expect a **clearly outlined PARTIAL central footprint** with sourced parcel rows when the center is within limits; at ~700 m expect the original complete screen snapshot, with no focal outline. In both cases, parcel click must open the right-side Property Intelligence and preserve Source/UNKNOWN disclaimers. If an entire focal window is still capped, expect the unchanged explicit incomplete coverage message; do not advertise zero matches.
