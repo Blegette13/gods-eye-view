@@ -55,3 +55,21 @@ test('missing geometries are not invented, invalid rings are rejected', () => {
     parcel(6, { type: 'MultiPolygon', coordinates: [null] }),
   ]), /missing rings/);
 });
+
+test('source focal preview draws a distinct query-footprint outline without inventing a parcel identity', () => {
+  const bounds={west:-97.8,south:30.2,east:-97.7,north:30.3};
+  const geometry={type:'Polygon',coordinates:[ring]};
+  const coll=parcelGeoJsonWithBoundaries([parcel('003',geometry)], {focalBounds:bounds});
+  const footprint=coll.features[0];
+  assert.equal(footprint.id,'land-discovery-focus-footprint');
+  assert.equal(footprint.geometry.type,'LineString');
+  assert.equal(footprint.properties.bdpFocusFootprint,true);
+  assert.equal(footprint.properties.bdpParcelId,null);
+  assert.deepEqual(footprint.geometry.coordinates,[
+    [-97.8,30.2],[-97.7,30.2],[-97.7,30.3],[-97.8,30.3],[-97.8,30.2],
+  ]);
+  assert.equal(coll.features.length,3,'one focus line, one source polygon and one pickable parcel boundary');
+  assert.throws(()=>parcelGeoJsonWithBoundaries([], {
+    focalBounds:{west:0,east:0,south:0,north:1},
+  }),/Invalid sourced focus/);
+});
