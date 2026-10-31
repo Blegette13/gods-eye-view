@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createProgressiveParcelCache } from './progressiveParcelCache.js';
+import { centerViewportBounds, travisFocalScalesForHeight } from '../cad/travisViewportTiles.js';
 
 const view = {west:-97.8,south:30.2,east:-97.7,north:30.3};
 const bounds=(west,south,east,north)=>({west,south,east,north});
@@ -102,4 +103,18 @@ test('cache rejects invalid budgets and clears session data',()=>{
   assert.equal(cache.size(),1,'empty but complete source window is safe to cache');
   cache.clear();
   assert.equal(cache.size(),0);
+});
+
+test('2.4km cache reuse tracks sourced altitude-scaled focus, never pretending to cover low-altitude full center',()=>{
+  const cache=createProgressiveParcelCache();
+  const actual=centerViewportBounds(view,travisFocalScalesForHeight(2400)[0]);
+  const stored=cache.add({county:'Travis',viewBounds:view,
+    records:snapshot([parcel('00099',-97.746,30.245)],actual)});
+  assert.equal(stored.length,1);
+  const high=cache.reuse({county:'Travis',viewBounds:view,cameraHeightMeters:2400});
+  assert.ok(high,'a complete 2.4km source window may be reused for the same viewpoint');
+  assert.equal(high[0].parcelId,'00099');
+  assert.equal(high.viewportCoverage.focalOnly,true);
+  assert.equal(cache.reuse({county:'Travis',viewBounds:view,cameraHeightMeters:700}),null,
+    'small 2.4km window cannot claim source coverage of a larger low-altitude center');
 });
