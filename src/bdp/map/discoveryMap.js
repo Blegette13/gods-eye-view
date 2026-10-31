@@ -108,6 +108,14 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
   const finderHelp = document.createElement('p');
   finderHelp.className = 'ldos-finder-help';
   finderHelp.textContent = 'Matches are preliminary GIS acreage/address evidence only. Budget, availability and permitted use remain UNKNOWN.';
+  const freeNotes = document.createElement('details');
+  freeNotes.className = 'ldos-free-source-notes';
+  freeNotes.hidden = true;
+  const freeNotesLabel = document.createElement('summary');
+  freeNotesLabel.textContent = 'Source limitations and verification';
+  const freeNotesText = document.createElement('p');
+  freeNotesText.textContent = 'County GIS parcel boundaries are not surveys. Mapped parcels are not confirmed for sale, entitled for any use, legally accessible, or verified for current ownership or valuation. Orange outlines show only the actual queried areas.';
+  freeNotes.append(freeNotesLabel, freeNotesText);
   const finderActions = document.createElement('div');
   finderActions.className = 'ldos-finder-actions';
   const enableParcels = document.createElement('button');
@@ -247,7 +255,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     }
   });
   finder.append(finderKicker, finderTitle, matchCount, matchDetails, finderHelp,
-    finderActions, labelsStatus, resultsHeading, freeFilters, results, moreButton);
+    freeNotes, finderActions, labelsStatus, resultsHeading, freeFilters, results, moreButton);
   sidebar.append(finder, legend);
   document.body.append(sidebar);
 
@@ -367,7 +375,8 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
         : freeRows.length + ' mapped ' + (freeRows.length === 1 ? 'parcel' : 'parcels');
       matchDetails.textContent = (freeCoverage?.message || 'Source coverage unverified') +
         (freeSnapshotPinned ? ' · Previous neighborhood snapshot; pan map to refresh.' : '');
-      finderHelp.textContent = 'Map-view GIS records only. Sale availability, legal use, ownership and financial suitability are unverified.';
+      finderHelp.hidden = true;
+      freeNotes.hidden = false;
       enableParcels.hidden = true;
       labelButton.hidden = true;
       labelsStatus.hidden = true;
@@ -378,6 +387,8 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     }
     document.body.dataset.landBrowseResults = 'closed';
     freeFilters.hidden = true;
+    freeNotes.hidden = true;
+    finderHelp.hidden = false;
     finderKicker.textContent = 'YOUR LAND SEARCH';
     finderHelp.textContent = 'Matches are preliminary GIS acreage/address evidence only. Budget, availability and permitted use remain UNKNOWN.';
     enableParcels.hidden = false;
@@ -748,7 +759,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
     if (current || destroyed) return;
     const height = cameraHeightMeters(viewer);
     if (!shouldDiscoverFreeParcels(height)) {
-      // Hide actual county polygons as well as UI when zooming above 1.3 km.
+      // Hide actual county polygons and neighborhood UI when above 2.4 km.
       // The guarded manager only refreshes already-enabled layers.
       if (freeCounty) window.dispatchEvent(new CustomEvent('land:discovery-free-zoomed-out', {
         detail: { county: freeCounty },
@@ -790,7 +801,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
       }
       // Calls exactly the existing guarded DataLayerManager. The manager
       // refreshes the same enabled layer on each camera move, and the county
-      // adapter enforces viewport bounds, provider caps and 1.3km visibility.
+      // adapter enforces viewport bounds, source caps and 2.4km visibility.
       window.dispatchEvent(new CustomEvent('land:discovery-enable-county', {
         detail: { county, mode: 'free-browse' },
       }));
@@ -829,7 +840,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
           message: reason === 'loading'
             ? 'Loading real county parcel polygons for this map view…'
             : reason === 'over-limit'
-              ? 'County GIS response is too dense for complete coverage at this viewpoint. Zoom closer; no total can be claimed.'
+              ? 'The county GIS is too dense to map a complete source window here. Try panning to a less dense area or zoom closer; parcel coverage remains UNKNOWN.'
               : reason === 'error'
                 ? 'County GIS service unavailable. Parcel coverage is UNKNOWN; retry or browse another area.'
                 : 'County GIS viewport exceeds the safe spatial range. Zoom closer or adjust the view.',
