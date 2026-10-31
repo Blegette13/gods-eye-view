@@ -74,3 +74,17 @@ test('partial county data is always labeled incomplete; no viewport produces no 
   assert.equal(partial.complete, false);
   assert.match(partial.message, /PARTIAL source coverage/);
 });
+
+test('partial central high-altitude parcel list is explicitly NOT full-map source coverage', () => {
+  const g = county('Travis','48453').geometry;
+  const result = freeBrowseVisibleParcels({
+    county:'Travis',reason:'partial',complete:false,
+    coverage:{focalOnly:true,focalBounds:{west:-97.8,east:-97.7,south:30.2,north:30.3}},
+    parcels:[{county:'Travis',parcelId:'00042',
+      property:{geometry:g,acres:0.4,situsAddress:'SOURCE ADDRESS'}}],
+  });
+  assert.equal(result.count,1);
+  assert.equal(result.complete,false);
+  assert.match(result.message,/orange central discovery window/i);
+  assert.match(result.message,/areas outside the outline were not searched/i);
+});
