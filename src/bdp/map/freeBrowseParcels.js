@@ -38,7 +38,7 @@ export function countyFromFreeBrowseResponse(data) {
 /** List the actual identifiable GIS polygons from the current map snapshot.
  * The count is of rendered source records, NEVER for-sale inventory. */
 export function freeBrowseVisibleParcels({ county, parcels = [], complete = false,
-  reason = 'not-complete' } = {}) {
+  reason = 'not-complete', coverage = null } = {}) {
   if (!county || !Array.isArray(parcels) || !['complete', 'partial'].includes(reason)) {
     return Object.freeze({
       rows: Object.freeze([]), count: null, complete: false,
@@ -65,8 +65,10 @@ export function freeBrowseVisibleParcels({ county, parcels = [], complete = fals
   const full = complete === true && reason === 'complete';
   return Object.freeze({
     rows, count: rows.length, complete: full,
-    message: full
-      ? rows.length + ' identifiable source parcels in this bounded map view. They are NOT verified for sale.'
-      : rows.length + ' identifiable parcels displayed from PARTIAL source coverage. More records may exist here.',
+    message: coverage?.focalOnly === true
+      ? rows.length + ' sourced parcels inside the orange central discovery window. This is PARTIAL MAP COVERAGE; areas outside the outline were not searched. Properties are NOT verified for sale.'
+      : full
+        ? rows.length + ' identifiable source parcels in this bounded map view. They are NOT verified for sale.'
+        : rows.length + ' identifiable parcels displayed from PARTIAL source coverage. More records may exist here.',
   });
 }
