@@ -73,3 +73,38 @@ test('source focal preview draws a distinct query-footprint outline without inve
     focalBounds:{west:0,east:0,south:0,north:1},
   }),/Invalid sourced focus/);
 });
+
+test('progressive source windows have only a merged exterior (not six stacked orange boxes)',()=>{
+  const windows=[
+    {west:0,south:0,east:2,north:2},
+    {west:1,south:1,east:3,north:3},
+    {west:1,south:1,east:3,north:3},
+  ];
+  const geometry={type:'Polygon',coordinates:[ring]};
+  const coll=parcelGeoJsonWithBoundaries([parcel('008',geometry)],{focalBoundsList:windows});
+  const footprints=coll.features.filter((f)=>f.properties.bdpFocusFootprint);
+  assert.equal(footprints.length,1);
+  assert.deepEqual(footprints[0].geometry.coordinates,[
+    [0,0],[2,0],[2,1],[3,1],[3,3],[1,3],[1,2],[0,2],[0,0],
+  ]);
+  assert.equal(footprints[0].properties.bdpParcelId,null);
+  assert.equal(coll.features.filter((f)=>f.properties.bdpParcelId==='48453:008').length,2,
+    'real source parcel and its selectable polygon boundary remain unchanged');
+  assert.strictEqual(coll.features[1].geometry,geometry);
+});
+
+test('disjoint completed source-query windows remain separately visible, no invented bridge',()=>{
+  const coll=parcelGeoJsonWithBoundaries([],{focalBoundsList:[
+    {west:0,south:0,east:1,north:1},
+    {west:3,south:0,east:4,north:1},
+  ]});
+  assert.equal(coll.features.length,2);
+  assert.deepEqual(coll.features.map((f)=>f.id),[
+    'land-discovery-focus-footprint','land-discovery-focus-footprint-1',
+  ]);
+  for(const feature of coll.features) {
+    assert.equal(feature.properties.bdpFocusFootprint,true);
+    assert.equal(feature.properties.bdpParcelId,null);
+    assert.deepEqual(feature.geometry.coordinates[0],feature.geometry.coordinates.at(-1));
+  }
+});
