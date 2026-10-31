@@ -66,7 +66,7 @@ export function freeBrowseVisibleParcels({ county, parcels = [], complete = fals
   return Object.freeze({
     rows, count: rows.length, complete: full,
     message: coverage?.progressive === true
-      ? rows.length + ' sourced parcels across multiple orange GIS windows. PARTIAL MAP COVERAGE: areas outside the outlined windows were not searched. Previously loaded windows can be up to two minutes old. Properties are NOT verified for sale.'
+      ? rows.length + ' sourced parcels across multiple GIS query windows. PARTIAL MAP COVERAGE: the orange outer boundary shows only their combined queried area; all areas outside it, including any holes, remain unsearched. Previously loaded windows can be up to two minutes old. Properties are NOT verified for sale.'
       : coverage?.focalOnly === true
         ? rows.length + ' sourced parcels intersecting the orange central discovery window. This is PARTIAL MAP COVERAGE; areas outside the outline were not searched. Properties are NOT verified for sale.'
       : full
