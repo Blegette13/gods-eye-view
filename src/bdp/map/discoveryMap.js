@@ -733,7 +733,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
   const unlistenFreeCamera = viewer.camera?.moveEnd?.addEventListener?.(onFreeCameraStop);
 
   const onParcelViewport = (event) => {
-    const { county, complete, parcels, reason } = event?.detail || {};
+    const { county, complete, parcels, reason, coverage } = event?.detail || {};
     if (typeof county !== 'string') return;
     viewportByCounty.set(county, {
       county,
@@ -748,7 +748,7 @@ export function createDiscoveryMap({ viewer, initialCriteria = null } = {}) {
         freeSnapshotPinned = true;
         updateFinder();
       } else if (reason === 'complete' || reason === 'partial') {
-        freeCoverage = freeBrowseVisibleParcels({county, parcels, complete, reason});
+        freeCoverage = freeBrowseVisibleParcels({county, parcels, complete, reason, coverage});
         freeRows = freeCoverage.rows;
         freeSnapshotPinned = false;
         updateFinder();
