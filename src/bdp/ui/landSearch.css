@@ -1,0 +1,14 @@
+#location-search[data-bdp-search-state='searching'] {
+  border-color: rgba(0, 212, 255, 0.52) !important;
+  box-shadow: 0 0 14px rgba(0, 212, 255, 0.12);
+}
+
+#location-search[data-bdp-search-state='success'] {
+  border-color: rgba(92, 255, 198, 0.5) !important;
+  box-shadow: 0 0 14px rgba(92, 255, 198, 0.1);
+}
+
+#location-search[data-bdp-search-state='error'] {
+  border-color: rgba(255, 113, 132, 0.62) !important;
+  box-shadow: 0 0 14px rgba(255, 113, 132, 0.1);
+}

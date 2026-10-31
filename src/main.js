@@ -1,5 +1,12 @@
 import { createStandaloneApplication } from './standalone/application.js';
 import { describeError } from './standalone/errors.js';
+import { applyBdpGodsEyeUi } from './bdp/ui/godsEyeUi.js';
+import { showLandDiscoveryGate } from './bdp/ui/discoveryGate.js';
+import { mountLandWorkspaces } from './bdp/ui/acquisitionWorkspace.js';
+import { createDiscoveryMap } from './bdp/map/discoveryMap.js';
+import './bdp/ui/discoveryWorkspace.css';
+
+applyBdpGodsEyeUi();
 
 const application = createStandaloneApplication({
   googleApiKey: import.meta.env.GOOGLE_MAPS_API_KEY,
@@ -7,11 +14,37 @@ const application = createStandaloneApplication({
   allowQaRegistration: import.meta.env.DEV,
 });
 
-application.start().catch((error) => {
-  console.error("God's Eye View initialization failed:", error);
-  const loaderStatus = document.querySelector('#loading-screen .loader-status');
-  loaderStatus.textContent = `Error: ${describeError(error)}`;
-  loaderStatus.style.color = '#ff4444';
-});
+// Phase 2 welcome is intentionally first: no Cesium viewer, data feeds,
+// original controls or map interaction start until the user begins or skips.
+// Criteria remain only in this page memory, not a fake authenticated account.
+showLandDiscoveryGate()
+  .then((initialCriteria) => {
+    let currentCriteria = initialCriteria;
+    let mapDiscovery = null;
+    mountLandWorkspaces({
+      initialCriteria,
+      onCriteriaChange(next) {
+        currentCriteria = next;
+        mapDiscovery?.setCriteria(next);
+      },
+    });
+    return application.start().then((components) => {
+      // The real Cesium viewer becomes available only after the native data,
+      // controls and mapping stack have all finished initializing.
+      mapDiscovery = createDiscoveryMap({
+        viewer: components.scene.viewer,
+        initialCriteria: currentCriteria,
+      });
+      return components;
+    });
+  })
+  .catch((error) => {
+    console.error('Land workspace initialization failed:', error);
+    const status = document.querySelector('#loading-screen .loader-status');
+    if (status) {
+      status.textContent = `Error: ${describeError(error)}`;
+      status.style.color = '#b42318';
+    }
+  });
 
 export { application };

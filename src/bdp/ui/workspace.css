@@ -1,0 +1,228 @@
+/*
+ * Phase 2: land-development workspace visibility only.
+ *
+ * Quarantined features remain registered in the original engine for now.
+ * workspacePolicy.js separately prevents their data layers from enabling,
+ * including via old share links. CSS alone is NOT feed suppression.
+ *
+ * Keep #cesiumContainer, map credit attribution, key setup, top map actions,
+ * data-panel and the native #location-search (moved into #land-search-bar).
+ */
+body[data-bdp-product='land-development-os'] :is(
+  #style-indicator,
+  #command-dock,
+  #view-switcher,
+  #pp-toggles,
+  #cctv-panel,
+  #scene-panel,
+  #scene-runtime,
+  #right-context-rail,
+  #cockpit-hud,
+  #intel-hud,
+  #safe-frame-overlay,
+  #traffic-sync-chip,
+  #cctv-sync-chip,
+  #first-run-launcher
+) {
+  display: none !important;
+}
+
+/* Original emblem remains in source for upstream attribution, not on the
+ * independent product splash screen while its final branding is undecided. */
+body[data-bdp-product='land-development-os'] #loading-screen .loader-logo {
+  display: none !important;
+}
+
+/* Land exploration must use the full map viewport, not the legacy
+ * surveillance scope / celestial keyhole. The JS availability gate prevents
+ * mask rendering and restoration; this scoped CSS provides a first-paint
+ * safety net, including during hot reload or restored legacy share links.
+ * Never hide Cesium's map or provider attribution. */
+body[data-bdp-product='land-development-os'] #scope-mask,
+body[data-bdp-product='land-development-os'] .celestial-ring-overlay {
+  display: none !important;
+}
+
+/* The upstream data manager still owns and refreshes the complete registry.
+ * Present only the land-intelligence rows; retain internal IDs and source
+ * contracts without migrating durable state or introducing a second manager.
+ */
+body[data-bdp-product='land-development-os']
+  #data-toggles > .data-toggle-row:not([data-layer-id^='bdp-']) {
+  display: none !important;
+}
+
+body[data-bdp-product='land-development-os'] #data-panel {
+  --panel-expanded-width: min(310px, calc(100vw - 30px));
+}
+
+body[data-bdp-product='land-development-os'] #data-panel .panel-title {
+  letter-spacing: 1.25px;
+}
+
+body[data-bdp-product='land-development-os'] #data-panel .data-toggle-list {
+  scrollbar-width: thin;
+}
+
+/* Keep the map interactive even when the left layer panel is collapsed. */
+body[data-bdp-product='land-development-os'] #world-overlay-root,
+body[data-bdp-product='land-development-os'] #world-overlay-actions,
+body[data-bdp-product='land-development-os'] #cesiumContainer {
+  visibility: visible;
+}
+
+@media (max-width: 720px) {
+  body[data-bdp-product='land-development-os'] #data-panel {
+    top: 216px;
+  }
+}
+
+/* The first real-browser screenshot surfaced a readability problem:
+ * the original surveillance HUD used very small, low-contrast type.
+ * Phase 2 starts moving toward a usable property-analysis workspace.
+ */
+body[data-bdp-product='land-development-os'] #data-panel .data-panel-inner {
+  background: rgba(5, 16, 28, 0.94);
+  border-color: rgba(113, 180, 211, 0.32);
+}
+
+body[data-bdp-product='land-development-os'] #data-panel .panel-title {
+  color: #e8f4ff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-section-label {
+  flex-wrap: wrap;
+  gap: 7px;
+  padding-block: 10px 6px;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-section-title {
+  color: #c2d5e4;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-section-actions {
+  margin-left: auto;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-preset-button {
+  min-width: 52px;
+  min-height: 28px;
+  color: #d3e6f5;
+  border-color: rgba(112, 189, 217, 0.38);
+  background: rgba(46, 136, 168, 0.12);
+  font-size: 9px;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-category-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 15px 7px 7px;
+  color: #86dfff;
+  font: 700 10px/1.4 var(--font-sans);
+  letter-spacing: 0.6px;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-category-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(123, 192, 219, 0.22);
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-row {
+  padding: 9px 9px 8px;
+  border: 1px solid rgba(122, 181, 207, 0.1);
+  border-radius: 8px;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-row:hover {
+  background: rgba(40, 130, 163, 0.12);
+  border-color: rgba(122, 181, 207, 0.28);
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-row .data-name {
+  color: #edf7ff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-row .data-toggle-meta {
+  color: #aec4d4;
+  font-size: 10px;
+  line-height: 1.45;
+  letter-spacing: 0;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-row .data-count {
+  color: #a9c3d4;
+}
+
+body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-row .data-toggle-btn {
+  min-height: 26px;
+  color: #d2e0ec;
+  border-color: rgba(139, 179, 204, 0.25);
+  font-size: 9px;
+}
+
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-key {
+  color: #c0d4e2;
+  font-size: 10px;
+}
+
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-value {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-section-heading {
+  font-size: 10px;
+}
+
+body[data-bdp-product='land-development-os'] #bdp-property-card .bdp-property-disclaimer {
+  color: #b2c5d3 !important;
+  font-size: 10px;
+}
+
+@media (min-width: 1150px) {
+  body[data-bdp-product='land-development-os'] #data-panel {
+    --panel-expanded-width: 342px;
+  }
+}
+
+@media (max-width: 720px) {
+  body[data-bdp-product='land-development-os'] #data-toggles .bdp-layer-row .data-toggle-meta {
+    font-size: 9px;
+  }
+}
+
+/* Search is the main operator action, not decorative HUD text. */
+body[data-bdp-product='land-development-os'] #land-search-bar {
+  border-color: rgba(107, 180, 212, 0.43);
+  background: rgba(4, 14, 26, 0.95);
+}
+
+body[data-bdp-product='land-development-os'] #land-search-bar .land-search-heading {
+  color: #87e8ff;
+  font-size: 11px;
+}
+
+body[data-bdp-product='land-development-os'] #land-search-bar #location-search {
+  color: #f3f9ff;
+  font-size: 15px;
+}
+
+body[data-bdp-product='land-development-os'] #land-search-bar #location-search::placeholder {
+  color: #a6bbce;
+  opacity: 1;
+}
+
+body[data-bdp-product='land-development-os'] #land-search-bar .land-search-hint {
+  color: #adc5d5;
+  font-size: 11px;
+}

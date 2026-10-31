@@ -13,6 +13,21 @@ test('the chip counts what is missing, and retires the count at zero', () => {
   assert.equal(keySetupChipLabel(null), 'POWERED UP', 'no status is not a broken label');
 });
 
+test('land workspace calls missing credentials optional provider settings, not power-up', () => {
+  assert.equal(
+    keySetupChipLabel({ setCount: 0, total: 9 }, 'land-development-os'),
+    'Provider settings · 9 unconfigured',
+  );
+  assert.equal(
+    keySetupChipLabel({ setCount: 8, total: 9 }, 'land-development-os'),
+    'Provider settings · 1 unconfigured',
+  );
+  assert.equal(
+    keySetupChipLabel({ setCount: 9, total: 9 }, 'land-development-os'),
+    'Provider settings',
+  );
+});
+
 test('collectKeyUpdates keeps only non-empty trimmed values', () => {
   const updates = collectKeyUpdates([
     { envVar: 'OPENAI_API_KEY', value: '  sk-abc  ' },
