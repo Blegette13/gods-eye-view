@@ -10,6 +10,7 @@ import { summarizeDiscoveryCandidates } from './discoveryFeedback.js';
 import { normalizeLandCriteria } from '../acquisition/session.js';
 import { freeBrowseCountyUrl, countyFromFreeBrowseResponse,
   shouldDiscoverFreeParcels, freeBrowseVisibleParcels } from './freeBrowseParcels.js';
+import { filterAndSortMappedParcels } from './parcelListView.js';
 
 class Element {
   constructor(tag) {
@@ -120,6 +121,7 @@ function fixture({ preview = null, named = null } = {}) {
     summarizeDiscoveryCandidates,
     freeBrowseCountyUrl, countyFromFreeBrowseResponse,
     shouldDiscoverFreeParcels, freeBrowseVisibleParcels,
+    filterAndSortMappedParcels,
     MAX_FREE_BROWSE_ROWS: 1000,
     cameraHeightMeters: (view) => view.camera.positionCartographic.height,
     frameFreeBrowse: (view) => { view.freeBrowseFramed = true; },
@@ -391,6 +393,60 @@ test('1.3km free browsing auto-resolves county and lists every rendered GIS parc
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(finder.hidden, true, 'unselected ambient parcels hide above 1.3km');
     assert.equal(env.body.dataset.landLayers, 'open');
+  } finally {
+    map.destroy();
+  }
+});
+
+test('Free Explorer neighborhood filters change only visible source list, not mapped parcel count', async () => {
+  const env = fixture();
+  const map = env.create({viewer:env.viewer});
+  try {
+    await new Promise((resolve)=>setImmediate(resolve));
+    env.viewer.camera.positionCartographic.height = 1300;
+    env.moved();
+    await new Promise((resolve)=>setImmediate(resolve));
+    const records = [
+      {county:'Travis',parcelId:'000101',property:{
+        geometry:env.polygon,situsAddress:'800 Elm Street',acres:0.3,
+      }},
+      {county:'Travis',parcelId:'000102',property:{
+        geometry:env.polygon,situsAddress:'200 Maple Avenue',acres:1.2,
+      }},
+      {county:'Travis',parcelId:'000103',property:{
+        geometry:env.polygon,situsAddress:'10 Cedar Lane',acres:0,
+      }},
+    ];
+    env.window.dispatchEvent(new env.Event('land:parcel-viewport',{
+      detail:{county:'Travis',complete:true,reason:'complete',parcels:records},
+    }));
+    const controls = find(env.body,(node)=>node.id==='ldos-free-parcel-filters')[0];
+    const count = find(env.body,(node)=>node.id==='ldos-discovery-match-count')[0];
+    const list = find(env.body,(node)=>node.id==='ldos-discovery-results')[0];
+    assert.equal(controls.hidden,false);
+    assert.equal(count.textContent,'3 mapped parcels');
+    assert.equal(find(list,(node)=>node.className==='ldos-discovery-result').length,3);
+    const query=find(controls,(node)=>node.tagName==='input'&&node.type==='search')[0];
+    query.value='maple';
+    query.listeners.input();
+    assert.equal(count.textContent,'3 mapped parcels','underlying source count must not change');
+    assert.equal(find(list,(node)=>node.className==='ldos-discovery-result').length,1);
+    assert.match(list.textContent,/Maple Avenue/);
+    query.value='';
+    query.listeners.input();
+    const min=find(controls,(node)=>node.tagName==='input'&&node.placeholder==='Min acres')[0];
+    min.value='0.5';
+    min.listeners.input();
+    assert.equal(find(list,(node)=>node.className==='ldos-discovery-result').length,1);
+    assert.match(controls.textContent,/UNKNOWN acreage excluded/);
+    const select=find(controls,(node)=>node.tagName==='select')[0];
+    min.value='';
+    min.listeners.input();
+    select.value='acres-desc';
+    select.listeners.change();
+    const lines=find(list,(node)=>node.className==='ldos-discovery-result');
+    assert.match(lines[0].textContent,/Maple Avenue/);
+    assert.match(lines[2].textContent,/Cedar Lane/,'unknown source acreage always last');
   } finally {
     map.destroy();
   }
