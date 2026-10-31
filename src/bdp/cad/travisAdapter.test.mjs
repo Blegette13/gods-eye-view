@@ -214,3 +214,57 @@ test('an unresolved dense viewport fails closed after bounded child queries', as
     assert.ok(calls <= 21, 'one initial query and at most twenty child tiles');
   } finally { globalThis.fetch = prior; }
 });
+
+test('high-altitude Free Explorer recovers bounded CENTRAL parcels without asserting full-screen coverage', async () => {
+  const prior = globalThis.fetch;
+  const full = { west: -97.8, south: 30.2, east: -97.7, north: 30.3 };
+  let requests = 0;
+  let centerEnvelope = null;
+  try {
+    globalThis.fetch = async (url) => {
+      requests++;
+      const bounds = new URL(url).searchParams.get('geometry').split(',').map(Number);
+      if (requests === 1) return { ok:true, json:async()=>({
+        type:'FeatureCollection', features:[feature({PROP_ID:999})],
+        exceededTransferLimit:true,
+      }) };
+      centerEnvelope = bounds;
+      return { ok:true, json:async()=>({
+        type:'FeatureCollection', features:[feature({PROP_ID:111}),feature({PROP_ID:222})],
+      }) };
+    };
+    const parcels = await travisCadAdapter.fetchParcelsInBounds(full, {
+      limit:500, focusOnDense:true,
+    });
+    assert.equal(requests, 2);
+    assert.deepEqual(parcels.map((p)=>p.parcelId),['111','222']);
+    assert.equal(parcels.viewportCoverage.focalOnly,true);
+    assert.equal(parcels.viewportCoverage.receivedCount,2);
+    assert.ok(parcels.viewportCoverage.focalBounds);
+    const half = parcels.viewportCoverage.focalBounds;
+    assert.deepEqual(centerEnvelope,[half.west,half.south,half.east,half.north]);
+    assert.ok(half.west > full.west && half.east < full.east);
+    assert.ok(half.south > full.south && half.north < full.north);
+    assert.equal(parcels.viewportCoverage.overLimit,undefined);
+  } finally { globalThis.fetch = prior; }
+});
+
+test('capped central footprint still reports UNKNOWN instead of a falsely complete zoomed-out parcel inventory', async () => {
+  const prior = globalThis.fetch;
+  let requests = 0;
+  try {
+    globalThis.fetch = async () => {
+      requests++;
+      return {ok:true,json:async()=>({
+        type:'FeatureCollection',features:[feature({PROP_ID:13})],exceededTransferLimit:true,
+      })};
+    };
+    const results = await travisCadAdapter.fetchParcelsInBounds({
+      west:-97.8,south:30.2,east:-97.7,north:30.3,
+    },{limit:500,focusOnDense:true});
+    assert.equal(results.length,0);
+    assert.equal(results.viewportCoverage.overLimit,true);
+    assert.equal(results.viewportCoverage.attemptedCentralFootprint,true);
+    assert.ok(requests <= 22);
+  } finally {globalThis.fetch=prior;}
+});
