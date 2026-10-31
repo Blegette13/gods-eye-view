@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  subdivideViewport, collectTravisViewportTiles,
+  subdivideViewport, centerViewportBounds, collectTravisViewportTiles,
   MAX_TRAVIS_VIEWPORT_TILE_QUERIES, MAX_TRAVIS_VIEWPORT_PARCELS,
 } from './travisViewportTiles.js';
 
@@ -112,4 +112,15 @@ test('malformed tile errors propagate as UNKNOWN, rather than a complete empty v
   await assert.rejects(collectTravisViewportTiles({
     bounds,limit:500,fetchTile:async()=>{throw new Error('ArcGIS malformed');},
   }),/ArcGIS malformed/);
+});
+
+test('central discovery footprint occupies 25 percent of viewport area and never escapes real query bounds', () => {
+  const focused = centerViewportBounds(bounds, 0.5);
+  assert.equal(focused.west, bounds.west + (bounds.east - bounds.west) / 4);
+  assert.equal(focused.east, bounds.east - (bounds.east - bounds.west) / 4);
+  assert.equal(focused.south, bounds.south + (bounds.north - bounds.south) / 4);
+  assert.equal(focused.north, bounds.north - (bounds.north - bounds.south) / 4);
+  assert.throws(() => centerViewportBounds(bounds, 0));
+  assert.throws(() => centerViewportBounds(bounds, 1));
+  assert.throws(() => centerViewportBounds(null));
 });
