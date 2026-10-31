@@ -1050,3 +1050,44 @@ body[data-bdp-product='land-development-os'] #bdp-property-card {
     max-height: calc(100dvh - 199px) !important;
   }
 }
+
+
+/* Step 37 — source-only parcel list filters, contained within the left
+ * scrollable neighborhood results panel (never a second floating popup). */
+#ldos-free-parcel-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 0;
+  margin: 1px 0 9px;
+  border-bottom: 1px solid #dce5ec;
+}
+#ldos-free-parcel-filters[hidden] { display: none !important; }
+#ldos-free-parcel-filters input,
+#ldos-free-parcel-filters select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 35px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid #d6e2eb;
+  background: rgba(255,255,255,.95);
+  color: #203f55;
+  font: 500 11px/1.35 Inter, system-ui, sans-serif;
+}
+#ldos-free-parcel-filters input:focus-visible,
+#ldos-free-parcel-filters select:focus-visible {
+  outline: 2px solid #2b79ab;
+  outline-offset: 2px;
+}
+#ldos-free-parcel-filters .ldos-free-filter-acres {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  gap: 7px;
+}
+#ldos-free-parcel-filters .ldos-free-filter-count {
+  font: 500 10px/1.5 Inter, system-ui, sans-serif;
+  color: #526d83;
+  margin: 0;
+}
