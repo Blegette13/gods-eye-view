@@ -4,6 +4,7 @@ import { createBdpPropertyCard } from '../ui/propertyCard.js';
 import { parcelGeoJsonWithBoundaries } from './parcelGeojson.js';
 import { styleSelectedParcelEntities, recommendedParcelFocusRange } from './parcelSelectionStyle.js';
 import { shouldDiscoverFreeParcels } from '../map/freeBrowseParcels.js';
+import { createProgressiveParcelCache } from './progressiveParcelCache.js';
 
 const MAX_VIEW_SPAN_DEGREES = 0.12;
 const QUERY_INTERVAL_MS = 30_000;
@@ -62,6 +63,7 @@ export function createCountyParcelLayer({
   let selectedParcelId = null;
   let focusedLookupToken = null;
   const parcelById = new Map();
+  const progressiveCache = createProgressiveParcelCache();
   const normalOutline = Cesium.Color.fromCssColorString('#f2f2f2').withAlpha(0.82);
   const selectedOutline = Cesium.Color.fromCssColorString('#42c5ed').withAlpha(0.98);
   const normalFill = Cesium.Color.fromCssColorString('#ffffff').withAlpha(0.055);
@@ -119,6 +121,7 @@ export function createCountyParcelLayer({
     const coverage = parcels.viewportCoverage;
     const next = await Cesium.GeoJsonDataSource.load(parcelGeoJsonWithBoundaries(parcels, {
       focalBounds: sourceKind === 'viewport' ? coverage?.focalBounds : null,
+      focalBoundsList: sourceKind === 'viewport' ? coverage?.focalBoundsList : null,
     }), {
       clampToGround: true,
       stroke: normalOutline,
@@ -296,6 +299,7 @@ export function createCountyParcelLayer({
       propertyCard?.hide();
       requestController?.abort();
       requestController = null;
+      progressiveCache.clear();
     },
 
     focusParcel,
@@ -358,13 +362,27 @@ export function createCountyParcelLayer({
       requestController = new AbortController();
 
       try {
-        const parcels = await adapter.fetchParcelsInBounds(bounds, {
-          limit: adapter.county === 'Bexar' ? 1000 : 500,
-          signal: requestController.signal,
-          // Only auto-discovery can use a DELIMITED smaller query footprint.
-          // A manual county layer stays accountable to the whole viewport.
-          focusOnDense: freeMode && adapter.county === 'Travis',
-        });
+        const progressive = freeMode && adapter.county === 'Travis';
+        // A recently queried COMPLETE central source window can safely
+        // satisfy the next near-identical camera position without repeating
+        // requests to the public GIS service.
+        let parcels = progressive
+          ? progressiveCache.reuse({ county: adapter.county, viewBounds: bounds })
+          : null;
+        if (!parcels) {
+          parcels = await adapter.fetchParcelsInBounds(bounds, {
+            limit: adapter.county === 'Bexar' ? 1000 : 500,
+            signal: requestController.signal,
+            // Only Free Explorer's Travis viewport can use partial windows.
+            focusOnDense: progressive,
+          });
+          if (progressive && parcels.viewportCoverage?.focalOnly === true) {
+            parcels = progressiveCache.add({
+              county: adapter.county, viewBounds: bounds, records: parcels,
+            }) || parcels;
+          }
+        }
+        assertActive(requestController.signal);
         const coverage = parcels.viewportCoverage;
         if (coverage?.overLimit === true) {
           // The provider explicitly reported that this viewport was cut off
@@ -392,21 +410,23 @@ export function createCountyParcelLayer({
           // Show identifiable parcels, but never imply the viewport is complete.
           const warning = [
             focalOnly
-              ? 'PARTIAL VIEWPORT: Orange outline shows the complete central GIS query footprint. Other screen areas were not searched; no source coverage can be inferred outside it.'
+              ? 'PARTIAL VIEWPORT: Orange outlines mark source-queried GIS windows. Areas outside those outlines were not searched; cached windows can be up to two minutes old and are not verified for sale.'
               : '',
             omitted
               ? `PARTIAL: ${omitted} of ${coverage.receivedCount} source polygons lack valid parcel IDs and are not displayed.`
               : '',
           ].filter(Boolean).join(' ');
           for (const parcel of parcels) {
-            parcel.source.sourceNotice = [parcel.source.sourceNotice, warning].filter(Boolean).join(' ');
+            if (parcel.source && !parcel.source.sourceNotice?.includes(warning)) {
+              parcel.source.sourceNotice = [parcel.source.sourceNotice, warning].filter(Boolean).join(' ');
+            }
           }
         }
         await replaceSnapshot(parcels, {
           signal: requestController.signal, completeView: !omitted && !focalOnly,
         });
         viewportCoverageWarning = focalOnly
-          ? 'PARTIAL · Orange outline is a source-backed central viewing window only; unoutlined map area was not evaluated.'
+          ? 'PARTIAL · Orange outlines mark GIS source windows; unoutlined map area was not evaluated. A reused window can be up to two minutes old.'
           : omitted
             ? `PARTIAL · ${omitted} unidentified source polygons omitted; parcel coverage incomplete`
             : '';
@@ -454,6 +474,7 @@ export function createCountyParcelLayer({
       if (dataSource && viewer) viewer.dataSources.remove(dataSource, true);
       dataSource = null;
       parcelById.clear();
+      progressiveCache.clear();
       viewer = null;
       enabled = false;
     },
