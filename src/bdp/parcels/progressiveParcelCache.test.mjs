@@ -77,8 +77,10 @@ test('partial source responses, duplicate IDs and unknown polygons are never cac
   assert.equal(cache.size(),0);
 });
 
-test('maxRecords is a hard budget and never silently truncates a complete older tile',()=>{
-  const cache=createProgressiveParcelCache({maxWindows:3,maxRecords:2});
+test('maxRecords keeps the newest complete tile first even when timestamps are identical',()=>{
+  // Two real browser snapshots may arrive in the same Date.now() millisecond.
+  // The newest query must win a constrained budget deterministically.
+  const cache=createProgressiveParcelCache({maxWindows:3,maxRecords:2,now:()=>42});
   const a=bounds(-97.78,30.22,-97.75,30.28),b=bounds(-97.75,30.22,-97.72,30.28);
   cache.add({county:'Travis',viewBounds:view,records:snapshot([
     parcel('1',-97.775,30.25),parcel('2',-97.77,30.25),
@@ -86,7 +88,8 @@ test('maxRecords is a hard budget and never silently truncates a complete older 
   const merged=cache.add({county:'Travis',viewBounds:view,records:snapshot([
     parcel('3',-97.735,30.25),
   ],b)});
-  assert.equal(merged.length,1);
+  assert.equal(merged.length,1,
+    'older 2-parcel source window cannot displace the latest 1-parcel query');
   assert.equal(merged.viewportCoverage.focalBoundsList.length,1,
     'only completely represented source query windows can be outlined');
   assert.equal(merged[0].parcelId,'3');
