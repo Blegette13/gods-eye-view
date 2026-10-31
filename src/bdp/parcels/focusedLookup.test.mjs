@@ -257,7 +257,9 @@ test('1.3km Free Explorer renders sourced central parcel footprint as PARTIAL, n
   assert.equal(stats.count,1);
   assert.equal(stats.status,'degraded',
     'a complete focal source query does NOT establish full-screen coverage');
-  assert.match(stats.loadingLabel,/central viewing window only/i);
+  assert.match(stats.loadingLabel,/Orange outlines mark GIS source windows/i);
+  assert.match(stats.loadingLabel,/unoutlined map area was not evaluated/i,
+    'a sourced center window must not certify the rest of the visible map');
   assert.equal(stats.available,true,'provisional source records remain usable');
   assert.equal(calls.render,1);
   layer.destroy();
