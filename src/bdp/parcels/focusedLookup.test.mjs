@@ -57,6 +57,11 @@ function layerFixture({ freeBrowsing = false } = {}) {
     Cesium: fakeCesium,
     shouldDiscoverFreeParcels: (meters) => Number.isFinite(meters)
       && meters >= 0 && meters <= 1300,
+    createProgressiveParcelCache: () => ({
+      reuse: () => null,
+      add: () => null,
+      clear: () => {},
+    }),
     DOMException,
     AbortController,
     console: { warn() {} },
