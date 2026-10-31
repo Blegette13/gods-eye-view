@@ -7,6 +7,24 @@
 export const MAX_TRAVIS_VIEWPORT_TILE_QUERIES = 20; // 4 + 16, after original query
 export const MAX_TRAVIS_VIEWPORT_PARCELS = 1000;
 
+/**
+ * Create a bounded central discovery footprint WITHIN the camera's full
+ * viewport. This is a PARTIAL viewport, not a smaller legal parcel polygon.
+ * The UI must draw the source window and label its results incomplete for
+ * the visible map outside that footprint.
+ */
+export function centerViewportBounds(bounds, scale = 0.5) {
+  const { west, south, east, north } = bounds || {};
+  if (![west, south, east, north].every(Number.isFinite) || west >= east
+      || south >= north || !Number.isFinite(scale) || scale <= 0 || scale >= 1) {
+    throw new Error('Invalid center viewport bounds');
+  }
+  const lonPad = (east - west) * (1 - scale) / 2;
+  const latPad = (north - south) * (1 - scale) / 2;
+  return { west: west + lonPad, south: south + latPad,
+    east: east - lonPad, north: north - latPad };
+}
+
 export function subdivideViewport(bounds) {
   const { west, south, east, north } = bounds || {};
   if (![west, south, east, north].every(Number.isFinite) || west >= east || south >= north) {
