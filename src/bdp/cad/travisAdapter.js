@@ -1,5 +1,5 @@
 import { normalizeParcel, validateParcel } from '../parcels/parcelSchema.js';
-import { collectTravisViewportTiles } from './travisViewportTiles.js';
+import { collectTravisViewportTiles, centerViewportBounds } from './travisViewportTiles.js';
 
 export const TRAVIS_COUNTY_FIPS = '48453';
 export const TRAVIS_PARCEL_LAYER_URL = 'https://gis.traviscountytx.gov/server1/rest/services/Boundaries_and_Jurisdictions/TCAD/MapServer/0';
@@ -162,33 +162,55 @@ export const travisCadAdapter = Object.freeze({
     // only this bounded viewport as 4 GIS envelopes, subdividing overloaded
     // quarters once more. Never render partial tiles as a complete parcel
     // inventory. Exact parcel and owner searches remain strictly unchanged.
-    const tiled = await collectTravisViewportTiles({
-      bounds, limit, signal: options.signal,
-      fetchTile: (tile, { signal, limit: tileLimit }) =>
-        fetchFeatures(buildTravisBoundsUrl({ ...tile, limit: tileLimit }),
-          tileLimit, { signal }, { allowUnidentifiedViewport: true }),
-    });
-    if (!tiled.complete) {
-      // Original ArcGIS response already marked over-limit and returned no
-      // parcels. Metadata is non-configurable: create a fresh empty bounded
-      // result rather than attempting to redefine an existing descriptor.
+    // For dense free-exploration views, prioritize an honestly delimited
+    // central half-width/half-height window (25% of the screen area) rather
+    // than hiding EVERY boundary until users zoom to rooftop altitude.
+    // Selection is ONLY for a known complete source tile footprint, never
+    // invented parcels in the unqueried outer map. Keep regular manual and
+    // guided county layers unchanged.
+    const focusBounds = options.focusOnDense === true
+      ? centerViewportBounds(bounds, 0.5) : null;
+    const targetBounds = focusBounds || bounds;
+    const first = focusBounds
+      ? await fetchFeatures(buildTravisBoundsUrl({ ...focusBounds, limit }),
+        limit, options, { allowUnidentifiedViewport: true })
+      : initial;
+    let completed = first.viewportCoverage?.overLimit !== true
+      ? { complete: true, parcels: first,
+        receivedCount: first.viewportCoverage?.receivedCount ?? first.length,
+        omittedUnidentified: first.viewportCoverage?.omittedUnidentified ?? 0,
+        queryCount: 0 }
+      : await collectTravisViewportTiles({
+        bounds: targetBounds, limit, signal: options.signal,
+        fetchTile: (tile, { signal, limit: tileLimit }) =>
+          fetchFeatures(buildTravisBoundsUrl({ ...tile, limit: tileLimit }),
+            tileLimit, { signal }, { allowUnidentifiedViewport: true }),
+      });
+    if (!completed.complete) {
+      // Never display a falsely complete window. The county's original
+      // capped source still reports unknown coverage to the operator.
       const incomplete = [];
       Object.defineProperty(incomplete, 'viewportCoverage', {
         value: Object.freeze({ ...initial.viewportCoverage,
-          tileQueries: tiled.queryCount,
+          tileQueries: completed.queryCount,
           tileAttempted: true,
-          tileFailureReason: tiled.reason,
+          tileFailureReason: completed.reason,
+          ...(focusBounds ? { attemptedCentralFootprint: true } : {}),
         }), enumerable: false,
       });
       return incomplete;
     }
-    const results = tiled.parcels;
+    const results = completed.parcels;
+    // A returned list is a source-backed COMPLETE snapshot only for its
+    // actual query footprint. Larger visible area remains unassessed.
     Object.defineProperty(results, 'viewportCoverage', {
       value: Object.freeze({
-        receivedCount: tiled.receivedCount,
-        omittedUnidentified: tiled.omittedUnidentified,
-        tiled: true,
-        tileQueries: tiled.queryCount,
+        receivedCount: completed.receivedCount,
+        omittedUnidentified: completed.omittedUnidentified,
+        tiled: completed.queryCount > 0,
+        tileQueries: completed.queryCount,
+        ...(focusBounds
+          ? { focalOnly: true, focalBounds: Object.freeze(focusBounds) } : {}),
       }), enumerable: false,
     });
     return results;
