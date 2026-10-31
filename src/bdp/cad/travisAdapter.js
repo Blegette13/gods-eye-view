@@ -200,7 +200,11 @@ export const travisCadAdapter = Object.freeze({
       });
       return incomplete;
     }
-    const results = completed.parcels;
+    // fetchFeatures attaches a non-configurable viewportCoverage property
+    // to its returned array. Copy the direct central response before adding
+    // the focal provenance, rather than redefining immutable source metadata.
+    const results = completed.queryCount === 0
+      ? [...completed.parcels] : completed.parcels;
     // A returned list is a source-backed COMPLETE snapshot only for its
     // actual query footprint. Larger visible area remains unassessed.
     Object.defineProperty(results, 'viewportCoverage', {
