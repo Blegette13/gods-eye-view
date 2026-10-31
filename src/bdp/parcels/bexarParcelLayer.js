@@ -66,6 +66,7 @@ export function createCountyParcelLayer({
   const selectedOutline = Cesium.Color.fromCssColorString('#42c5ed').withAlpha(0.98);
   const normalFill = Cesium.Color.fromCssColorString('#ffffff').withAlpha(0.055);
   const selectedFill = Cesium.Color.fromCssColorString('#2289bd').withAlpha(0.24);
+  const focalBoundary = Cesium.Color.fromCssColorString('#d98c35').withAlpha(0.97);
 
   function refreshParcelSelection() {
     if (!dataSource) return;
@@ -76,6 +77,12 @@ export function createCountyParcelLayer({
       selectedOutline,
       selectedFill,
     });
+    for (const entity of dataSource.entities.values) {
+      if (entity.polyline && propertyValue(entity, 'bdpFocusFootprint')) {
+        entity.polyline.material = focalBoundary;
+        entity.polyline.width = 4;
+      }
+    }
     // A card-only click changes entity materials without camera movement.
     // Explicitly request a frame so stale selected outlines cannot linger in
     // Cesium scenes configured for request-on-demand rendering.
@@ -92,7 +99,8 @@ export function createCountyParcelLayer({
     if (signal?.aborted || !enabled || !viewer) throw new DOMException('Parcel request cancelled', 'AbortError');
   }
 
-  function notifyViewportCandidates(parcels, complete = false, reason = 'not-complete') {
+  function notifyViewportCandidates(parcels, complete = false, reason = 'not-complete',
+    coverage = null) {
     if (typeof window === 'undefined' || typeof CustomEvent === 'undefined') return;
     window.dispatchEvent(new CustomEvent('land:parcel-viewport', {
       detail: {
@@ -101,13 +109,17 @@ export function createCountyParcelLayer({
         reason,
         // Only successful bounded source snapshots contribute actual parcels.
         parcels: complete || reason === 'partial' ? parcels : [],
+        coverage: coverage && typeof coverage === 'object' ? coverage : null,
       },
     }));
   }
 
   async function replaceSnapshot(parcels, { signal, sourceKind = 'viewport', completeView = true } = {}) {
     assertActive(signal);
-    const next = await Cesium.GeoJsonDataSource.load(parcelGeoJsonWithBoundaries(parcels), {
+    const coverage = parcels.viewportCoverage;
+    const next = await Cesium.GeoJsonDataSource.load(parcelGeoJsonWithBoundaries(parcels, {
+      focalBounds: sourceKind === 'viewport' ? coverage?.focalBounds : null,
+    }), {
       clampToGround: true,
       stroke: normalOutline,
       fill: normalFill,
@@ -136,7 +148,7 @@ export function createCountyParcelLayer({
     count = parcels.length;
     refreshParcelSelection();
     if (sourceKind === 'viewport') notifyViewportCandidates(parcels, completeView,
-      completeView ? 'complete' : 'partial');
+      completeView ? 'complete' : 'partial', coverage);
     else notifyViewportCandidates([], false, 'focused-search');
   }
 
@@ -349,6 +361,9 @@ export function createCountyParcelLayer({
         const parcels = await adapter.fetchParcelsInBounds(bounds, {
           limit: adapter.county === 'Bexar' ? 1000 : 500,
           signal: requestController.signal,
+          // Only auto-discovery can use a DELIMITED smaller query footprint.
+          // A manual county layer stays accountable to the whole viewport.
+          focusOnDense: freeMode && adapter.county === 'Travis',
         });
         const coverage = parcels.viewportCoverage;
         if (coverage?.overLimit === true) {
@@ -371,21 +386,33 @@ export function createCountyParcelLayer({
           return true;
         }
         const omitted = coverage?.omittedUnidentified || 0;
-        if (omitted) {
+        const focalOnly = coverage?.focalOnly === true;
+        if (omitted || focalOnly) {
           // A mapped polygon without a valid parcel ID is NOT a verified tract.
           // Show identifiable parcels, but never imply the viewport is complete.
-          const warning = `PARTIAL: ${omitted} of ${parcels.viewportCoverage.receivedCount} source polygons lack valid parcel IDs and are not displayed; map coverage is incomplete.`;
+          const warning = [
+            focalOnly
+              ? 'PARTIAL VIEWPORT: Orange outline shows the complete central GIS query footprint. Other screen areas were not searched; no source coverage can be inferred outside it.'
+              : '',
+            omitted
+              ? `PARTIAL: ${omitted} of ${coverage.receivedCount} source polygons lack valid parcel IDs and are not displayed.`
+              : '',
+          ].filter(Boolean).join(' ');
           for (const parcel of parcels) {
             parcel.source.sourceNotice = [parcel.source.sourceNotice, warning].filter(Boolean).join(' ');
           }
         }
-        await replaceSnapshot(parcels, { signal: requestController.signal, completeView: !omitted });
-        viewportCoverageWarning = omitted
-          ? `PARTIAL · ${omitted} unidentified source polygons omitted; parcel coverage incomplete`
-          : '';
+        await replaceSnapshot(parcels, {
+          signal: requestController.signal, completeView: !omitted && !focalOnly,
+        });
+        viewportCoverageWarning = focalOnly
+          ? 'PARTIAL · Orange outline is a source-backed central viewing window only; unoutlined map area was not evaluated.'
+          : omitted
+            ? `PARTIAL · ${omitted} unidentified source polygons omitted; parcel coverage incomplete`
+            : '';
         lastBoundsKey = key;
         lastUpdate = Date.now();
-        status = omitted ? 'degraded' : 'nominal';
+        status = omitted || focalOnly ? 'degraded' : 'nominal';
         return true;
       } catch (error) {
         if (error?.name === 'AbortError') return false;
