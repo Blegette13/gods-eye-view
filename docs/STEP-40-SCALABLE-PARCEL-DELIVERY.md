@@ -1,6 +1,6 @@
 # Step 40 — Scalable parcel delivery (incremental engineering plan)
 
-**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged**; Phase 40C-4 **unrouted metadata-only server boundary staged**; Phase 40C-5 **pinned read-only PostGIS transaction adapter staged**; Phase 40C-6 **county-scoped authorization/source resolver staged**; Phase 40C-7 **fixed-query approved-source PostGIS reader staged**; Phase 40C-8 **HMAC-bound county-session verifier staged**; Phase 40C-9 **isolated restricted PostGIS RPC verified against synthetic data**; Phase 40C-10 **restricted reader bridge staged and regression-tested**; Phase 40C-11 **unrouted HMAC→restricted RPC metadata runtime composition validated by operator tests**; Phase 40C-12 **unrouted pg Pool connector with role attestation staged (not yet live-driver tested)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
+**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged**; Phase 40C-4 **unrouted metadata-only server boundary staged**; Phase 40C-5 **pinned read-only PostGIS transaction adapter staged**; Phase 40C-6 **county-scoped authorization/source resolver staged**; Phase 40C-7 **fixed-query approved-source PostGIS reader staged**; Phase 40C-8 **HMAC-bound county-session verifier staged**; Phase 40C-9 **isolated restricted PostGIS RPC verified against synthetic data**; Phase 40C-10 **restricted reader bridge staged and regression-tested**; Phase 40C-11 **unrouted HMAC→restricted RPC metadata runtime composition validated by operator tests**; Phase 40C-12 **unrouted pg Pool connector locally regression-tested**; Phase 40C-13 **opt-in isolated real pg-driver smoke staged (NOT YET RUN)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
 
 ## Product baseline accepted October 31, 2026
 
@@ -592,6 +592,33 @@ npm.cmd run build
 ```
 
 **Next security gate:** create and review a genuinely least-privileged service LOGIN in a disposable PostGIS database; test the authentic `pg` driver's checkout, TLS behavior, permissions, timeouts, rollback and connection reuse under that account. Only then evaluate a protected internal metadata endpoint. Do not touch the existing BDP database or enable public GIS delivery until source rights, genuine session/entitlement issuing, transport, per-user quotas, provenance and coverage evidence are in place. The original Cesium Free Explorer, 2.4 km threshold, parcels and Property Intelligence UI are **unchanged**.
+
+
+### Step 40C-12 operator regression — November 1, 2026 (PASSED)
+
+The operator's latest screenshot reports the **3,486-test main suite with 3,480 passed, six skipped and zero failures**. Both separate performance suites passed **1/1** and **13/13** without relaxing memory budgets or timeouts. This closes the local regression checkpoint for the staged Step 40C-12 pg Pool contract. **No new Vite build or actual PostgreSQL driver invocation appears in this screenshot.** The working Cesium 2.4 km experience remains unchanged.
+
+### Step 40C-13 — Disposable **real node-postgres** validation (STAGED / NOT YET RUN)
+
+A new manual-only command `scripts/bdp/parcel-pg-driver-disposable-smoke.mjs --disposable-only` exercises an actual `pg.Pool` through the restricted runtime. It requires the independently installed Node `pg` package and Docker Desktop. The script refuses any invocation except the exact `--disposable-only` opt-in; it does **not accept** database URLs, user-supplied hostnames, existing container IDs, external data sources or arbitrary SQL. It creates a randomly named fresh `postgis/postgis:17-3.5` container with a fresh randomized password and temporary host port **bound only to 127.0.0.1**, not to an externally reachable interface. It waits for complete PostGIS image initialization before applying the already tested parcel schema, restricted RPC foundation and invented synthetic parcel fixture. No existing `bdp-postgis` service or persistent project volume is referenced.
+
+Within **only the disposable container**, it creates `ldos_parcel_service`, a separate `LOGIN NOINHERIT` role with permission to execute the two fixed approved-source and viewport RPC functions but **no** direct GIS table grants. The staged pool connector runs its privilege attestation on each checkout. The test passes the actual restricted connections to Step 40C-11's HMAC-backed county authorization and aggregate-only metadata runtime, verifies a valid synthetic in-viewport parcel count while keeping `viewportCoverage = unknown`, checks that direct `SELECT` of raw parcel tables is denied by PostgreSQL, rejects a forged session and a revoked county session, then revokes the fixture's source registry rights and verifies the metadata read is denied. It cleans up the random container and its anonymous volumes in `finally`. A temporary loopback port is used for the real host-side driver test, and is unbound after cleanup. The runner removes synthetic test data along with its container; it is not a database migration.
+
+`src/bdp/ingestion/parcelPgDriverSmoke.test.mjs` adds **six fast unit/contract tests** checking strict opt-in, missing-driver behavior before Docker startup, loopback-only ephemeral port parsing, synthetic role SQL without raw table privileges, invented fixture data and cleanup safeguards. **These checks and the real-driver Docker smoke are committed but have not been executed by the operator.** The full repository test/build after this commit are also not verified. Avoid calling the live-driver test passed until the printed Docker result confirms success.
+
+Local PowerShell procedure (run one command at a time from the repo root, with Docker Desktop running):
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelPgDriverSmoke.test.mjs
+# Explicitly install the driver for this temporary local test only, without modifying the repo lockfile:
+npm.cmd install --no-save --package-lock=false pg@8.23.1
+node scripts/bdp/parcel-pg-driver-disposable-smoke.mjs --disposable-only
+```
+
+Expected success line: `PASS: disposable real pg Pool, restricted LOGIN, HMAC metadata and revocation.` If a test fails, capture the first relevant database/Node error and do not advance to public endpoints. The optional install fetches `pg` from the package registry into the existing local `node_modules` without recording it as a project dependency; a later production integration must separately review the actual runtime dependency, CI lockfile, and supported version.
+
+**Remaining deployment gates:** independent DBA approval of SECURITY DEFINER owners, memberships and PUBLIC grants; a durable current session/entitlement store and actual login/cookie issuer; production TLS and secrets management; per-user/distributed rate limits and active driver cancellation; real rights to cache and redistribute any county GIS sources; polygon provenance, byte budgets, progressive paging and verified coverage windows. This probe returns only metadata; it does **not** activate map tiles, GIS replication, property owner details, or user-facing login.
 
 ## 40D — Incremental Cesium rendering (DESIGN / NOT STARTED)
 
