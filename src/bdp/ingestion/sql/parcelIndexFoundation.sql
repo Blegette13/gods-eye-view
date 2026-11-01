@@ -156,6 +156,78 @@ CREATE INDEX IF NOT EXISTS coverage_windows_gix
 CREATE INDEX IF NOT EXISTS coverage_windows_by_source_idx
   ON bdp_parcel_index.coverage_windows(source_id,county_fips,observed_at DESC);
 
+-- All writes remain admin-only. Even a trusted database owner must record
+-- explicit unexpired rights approval before any parcel/coverage ingestion.
+-- The trigger also prevents mixing counties, source versions or ingest runs.
+-- It is SECURITY INVOKER (default), not a privileged browser RPC.
+CREATE OR REPLACE FUNCTION bdp_parcel_index.guard_source_write()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER
+SET search_path = pg_catalog, pg_temp
+AS $guard$
+DECLARE
+  v_county CHAR(5);
+  v_rights_state TEXT;
+  v_rights_expiry TIMESTAMPTZ;
+  v_run_source TEXT;
+  v_run_version TEXT;
+  v_run_outcome TEXT;
+BEGIN
+  SELECT s.county_fips, s.rights_state, s.approved_caching_until
+    INTO v_county, v_rights_state, v_rights_expiry
+  FROM bdp_parcel_index.source_registry s
+  WHERE s.source_id = NEW.source_id;
+
+  IF NOT FOUND OR v_rights_state IS DISTINCT FROM 'approved'
+     OR v_rights_expiry IS NULL
+     OR v_rights_expiry <= clock_timestamp() THEN
+    RAISE EXCEPTION 'Parcel source not approved for current persistent caching'
+      USING ERRCODE = '42501';
+  END IF;
+  IF TG_TABLE_NAME = 'ingest_runs' THEN
+    RETURN NEW;
+  END IF;
+  IF NEW.county_fips IS DISTINCT FROM v_county THEN
+    RAISE EXCEPTION 'County does not match source rights record'
+      USING ERRCODE = '23514';
+  END IF;
+  SELECT r.source_id, r.source_version, r.outcome
+    INTO v_run_source, v_run_version, v_run_outcome
+  FROM bdp_parcel_index.ingest_runs r
+  WHERE r.id = NEW.ingest_run_id;
+
+  IF NOT FOUND OR v_run_source IS DISTINCT FROM NEW.source_id THEN
+    RAISE EXCEPTION 'Parcel index source does not match its ingestion run'
+      USING ERRCODE = '23514';
+  END IF;
+  IF TG_TABLE_NAME = 'parcel_versions' AND
+     v_run_version IS DISTINCT FROM NEW.source_version THEN
+    RAISE EXCEPTION 'Parcel version does not match its ingestion run'
+      USING ERRCODE = '23514';
+  END IF;
+  IF TG_TABLE_NAME = 'coverage_windows' AND
+     NEW.coverage_state = 'complete' AND v_run_outcome <> 'complete' THEN
+    RAISE EXCEPTION 'Cannot certify coverage from an incomplete source run'
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$guard$;
+
+CREATE TRIGGER source_rights_guard_ingest_runs
+  BEFORE INSERT OR UPDATE ON bdp_parcel_index.ingest_runs
+  FOR EACH ROW EXECUTE FUNCTION bdp_parcel_index.guard_source_write();
+CREATE TRIGGER source_rights_guard_parcel_versions
+  BEFORE INSERT OR UPDATE ON bdp_parcel_index.parcel_versions
+  FOR EACH ROW EXECUTE FUNCTION bdp_parcel_index.guard_source_write();
+CREATE TRIGGER source_rights_guard_coverage_windows
+  BEFORE INSERT OR UPDATE ON bdp_parcel_index.coverage_windows
+  FOR EACH ROW EXECUTE FUNCTION bdp_parcel_index.guard_source_write();
+
+REVOKE ALL ON FUNCTION bdp_parcel_index.guard_source_write() FROM PUBLIC;
+COMMENT ON FUNCTION bdp_parcel_index.guard_source_write() IS
+  'Fail-closed source rights + source/county/run consistency gate for trusted GIS index writes. Does NOT create import or API access.';
+
 -- Keep index datasets completely inaccessible to PUBLIC by default.
 -- A future permission-checked READ ONLY RPC can be added separately after
 -- rights and roles review; never expose these raw snapshots with bdp owner
