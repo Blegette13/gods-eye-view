@@ -451,6 +451,22 @@ npm.cmd run build
 **Next planned stage:** Verify the restricted database role and fixed-query reader against synthetic records under a non-owner credential; keep public HTTP and polygon delivery disabled until rights, identity and payload/coverage checks pass.
 
 
+### Step 40C-9 runtime checkpoint — early Docker exit (BLOCKED, diagnostic fix committed)
+
+The operator's Step 40C-9 PowerShell output confirms that the new **static contract and runner tests passed 6/6**, but `node scripts/bdp/parcel-rpc-disposable-smoke.mjs --disposable-only` failed **before any SQL migration executed**. Docker created a disposable container, then the container stopped; the first reported error was `container ... is not running`. Cleanup also reported `No such container` because the initial runner used `docker run --rm`, which automatically deleted an early-exiting container. This is a **real unclosed runtime checkpoint**, not a proven PostgreSQL migration defect or an indication that production BDP data is broken.
+
+A targeted test-harness repair now removes `--rm` during startup, captures Docker `inspect` state/exit code/OOM flag and a bounded tail of PostgreSQL startup logs when a disposable container fails, checks for a premature exit during readiness probing, and unconditionally uses `docker rm --force --volumes` to remove the **randomly named test container and its anonymous volumes**, including after a failed start. The runner still uses no published ports, external Docker network, real GIS data, or persistent BDP DB mounts. A new test checks the diagnostic and cleanup contract. This repair has **not** been verified by rerunning Docker yet; the root cause remains unknown until logs are captured.
+
+PowerShell checkpoint (one command at a time):
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelRestrictedRpc.test.mjs src/bdp/ingestion/parcelRestrictedRpcRunner.test.mjs
+node scripts/bdp/parcel-rpc-disposable-smoke.mjs --disposable-only
+```
+
+If the disposable run fails again, copy the `Disposable PostGIS diagnostics:` lines including the status, exit code and startup log tail. Do not apply the role migration to an existing PostGIS database or mark Step 40C-9 complete without the isolated SQL and restricted-role test passing.
+
 ### Step 40C-9 — Restricted role disposable runtime verification now staged (NOT YET RUN)
 
 The latest operator screenshot shows **13/13 in the visible final test group** and a Vite build completed **before** synchronizing the Step 40C-9 SQL changes. The subsequent `git pull --ff-only origin bdp-development` succeeded and installed the SQL foundation and fixture; that pull **did not execute or validate** either SQL file.
