@@ -157,16 +157,31 @@ export const travisCadAdapter = Object.freeze({
     const free = options.focusOnDense === true;
     const highCamera = free && Number.isFinite(options.cameraHeightMeters)
       && options.cameraHeightMeters > 1600;
-    const request = (footprint, { signal = options.signal } = {}) =>
-      fetchFeatures(buildTravisBoundsUrl({ ...footprint, limit }),
-        limit, { signal }, { allowUnidentifiedViewport: true });
+    let sourceQueryCount = 0;
+    const request = (footprint, { signal = options.signal, pageLimit = limit } = {}) => {
+      sourceQueryCount++;
+      return fetchFeatures(buildTravisBoundsUrl({ ...footprint, limit: pageLimit }),
+        pageLimit, { signal }, { allowUnidentifiedViewport: true });
+    };
+    function withSourceCount(records) {
+      // Never redefine the county adapter's original immutable metadata.
+      // This is observational network accounting, not source completeness.
+      const copy = [...records];
+      Object.defineProperty(copy, 'viewportCoverage', {
+        value: Object.freeze({ ...records.viewportCoverage, sourceQueryCount }),
+        enumerable: false,
+      });
+      return copy;
+    }
 
     // Manual / guided county layers still try to load the ENTIRE viewport.
     // Above 1.6km, Free Explorer goes directly to an altitude-scaled central
     // window instead: the full urban viewport is known to overflow the source
     // and requesting it repeatedly just increases public GIS traffic.
     const original = highCamera ? null : await request(bounds);
-    if (original && !original.viewportCoverage?.overLimit) return original;
+    if (original && !original.viewportCoverage?.overLimit) {
+      return withSourceCount(original);
+    }
 
     let completed = null;
     let targetBounds = bounds;
@@ -199,8 +214,7 @@ export const travisCadAdapter = Object.freeze({
       completed = await collectTravisViewportTiles({
         bounds: targetBounds, limit, signal: options.signal,
         fetchTile: (tile, { signal, limit: tileLimit }) =>
-          fetchFeatures(buildTravisBoundsUrl({ ...tile, limit: tileLimit }),
-            tileLimit, { signal }, { allowUnidentifiedViewport: true }),
+          request(tile, { signal, pageLimit: tileLimit }),
       });
     }
     if (!completed.complete) {
@@ -212,6 +226,7 @@ export const travisCadAdapter = Object.freeze({
           tileQueries: completed.queryCount,
           tileAttempted: true,
           tileFailureReason: completed.reason,
+          sourceQueryCount,
           ...(free ? { attemptedCentralFootprint: true, focalAttempts: attemptedFocalQueries } : {}),
         }), enumerable: false,
       });
@@ -227,6 +242,7 @@ export const travisCadAdapter = Object.freeze({
         omittedUnidentified: completed.omittedUnidentified,
         tiled: completed.queryCount > 0,
         tileQueries: completed.queryCount,
+        sourceQueryCount,
         ...(free
           ? { focalOnly: true, focalBounds: Object.freeze(targetBounds),
             focalAttempts: attemptedFocalQueries }
