@@ -451,6 +451,22 @@ npm.cmd run build
 **Next planned stage:** Verify the restricted database role and fixed-query reader against synthetic records under a non-owner credential; keep public HTTP and polygon delivery disabled until rights, identity and payload/coverage checks pass.
 
 
+### November 1 — PostGIS init-race root cause identified; retest pending
+
+The diagnostic-enabled disposable Docker run returned **7/7 passing local unit tests** followed by a failed container with `status=exited exit=3 oom=false`. Crucially, its PostgreSQL startup log shows the image's `/docker-entrypoint-initdb.d/10_postgis.sh` was **still installing PostGIS into the default `postgres` database** when a concurrent `CREATE EXTENSION IF NOT EXISTS postgis` appeared; PostgreSQL reported a duplicate `pg_extension_name_index` key. The likely root cause is our smoke runner's readiness race: `pg_isready` can succeed against PostgreSQL's temporary **initialization** server, before the image has finished its extension installation. The runner attempted SQL too early. This is an initialization collision in a disposable test harness, **not evidence of a GIS schema failure or corrupted BDP project database**.
+
+Both `scripts/bdp/parcel-rpc-disposable-smoke.mjs` and `scripts/bdp/parcel-index-disposable-smoke.mjs` now require the official PostgreSQL entrypoint completion marker `PostgreSQL init process complete; ready for start up.` **before** checking `pg_isready` or executing any SQL. The redundant `CREATE EXTENSION IF NOT EXISTS postgis` call was replaced by an extension-version verification query after startup. The restricted role runner still preserves startup diagnostics and removes the isolated test container/anonymous volumes. No production service or PostgreSQL role was changed.
+
+**Validation remains open:** The new startup synchronization is committed, but not yet run on the operator's Docker host. Repeat only the isolated runner from the project root:
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelRestrictedRpc.test.mjs src/bdp/ingestion/parcelRestrictedRpcRunner.test.mjs
+node scripts/bdp/parcel-rpc-disposable-smoke.mjs --disposable-only
+```
+
+If the next run reports a SQL error, diagnose that **separately**; do not assume the role design is validated merely because container startup succeeds. The `POSTGRES_HOST_AUTH_METHOD=trust` warning is emitted by the temporary, network-isolated test image; never use that setting for a network-accessible or production database.
+
 ### Step 40C-9 runtime checkpoint — early Docker exit (BLOCKED, diagnostic fix committed)
 
 The operator's Step 40C-9 PowerShell output confirms that the new **static contract and runner tests passed 6/6**, but `node scripts/bdp/parcel-rpc-disposable-smoke.mjs --disposable-only` failed **before any SQL migration executed**. Docker created a disposable container, then the container stopped; the first reported error was `container ... is not running`. Cleanup also reported `No such container` because the initial runner used `docker run --rm`, which automatically deleted an early-exiting container. This is a **real unclosed runtime checkpoint**, not a proven PostgreSQL migration defect or an indication that production BDP data is broken.
