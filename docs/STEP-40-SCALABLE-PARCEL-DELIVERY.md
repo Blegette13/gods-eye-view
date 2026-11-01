@@ -598,6 +598,21 @@ npm.cmd run build
 
 The operator's latest screenshot reports the **3,486-test main suite with 3,480 passed, six skipped and zero failures**. Both separate performance suites passed **1/1** and **13/13** without relaxing memory budgets or timeouts. This closes the local regression checkpoint for the staged Step 40C-12 pg Pool contract. **No new Vite build or actual PostgreSQL driver invocation appears in this screenshot.** The working Cesium 2.4 km experience remains unchanged.
 
+### Step 40C-13 first targeted test — test-assertion false positive (FIXED; RETEST PENDING)
+
+The operator's first screenshot of the Step 40C-13 targeted Node tests shows one failure in the static Docker command safety check, which was running `assert.doesNotMatch(code, /...--volume.../)` on the **entire runner source file**. This incorrectly flagged the required **cleanup** command `docker rm --force --volumes` as if it were a disallowed Docker **startup mount**. The screenshot does not show an actual Docker container being started; it is a static assertion failure, not a PostgreSQL driver/runtime failure.
+
+The committed test now extracts the actual `docker(['run', ...])` argument block and checks only those startup arguments for privilege escalation, unapproved volume mounts, host networking, wildcard ports, or trust auth. It **separately requires** that the cleanup still removes anonymous volumes. An independent source-contract check against the checked-in runner found expected bridge network / loopback-only port and no unsafe run options. This is **not yet an operator-confirmed Node test pass**.
+
+Operator commands (run separately in PowerShell):
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelPgDriverSmoke.test.mjs
+```
+
+Proceed to the **opt-in** real-driver Docker test only if that targeted test passes and the local `pg` package is installed. The remaining commercial data-rights, DBA review, security and authentication gates are unchanged.
+
 ### Step 40C-13 — Disposable **real node-postgres** validation (STAGED / NOT YET RUN)
 
 A new manual-only command `scripts/bdp/parcel-pg-driver-disposable-smoke.mjs --disposable-only` exercises an actual `pg.Pool` through the restricted runtime. It requires the independently installed Node `pg` package and Docker Desktop. The script refuses any invocation except the exact `--disposable-only` opt-in; it does **not accept** database URLs, user-supplied hostnames, existing container IDs, external data sources or arbitrary SQL. It creates a randomly named fresh `postgis/postgis:17-3.5` container with a fresh randomized password and temporary host port **bound only to 127.0.0.1**, not to an externally reachable interface. It waits for complete PostGIS image initialization before applying the already tested parcel schema, restricted RPC foundation and invented synthetic parcel fixture. No existing `bdp-postgis` service or persistent project volume is referenced.
