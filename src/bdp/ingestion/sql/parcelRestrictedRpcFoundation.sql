@@ -67,9 +67,7 @@ AS $parcel_sources_rpc$
     sr.source_id,
     sr.county_fips::text,
     sr.rights_state,
-    pg_catalog.floor(
-      pg_catalog.extract(epoch FROM sr.approved_caching_until) * 1000
-    )::double precision,
+    FLOOR(EXTRACT(EPOCH FROM sr.approved_caching_until) * 1000)::double precision,
     latest.id
   FROM bdp_parcel_index.source_registry AS sr
   JOIN LATERAL (
