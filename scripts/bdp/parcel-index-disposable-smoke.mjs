@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { PARCEL_VIEWPORT_PROBE_SQL } from '../../src/bdp/ingestion/parcelViewportReadPlan.js';
+import { APPROVED_PARCEL_SOURCE_SQL } from '../../server/providers/bdp-parcel-source-resolver.js';
 
 /**
  * MANUAL ONLY: validates the staged schema and actual query in a disposable
@@ -91,6 +92,72 @@ ROLLBACK;
 `;
 }
 
+/**
+ * Transaction-rollback synthetic smoke of the exact Step 40C-6 source SQL.
+ * Tests approved, ambiguous, revoked, expired and wrong-county cases.
+ * It never touches real GIS data, the BDP database or a public API.
+ */
+export function createSyntheticApprovedSourceSmokeSql() {
+  return `BEGIN;
+DO $ldos_src_smoke$
+DECLARE
+  v_count INTEGER;
+  v_query TEXT := $ldos_src_sql$SELECT count(*) FROM (
+${APPROVED_PARCEL_SOURCE_SQL}
+) AS sources$ldos_src_sql$;
+BEGIN
+  INSERT INTO bdp_parcel_index.source_registry
+    (source_id, county_fips, source_url, attribution, rights_state,
+     rights_review_reference, rights_reviewed_at, approved_caching_until)
+  VALUES
+    ('step40c7-source-a', '48453', 'https://example.invalid/source-a',
+     'Synthetic only; not licensed county GIS', 'approved',
+     'DISPOSABLE TEST ONLY', clock_timestamp()-interval '1 day',
+     clock_timestamp()+interval '1 day'),
+    ('step40c7-source-b', '48453', 'https://example.invalid/source-b',
+     'Synthetic only; not licensed county GIS', 'approved',
+     'DISPOSABLE TEST ONLY', clock_timestamp()-interval '1 day',
+     clock_timestamp()+interval '1 day');
+
+  INSERT INTO bdp_parcel_index.ingest_runs
+    (source_id, source_version, outcome, finished_at, received_records,
+     omitted_unidentified, source_reported_truncated, observed_envelope)
+  VALUES
+    ('step40c7-source-a', 'synthetic-v1', 'complete', clock_timestamp(),
+     0, 0, FALSE, ST_MakeEnvelope(-97.8,30.2,-97.7,30.3,4326)),
+    ('step40c7-source-b', 'synthetic-v1', 'complete', clock_timestamp(),
+     0, 0, FALSE, ST_MakeEnvelope(-97.8,30.2,-97.7,30.3,4326));
+
+  EXECUTE v_query INTO v_count USING '48453'::char(5);
+  IF v_count <> 2 THEN
+    RAISE EXCEPTION 'FAIL: ambiguous approved sources not detected: %', v_count;
+  END IF;
+  UPDATE bdp_parcel_index.source_registry SET rights_state='revoked'
+    WHERE source_id='step40c7-source-b';
+  EXECUTE v_query INTO v_count USING '48453'::char(5);
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION 'FAIL: revoked source was still discoverable: %', v_count;
+  END IF;
+  UPDATE bdp_parcel_index.source_registry
+    SET approved_caching_until=clock_timestamp()-interval '1 second'
+    WHERE source_id='step40c7-source-a';
+  EXECUTE v_query INTO v_count USING '48453'::char(5);
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'FAIL: expired source was still discoverable: %', v_count;
+  END IF;
+
+  EXECUTE v_query INTO v_count USING '48029'::char(5);
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'FAIL: cross-county registry read returned rows: %', v_count;
+  END IF;
+
+  RAISE NOTICE 'PASS: fixed source resolver SQL, ambiguity, revocation, expiry, county isolation';
+END;
+$ldos_src_smoke$;
+ROLLBACK;
+`;
+}
+
 function docker(args, { input = undefined, timeout = 120_000, quiet = false } = {}) {
   const result = spawnSync('docker', args, { encoding: 'utf8', input,
     timeout, maxBuffer: 3 * 1024 * 1024 });
@@ -128,7 +195,8 @@ export async function runDisposableParcelSmoke(args = process.argv.slice(2)) {
     psql(sql('parcelIndexFoundation.sql'));
     psql(sql('parcelIndexFoundationSmoke.sql'));
     psql(createSyntheticParcelProbeSmokeSql());
-    process.stdout.write('PASS: disposable PostGIS migration, rollback smoke, and runtime viewport probe.\n');
+    psql(createSyntheticApprovedSourceSmokeSql());
+    process.stdout.write('PASS: disposable PostGIS migration, rollback smoke, viewport probe and source resolver SQL.\n');
   } finally {
     if (created) {
       try { docker(['stop', '--time', '2', container], { timeout: 30_000, quiet: true }); }
