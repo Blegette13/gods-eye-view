@@ -36,6 +36,15 @@ test('disposable container diagnostics survive early PostgreSQL exit and teardow
   assert.match(runner, /'inspect', '--format'/);
   assert.match(runner, /'logs', '--tail', '60'/);
   assert.match(runner, /'rm', '--force', '--volumes', name/);
-  assert.match(runner, /Disposable PostGIS container exited before readiness/);
+  assert.match(runner, /Disposable PostGIS container exited before full initialization/);
   assert.doesNotMatch(runner, /'run', '-d', '--rm'/);
+});
+
+test('PostGIS image initialization is complete before any SQL is sent', () => {
+  const runner = readFileSync(new URL('../../../scripts/bdp/parcel-rpc-disposable-smoke.mjs', import.meta.url), 'utf8');
+  assert.match(runner, /PostgreSQL init process complete; ready for start up/);
+  assert.match(runner, /function postgisInitializationComplete\(name\)/);
+  assert.ok(runner.indexOf('postgisInitializationComplete(name)', runner.indexOf('for (let tries')) <
+    runner.indexOf("psql('SELECT PostGIS_Version();"));
+  assert.doesNotMatch(runner, /psql\('CREATE EXTENSION IF NOT EXISTS postgis;/);
 });
