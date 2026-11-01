@@ -93,7 +93,9 @@ test('viewport keeps identifiable Travis parcels visible but reports every unide
     }) });
     const parcels = await travisCadAdapter.fetchParcelsInBounds({ west: -97.8, south: 30.2, east: -97.7, north: 30.3 });
     assert.deepEqual(parcels.map((parcel) => parcel.parcelId), ['10', '11']);
-    assert.deepEqual(parcels.viewportCoverage, { receivedCount: 3, omittedUnidentified: 1 });
+    assert.deepEqual(parcels.viewportCoverage, {
+      receivedCount: 3, omittedUnidentified: 1, sourceQueryCount: 1,
+    }, 'one complete county query reports accurate source requests and omitted GIS polygons');
     assert.equal(Object.keys(parcels).includes('viewportCoverage'), false);
     await assert.rejects(travisCadAdapter.fetchParcelsByOwner('SMITH'), /missing or invalid property ID/);
   } finally {
