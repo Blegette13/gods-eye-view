@@ -37,20 +37,20 @@ export function syntheticServiceRoleSql(password) {
     throw new TypeError('A generated synthetic 32-byte hex test password is required');
   }
   // This only runs inside the new temporary container and its default DB.
-  return \`CREATE ROLE \${ROLE} LOGIN NOINHERIT NOSUPERUSER
+  return `CREATE ROLE ${ROLE} LOGIN NOINHERIT NOSUPERUSER
     NOCREATEDB NOCREATEROLE NOREPLICATION
-    PASSWORD '\${password}';
-GRANT CONNECT ON DATABASE postgres TO \${ROLE};
-GRANT USAGE ON SCHEMA bdp_parcel_index TO \${ROLE};
+    PASSWORD '${password}';
+GRANT CONNECT ON DATABASE postgres TO ${ROLE};
+GRANT USAGE ON SCHEMA bdp_parcel_index TO ${ROLE};
 GRANT EXECUTE ON FUNCTION bdp_parcel_index.approved_sources_rpc(text)
-  TO \${ROLE};
+  TO ${ROLE};
 GRANT EXECUTE ON FUNCTION bdp_parcel_index.parcel_viewport_probe_rpc(
   text,text,bigint,double precision,double precision,double precision,
   double precision,integer
-) TO \${ROLE};\`;
+) TO ${ROLE};`;
 }
 
-export const SYNTHETIC_DRIVER_FIXTURE_SQL = \`
+export const SYNTHETIC_DRIVER_FIXTURE_SQL = `
 INSERT INTO bdp_parcel_index.source_registry
   (source_id,county_fips,source_url,attribution,rights_state,
    rights_review_reference,rights_reviewed_at,approved_caching_until)
@@ -71,7 +71,7 @@ SELECT id,source_id,'48453','SYNTHETIC-PARCEL','v1',
   clock_timestamp(),repeat('a',64),
   public.ST_Multi(public.ST_MakeEnvelope(-97.75,30.25,-97.74,30.26,4326))
 FROM bdp_parcel_index.ingest_runs
-WHERE source_id='step40c13-synthetic';\`;
+WHERE source_id='step40c13-synthetic';`;
 
 function docker(args, { input, quiet = true, timeout = 120_000 } = {}) {
   const proc = spawnSync('docker', args, {
