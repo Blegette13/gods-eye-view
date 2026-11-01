@@ -195,7 +195,11 @@ export async function runParcelPgDriverSmoke(args = process.argv.slice(2), {
   }
   // Require the real pg dependency before provisioning an isolated database.
   let Pool;
-  try { ({ Pool } = await loadPg()); } catch {
+  try {
+    const packageModule = await loadPg();
+    // Support both named exports and CommonJS default interop in Node ESM.
+    Pool = packageModule?.Pool ?? packageModule?.default?.Pool;
+  } catch {
     throw new Error('The real pg driver is not installed. Install pg locally before running this opt-in test.');
   }
   if (typeof Pool !== 'function') throw new Error('Expected node-postgres Pool constructor');
