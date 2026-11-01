@@ -1,6 +1,6 @@
 # Step 40 — Scalable parcel delivery (incremental engineering plan)
 
-**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged**; Phase 40C-4 **unrouted metadata-only server boundary staged**; Phase 40C-5 **pinned read-only PostGIS transaction adapter staged**; Phase 40C-6 **county-scoped authorization/source resolver staged**; Phase 40C-7 **fixed-query approved-source PostGIS reader staged**; Phase 40C-8 **HMAC-bound county-session verifier staged**; Phase 40C-9 **isolated restricted PostGIS RPC verified against synthetic data**; Phase 40C-10 **restricted reader bridge staged and regression-tested**; Phase 40C-11 **unrouted HMAC→restricted RPC metadata runtime composition staged (all unexposed)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
+**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged**; Phase 40C-4 **unrouted metadata-only server boundary staged**; Phase 40C-5 **pinned read-only PostGIS transaction adapter staged**; Phase 40C-6 **county-scoped authorization/source resolver staged**; Phase 40C-7 **fixed-query approved-source PostGIS reader staged**; Phase 40C-8 **HMAC-bound county-session verifier staged**; Phase 40C-9 **isolated restricted PostGIS RPC verified against synthetic data**; Phase 40C-10 **restricted reader bridge staged and regression-tested**; Phase 40C-11 **unrouted HMAC→restricted RPC metadata runtime composition validated by operator tests**; Phase 40C-12 **unrouted pg Pool connector with role attestation staged (not yet live-driver tested)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
 
 ## Product baseline accepted October 31, 2026
 
@@ -566,6 +566,32 @@ node --test src/bdp/ingestion/parcelMetadataRuntime.test.mjs
 npm.cmd test
 npm.cmd run build
 ```
+
+
+### Step 40C-11 regression checkpoint — November 1, 2026 (PASSED)
+
+The operator's fresh screenshot after rerunning `npm.cmd test` reports the **3,478-test main group with 3,472 passes, six skipped, zero failures**, followed by a **1/1 focus-allocation test** and **13/13 moving-source memory/performance tests**, all green. The prior `ETIMEDOUT` memory benchmark passed independently and on this subsequent full run without relaxing either allocation budget or timeout. This closes the Step 40C-11 local regression checkpoint. It does **not** prove deployed PostGIS access, commercial county GIS reuse rights or live map performance. The current screenshot does not include a new Vite build; an earlier preexisting build had passed.
+
+### Step 40C-12 — Staged node-postgres Pool connector with least-privilege checkout checks (NOT DEPLOYED)
+
+`server/providers/bdp-parcel-pg-pool.js` adds an **unrouted server-only** adapter matching the real `pg.Pool` API. A trusted server initializer would inject the `Pool` constructor and explicit, server-only connection settings, and then pass `connector.connect` to `createParcelMetadataRuntime` from Step 40C-11. The connector is inert until its first `connect()`; pool construction does **not** run migrations, provision a login, create an account, fetch GIS data or attach HTTP routes.
+
+The adapter **refuses default/owner/superuser or browser-influenced connection settings**: configuration must supply exact host, port, database, a separately provisioned restricted `ldos_parcel_...` LOGIN username (never the 40C-9 `NOLOGIN` role itself), and server-secret password. Loopback-only PostGIS may use local unencrypted transport; remote endpoints require `ssl.rejectUnauthorized=true` with normal CA validation. It never accepts a connection URI, caller SQL, browser roles or unbounded pool sizes. The pool uses `max=2`, `min=0`, 2-second acquisition timeout, 10-second idle eviction, 2-second PostgreSQL statement timeout, 4-second idle transaction cutoff, and an explicit shutdown `close()` method.
+
+**Every pool checkout**, including reuse of an idle client, first runs a fixed `pg_catalog` privilege attestation. The check rejects superuser, BYPASSRLS, CREATEDB/CREATEROLE, `SET ROLE` principal mismatch, direct/inherited raw parcel table rights, schema CREATE grants, or missing EXECUTE rights to either fixed restricted RPC. Failed checks evict the pinned client; driver errors are replaced with generic errors to avoid exposing credentials or SQL detail. This **does not establish that the operator has a correctly provisioned LOGIN** or prove all schema/role/function ownership privileges are safe. A security/DBA review must also inspect memberships, PUBLIC grants and the SECURITY DEFINER function owners. The connector can only be used after such a principal is provisioned; do not connect to the `bdp` Docker database as its owner.
+
+`src/bdp/ingestion/parcelPgPool.test.mjs` adds **eight targeted tests** using a fake `pg.Pool`: config validation, TLS downgrade prevention, lazy acquisition, per-checkout attestation, denial/eviction, safe error messages, shutdown, and complete mocked HMAC→source RPC→viewport RPC composition. **These tests have been committed, not yet run in the operator's checkout.** There is no `pg` package dependency or actual driver in the project yet, and no real driver was executed in this stage; the injected pool is a contract to be satisfied by a separately installed and reviewed Node PostgreSQL driver in an isolated test harness. Do not describe mocked results as real database validation.
+
+To validate the staged code locally, from the project PowerShell folder, run these separately:
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelPgPool.test.mjs
+npm.cmd test
+npm.cmd run build
+```
+
+**Next security gate:** create and review a genuinely least-privileged service LOGIN in a disposable PostGIS database; test the authentic `pg` driver's checkout, TLS behavior, permissions, timeouts, rollback and connection reuse under that account. Only then evaluate a protected internal metadata endpoint. Do not touch the existing BDP database or enable public GIS delivery until source rights, genuine session/entitlement issuing, transport, per-user quotas, provenance and coverage evidence are in place. The original Cesium Free Explorer, 2.4 km threshold, parcels and Property Intelligence UI are **unchanged**.
 
 ## 40D — Incremental Cesium rendering (DESIGN / NOT STARTED)
 
