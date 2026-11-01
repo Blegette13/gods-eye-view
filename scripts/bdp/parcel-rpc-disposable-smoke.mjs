@@ -105,6 +105,21 @@ function disposableContainerDiagnostics(name) {
     + String(text).slice(-4000);
 }
 
+/**
+ * pg_isready can succeed during the image's TEMPORARY initdb server phase.
+ * Running CREATE EXTENSION concurrently with 10_postgis.sh races and can
+ * terminate the entire disposable container with pg_extension_name_index.
+ * Wait until Docker's Postgres entrypoint COMPLETES its full init phase.
+ */
+function postgisInitializationComplete(name) {
+  const result = spawnSync('docker', ['logs', name], {
+    encoding: 'utf8', timeout: 10_000, maxBuffer: 1024 * 1024,
+  });
+  if (result.status !== 0) return false;
+  return (result.stdout + '\n' + result.stderr)
+    .includes('PostgreSQL init process complete; ready for start up.');
+}
+
 export async function runRestrictedRpcDisposableSmoke(args = process.argv.slice(2)) {
   if (args.length !== 1 || args[0] !== '--disposable-only') {
     throw new Error('Refusing to run except with --disposable-only; never use an existing database');
@@ -119,16 +134,20 @@ export async function runRestrictedRpcDisposableSmoke(args = process.argv.slice(
     { quiet: true, timeout: 240_000 });
     created = true;
     let ready = false;
-    for (let tries = 0; tries < 40; tries++) {
-      const result = spawnSync('docker',
-        ['exec', name, 'pg_isready', '-U', 'postgres', '-d', 'postgres'],
-        { encoding: 'utf8', timeout: 10_000 });
-      if (result.status === 0) { ready = true; break; }
+    for (let tries = 0; tries < 60; tries++) {
       const inspected = spawnSync('docker', [
         'inspect', '--format', '{{.State.Status}}', name,
       ], { encoding: 'utf8', timeout: 10_000 });
       if (inspected.status !== 0 || inspected.stdout.trim() !== 'running') {
-        throw new Error('Disposable PostGIS container exited before readiness');
+        throw new Error('Disposable PostGIS container exited before full initialization');
+      }
+      // The image has its own 10_postgis.sh. Do NOT connect to its temporary
+      // bootstrap server, even if pg_isready reports success.
+      if (postgisInitializationComplete(name)) {
+        const result = spawnSync('docker',
+          ['exec', name, 'pg_isready', '-U', 'postgres', '-d', 'postgres'],
+          { encoding: 'utf8', timeout: 10_000 });
+        if (result.status === 0) { ready = true; break; }
       }
       await sleep(1000);
     }
@@ -138,7 +157,8 @@ export async function runRestrictedRpcDisposableSmoke(args = process.argv.slice(
         '-U', 'postgres', '-d', 'postgres'],
       { input: sql },
     );
-    psql('CREATE EXTENSION IF NOT EXISTS postgis;\n');
+    // Image init installs PostGIS into postgres; verify, never race it.
+    psql('SELECT PostGIS_Version();\n');
     psql(fixtures('parcelIndexFoundation.sql'));
     psql(fixtures('parcelRestrictedRpcFoundation.sql'));
     psql(createRestrictedRoleSmokeSql());
