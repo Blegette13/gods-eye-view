@@ -454,8 +454,7 @@ export function createCountyParcelLayer({
         observation.finish({
           outcome: 'success', sourceRequests: metricsSourceRequests,
           fromCache: metricsCacheHit, parcelCount: parcels.length,
-          sourceFootprints: coverage?.focalBoundsList?.length
-            || (coverage?.focalBounds ? 1 : 1),
+          sourceFootprints: coverage?.focalBoundsList?.length || 1,
           cachedWindows: progressiveCache.size?.() ?? 0,
           entityCount: dataSource?.entities?.values?.length ?? null,
         });
