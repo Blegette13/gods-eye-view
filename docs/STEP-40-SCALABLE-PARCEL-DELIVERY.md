@@ -1,6 +1,6 @@
 # Step 40 — Scalable parcel delivery (incremental engineering plan)
 
-**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged**; Phase 40C-4 **unrouted metadata-only server boundary staged (all unexposed)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
+**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged**; Phase 40C-4 **unrouted metadata-only server boundary staged**; Phase 40C-5 **pinned read-only PostGIS transaction adapter staged (all unexposed)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
 
 ## Product baseline accepted October 31, 2026
 
@@ -140,6 +140,37 @@ Optional runtime SQL check, only when Docker is installed/running, not on a prod
 ```powershell
 node scripts/bdp/parcel-index-disposable-smoke.mjs --disposable-only
 ```
+
+### November 1, 2026 — Docker PostGIS retest PASSED (confirmed by operator)
+
+Following the 40B PL/pgSQL trigger repair, the operator reran the five static schema checks (**5/5 passed**) and the disposable PostgreSQL 17 / PostGIS 3.5 test command. Its output ended exactly with:
+
+```text
+PASS: disposable PostGIS migration, rollback smoke, and runtime viewport probe.
+```
+
+The successful test confirms that **the migration applied in a temporary container**, the rollback-only schema smoke passed, and the source-controlled bounded PostGIS metadata probe returned the expected synthetic spatial match and enforced revoked/expired rights. It does **not** mean the schema was applied to the existing BDP database or that any commercial county data has been ingested, permissioned, or deployed. The previous "retest pending" section above is retained as the defect history; this is the resolution.
+
+### 40C-5 Pinned read-only PostGIS transaction adapter (STAGED / UNROUTED)
+
+`server/providers/bdp-parcel-postgis-read-adapter.js` is a driver-injected **server-only** adapter for the 40C-2 metadata SQL, intended for use *behind* the 40C-4 trusted metadata service. It is not installed as an HTTP route, and it does not acquire credentials or grant raw database table access.
+
+This adapter accepts **only the exact source-controlled eight-parameter parcel metadata query** and revalidates the county, geographic viewport, source, run, and record cap before acquiring a connection. It requires an injected `connect()` returning an exclusive/pinned PostgreSQL client with `query()` and `release()`. Each accepted request runs inside `BEGIN TRANSACTION READ ONLY` with database-side `SET LOCAL statement_timeout`, `lock_timeout`, and idle-in-transaction timeout limits (configured SQL timeout 100–5000 ms); success commits and releases the client, while failed or cancelled requests attempt rollback and evict the client. Timeout SQL values are constrained integer literals, not unsanitized client input. It returns only raw *server-side* metadata rows to its trusted caller; the 40C-4 service is responsible for final result filtering and rechecking authorized source/run rights before returning bounded aggregate metadata.
+
+Important limitations: **the adapter does not implement an authentic session resolver, database read role, deployed Node connection pool, distributed per-user rate limiting, cryptographic source attestation, HTTP routing or active in-flight cancellation**. `AbortSignal` is checked before/after database work, while actual SQL execution is bounded by PostgreSQL's statement timeout; do not assume instantaneous driver-side cancellation. Read-only transaction mode protects against writes through this adapter but cannot replace independently provisioned least-privilege DB permissions. No browser is allowed to pass SQL, credentials, roles, run/source IDs, or query plan. No new parcel data rights are inferred from the disposable smoke.
+
+`src/bdp/ingestion/parcelPostgisReadAdapter.test.mjs` adds **nine** in-process adapter tests. They passed in an isolated Node 22 fixture (**9/9**); real `pg` driver integration and full repository regression/build remain unverified on the operator's computer. The existing 2.4 km Free Explorer and Cesium parcel overlays are unchanged.
+
+To verify this staged change in PowerShell (one command per line):
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelPostgisReadAdapter.test.mjs
+npm.cmd test
+npm.cmd run build
+```
+
+Before deploying any server endpoint: security-review the trusted identity+county authorization path, create a least-privilege database access mechanism that cannot read unapproved/revoked records, test the actual driver under statement timeouts and connection aborts, add per-user/server cost caps, and review applicable county GIS caching/redistribution permissions. Preserve the God's Eye view and honest unknown coverage status.
 
 ## 40D — Incremental Cesium rendering (DESIGN / NOT STARTED)
 
