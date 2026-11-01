@@ -451,6 +451,24 @@ npm.cmd run build
 **Next planned stage:** Verify the restricted database role and fixed-query reader against synthetic records under a non-owner credential; keep public HTTP and polygon delivery disabled until rights, identity and payload/coverage checks pass.
 
 
+### Step 40C-9 — Restricted role disposable runtime verification now staged (NOT YET RUN)
+
+The latest operator screenshot shows **13/13 in the visible final test group** and a Vite build completed **before** synchronizing the Step 40C-9 SQL changes. The subsequent `git pull --ff-only origin bdp-development` succeeded and installed the SQL foundation and fixture; that pull **did not execute or validate** either SQL file.
+
+To close this checkpoint safely, `scripts/bdp/parcel-rpc-disposable-smoke.mjs` now starts an ephemeral `postgis/postgis:17-3.5` Docker container with no published ports, no network access and no bind mounts to the BDP project database. The script refuses to run without `--disposable-only`. Within **only that disposable container**, it applies the already staged PostGIS parcel schema, installs the proposed restricted RPC role/functions and executes the synthetic fixture in a transaction that rolls back. It also adds a positive and negative test **while `current_user` is the restricted `NOLOGIN` role**, asserting that the role can invoke the fixed functions but cannot query raw parcel geometry tables. It cleans up the container in a finally block.
+
+This new Docker runner and its three tests (`src/bdp/ingestion/parcelRestrictedRpcRunner.test.mjs`) and three static SQL contract tests (`src/bdp/ingestion/parcelRestrictedRpc.test.mjs`) are committed but **have not been executed on the operator's machine**. The RPC migration remains a DBA-review-only design; its SQL is not currently used by Step 40C-5 or Step 40C-7 adapters and should **not** be applied to the existing BDP/PostGIS container. The previous successful PostGIS smoke belongs to the earlier source/viewport queries, not this new restricted RPC.
+
+Local validation from the existing PowerShell project folder, one command per line:
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelRestrictedRpc.test.mjs src/bdp/ingestion/parcelRestrictedRpcRunner.test.mjs
+node scripts/bdp/parcel-rpc-disposable-smoke.mjs --disposable-only
+```
+
+The target final line of a successful isolated run is `PASS: isolated PostGIS restricted RPC, synthetic data, and role isolation.` A SQL syntax, privilege or test failure is a genuine failed checkpoint: capture the first `ERROR` and revise the staged SQL safely rather than proceeding to public access. After this, a DBA must still review function ownership, role memberships, SECURITY DEFINER and source rights, and the adapters need a deliberately reviewed RPC query contract before any service uses a login. No public endpoint, license approval or Cesium geometry delivery is implied.
+
 ### Step 40C-9 — Restricted metadata RPC design (STAGED; UNVALIDATED)
 
 The November 1 operator screenshot confirms that the previously committed work still builds (250 Vite modules, 9.82 seconds) and the visible final test group passed 13/13 with no failures. Earlier parts of the screenshot include separate memory/performance test groups with some skips; the image does not establish an independent live restricted-role validation.
