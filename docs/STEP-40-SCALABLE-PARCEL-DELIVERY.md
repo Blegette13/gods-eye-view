@@ -1,6 +1,6 @@
 # Step 40 — Scalable parcel delivery (incremental engineering plan)
 
-**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged (both unexposed)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
+**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged (all unexposed)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
 
 ## Product baseline accepted October 31, 2026
 
@@ -65,6 +65,32 @@ node --test src/bdp/ingestion/parcelIndexFoundation.test.mjs
 npm.cmd test
 npm.cmd run build
 ```
+
+### 40C-3 Unrouted parcel geometry/payload guard (STAGED / UNIT-TESTED)
+
+`src/bdp/ingestion/parcelGeometryDeliveryBudget.js` adds fail-closed, pure preflight checks for **hypothetical** PostGIS-backed map pages. It first validates the 40C-2 metadata probe, allowing at most the requested 1–200 features; the final `limit + 1` probe row is counted only as an explicit overflow signal, **never silently delivered**. A page that exceeds its feature or aggregate geometry limits is rejected whole, not clipped or mislabeled as complete.
+
+Hard limits currently staged:
+- 8,000 PostGIS geometry vertices **per displayed feature**;
+- 60,000 geometry vertices **per page**;
+- 512 KiB PostGIS geometry memory **per feature**;
+- 4 MiB PostGIS geometry memory **per page**;
+- 2 MiB actual serialized UTF-8 GeoJSON **per page**, checked separately (PostGIS in-memory geometry size is not network payload size).
+
+The optional in-process GeoJSON inspection accepts only 2D WGS84 Polygon/MultiPolygon FeatureCollections with valid closed coordinate rings, strict feature IDs and one display-safe `sourceParcelId` property matching the tested metadata. Unexpected owner, address, financial and other attributes are rejected instead of copied. The number of geometry points must match trusted PostGIS-returned counts; this is structural validation, **not** a replacement for `ST_IsValid`, source integrity checks or a legal survey. It is also **not** a guarantee that a database geometry matches a source's recorded SHA-256; the future authenticated service must verify provenance when querying/encoding.
+
+Every accepted result keeps `viewportCoverage: 'unknown'`, and the GeoJSON preflight explicitly returns `publishAuthorized: false`. Passing a budget does **not** grant a data right, access token, read permission or permission to expose a tile. A page over any budget requires an explicitly partial/unavailable result or a smaller permitted spatial request; truncation must not be hidden.
+
+Ten targeted Node unit tests were run in an isolated Node 22 fixture using local copies of the 40C-1/40C-2 modules (**10/10 passing**); the previous 40C-2 tests also ran together (**17/17 total passing**). The user's latest screenshot also confirmed the prior production Vite build, but the complete suite/build **after 40C-3** has not yet been run or confirmed in the user's checkout. No Docker/PostGIS instance was reachable in the assistant's environment, so schema application, SQL execution and real GIS performance remain **untested**.
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelGeometryDeliveryBudget.test.mjs src/bdp/ingestion/parcelViewportReadPlan.test.mjs src/bdp/ingestion/parcelPageContract.test.mjs
+npm.cmd test
+npm.cmd run build
+```
+
+**Integration gates remain:** a disposable PostGIS migration + rollback-only SQL smoke test, synthetic-run query checks for approval/revocation, county-specific provider data rights, verified server identity and least-privilege database role, trusted server-side source/run selection, request concurrency/rate/time budgets, geometry provenance, coverage evidence and overflow pagination. Nothing in 40C-3 is routed into the live Cesium Free Explorer, and its existing 2.4 km behavior is unchanged.
 
 ## 40D — Incremental Cesium rendering (DESIGN / NOT STARTED)
 
