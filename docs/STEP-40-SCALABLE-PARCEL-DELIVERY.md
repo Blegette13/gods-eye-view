@@ -1,6 +1,6 @@
 # Step 40 — Scalable parcel delivery (incremental engineering plan)
 
-**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged and not routed**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
+**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged (both unexposed)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
 
 ## Product baseline accepted October 31, 2026
 
@@ -45,6 +45,26 @@ Prefer server-side `ST_Intersects` with GiST index, prepared static vector tiles
 Tests: `node --test src/bdp/ingestion/parcelPageContract.test.mjs` (six targeted checks, also auto-discovered by `npm.cmd test`). These pure helpers were run against Node 22 in a detached check (6/6 passed); full repository test/build and deployment have NOT been verified by this change.
 
 **Critical integration gate:** Do not wire this into `server/providers/local.js`, the public HTTP listener or the Cesium viewer until a real trusted session/auth policy, least-privilege DB read role, SQL-level rights filtering at **read time** (including revoked/expired source rights), county-supported source resolution, per-user rate limits, geometry/payload budgets, stable signed cursor or explicit partial tiles, and a tested PostGIS instance are present. This module contains no secure session proof and cannot grant access. The current browser makes **zero requests** to the planned endpoint.
+
+### 40C-2 PostGIS viewport metadata probe (STAGED; NOT CONNECTED OR DB-TESTED)
+
+`src/bdp/ingestion/parcelViewportReadPlan.js` implements a read-only, static, **eight-parameter** PostgreSQL/PostGIS *query description*, not an executable public service. It revalidates the 40C-1 request and takes a trusted source ID and a trusted finished ingestion-run ID from a future server-side policy/registry resolver. It restricts county/source/run/version to one matching indexed snapshot, filters *at read time* for `rights_state = 'approved'` and `approved_caching_until > clock_timestamp()`, and uses `ST_Intersects` / `&&` on the source geometry to select only nearby parcel **metadata**. The one-row overflow probe is capped at 201. Stable ordering is by source parcel ID and version-row ID. Unfinished and failed runs cannot be used for this probe.
+
+The new query deliberately **does not serialize parcel polygons or expose a browser endpoint**. It measures geometry vertex count and in-memory size for a later geometry-byte budget. `summarizeParcelViewportProbe` validates bounded, unique results and can report overflow, but returns `viewportCoverage: 'unknown'` even for empty/nonoverflow results: a valid data subset is **not** proof that an entire viewport, county or development site has been fully researched.
+
+Targeted tests at `src/bdp/ingestion/parcelViewportReadPlan.test.mjs` exercise parameterization, trusted run/source requirements, spatial constraints, fail-closed row checks and non-inference of coverage. A detached Node 22 unit check ran this module together with 40C-1 checks (13/13 passed). These are **mock/pure unit checks**, not a live PostGIS query, grant review, full repository test suite, production build or a runtime benchmark. No geographic data or source rights were modified.
+
+**Next before server activation:** obtain explicit county/provider caching and redistribution rights; run the staged migration plus transaction-rollback smoke against a disposable PostGIS database after DBA review; test this query against synthetic permitted geometry; implement authentic server session resolution, least-privilege DB reader and SQL-level rights checks for *all* geometry/coverage queries; server-side run selection, per-user rate limits and execution timeout; cap emitted geometry bytes/vertices; provenance and source-window coverage; add a safe pagination strategy. Until these gates pass, **do not route this code or change the existing 2.4 km Cesium Free Explorer**.
+
+Local read-only regression commands (PowerShell from the repo root):
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelPageContract.test.mjs src/bdp/ingestion/parcelViewportReadPlan.test.mjs
+node --test src/bdp/ingestion/parcelIndexFoundation.test.mjs
+npm.cmd test
+npm.cmd run build
+```
 
 ## 40D — Incremental Cesium rendering (DESIGN / NOT STARTED)
 
