@@ -200,14 +200,22 @@ BEGIN
     RAISE EXCEPTION 'Parcel index source does not match its ingestion run'
       USING ERRCODE = '23514';
   END IF;
-  IF TG_TABLE_NAME = 'parcel_versions' AND
-     v_run_version IS DISTINCT FROM NEW.source_version THEN
-    RAISE EXCEPTION 'Parcel version does not match its ingestion run'
-      USING ERRCODE = '23514';
-  END IF;
-  IF TG_TABLE_NAME = 'coverage_windows' AND
-     NEW.coverage_state = 'complete' AND v_run_outcome <> 'complete' THEN
-    RAISE EXCEPTION 'Cannot certify coverage from an incomplete source run'
+  -- NEW has a different row type for each trigger table. Never reference
+  -- table-specific fields in an AND expression with TG_TABLE_NAME: PL/pgSQL
+  -- may resolve/evaluate the missing NEW field even when the name differs.
+  -- Branch first, then access only fields present on that table's row.
+  IF TG_TABLE_NAME = 'parcel_versions' THEN
+    IF v_run_version IS DISTINCT FROM NEW.source_version THEN
+      RAISE EXCEPTION 'Parcel version does not match its ingestion run'
+        USING ERRCODE = '23514';
+    END IF;
+  ELSIF TG_TABLE_NAME = 'coverage_windows' THEN
+    IF NEW.coverage_state = 'complete' AND v_run_outcome <> 'complete' THEN
+      RAISE EXCEPTION 'Cannot certify coverage from an incomplete source run'
+        USING ERRCODE = '23514';
+    END IF;
+  ELSE
+    RAISE EXCEPTION 'Unexpected parcel index trigger target'
       USING ERRCODE = '23514';
   END IF;
   RETURN NEW;
