@@ -93,6 +93,14 @@ test('timeout, cancellation and oversized results fail closed', async () => {
   assert.ok(db.releases[0] instanceof Error);
 });
 
+test('viewport response cannot exceed requested probe size even below global 201 cap', async () => {
+  const db = mock({ respond: () => ({ rows: Array.from({ length: 12 }, row) }) });
+  const readers = createRestrictedParcelRpcReaders({ connect: async () => db });
+  await assert.rejects(readers.queryViewport(viewport()), /Unbounded/);
+  assert.equal(db.calls.at(-1), 'ROLLBACK');
+  assert.ok(db.releases[0] instanceof Error);
+});
+
 test('query errors roll back and discard the pinned connection', async () => {
   const db = mock({ fail: true });
   const readers = createRestrictedParcelRpcReaders({ connect: async () => db });
