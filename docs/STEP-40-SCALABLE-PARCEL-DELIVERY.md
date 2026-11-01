@@ -1,6 +1,6 @@
 # Step 40 — Scalable parcel delivery (incremental engineering plan)
 
-**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged (all unexposed)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
+**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged**; Phase 40C-4 **unrouted metadata-only server boundary staged (all unexposed)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
 
 ## Product baseline accepted October 31, 2026
 
@@ -98,6 +98,32 @@ node scripts/bdp/parcel-index-disposable-smoke.mjs --disposable-only
 ```
 
 **Integration gates remain:** execute the above disposable PostGIS smoke on an available Docker host and examine its results; secure county-specific provider data rights; implement verified server identity and least-privilege database reader; trusted server-side source/run selection, request concurrency/rate/time budgets, full geometry provenance, coverage evidence and overflow pagination. A synthetic SQL smoke result validates only this staged test schema/query, **not** a production deployment or legal data reuse. Nothing in 40C-3 is routed into the live Cesium Free Explorer, and its existing 2.4 km behavior is unchanged.
+
+
+### 40C-4 Trusted metadata read boundary (STAGED / UNROUTED)
+
+`server/providers/bdp-parcel-viewport-metadata.js` composes the strictly bounded 40C-1 request, 40C-2 PostGIS query statement and 40C-3 geometry-budget assessment as a **server-only, metadata-only** operation. This is a dependency-injected in-process contract, **not an HTTP endpoint or a live database adapter**. No source data is imported, no user roles are granted and no raw parcel feature or geometry is returned. Its only successful result contains a bounded parcel count, a boolean overflow indicator and explicitly **UNKNOWN** viewport coverage. An overflowing page is labelled `partial-page`, never evaluated or complete.
+
+The new service requires a 32-byte canonical opaque session handle **separately from** the geographic request, and a trusted `resolveAuthorizedSource` callback. The callback is responsible for validating the actual server-side session and fresh per-county/source/run authorization. The service rejects unapproved, expired, mismatched, invalid-run and malformed decisions **before issuing a query**, builds parameterized SQL only after approval, and checks the trusted authorization **a second time after the query** before returning even aggregated counts. Rejected/aborted/invalid outcomes are generic, without leaking SQL, source IDs or session details. A local 1–16 active-request limit defaults to four; requests are rejected as busy rather than queued. A 100–5000 ms driver `statementTimeoutMs` requirement defaults to 2000 ms, but **the integration must implement the actual database timeout/cancellation itself**. Local concurrency limiting is **not** a distributed user rate limit.
+
+`src/bdp/ingestion/parcelViewportMetadataService.test.mjs` has 10 tests, locally executed in a detached Node 22 fixture (10/10 passing) covering malformed requests, source/run authorization, revocation and run rotation, overflow, geometry budgets, cancellation, concurrency, and generic errors. This does **not** certify the full repository suite or real PostGIS runtime. Existing 2.4 km Free Explorer, Cesium visuals, existing parcel source calls and Property Intelligence panels are unchanged. The service is intentionally not exported to the browser or wired into the Node HTTP provider.
+
+Remaining required before any real delivery: run the **optional isolated Docker/PostGIS synthetic smoke test** on a Docker-equipped machine, review commercial county caching/redistribution rights, create a separate least-privilege DB read role and trusted session/identity source, bind the service to that secure transport, ensure the DB client actually enforces query timeout and cancellation, add per-user distributed quotas, verify geometry/provenance against the source, supply non-sensitive bounded tiles, and implement explicit verified source-window coverage and pagination. **Do not treat these staged helpers as a deployed land-data pipeline.**
+
+Local checkpoint in PowerShell (run each command separately):
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelViewportMetadataService.test.mjs
+npm.cmd test
+npm.cmd run build
+```
+
+Optional runtime SQL check, only when Docker is installed/running, not on a production database:
+
+```powershell
+node scripts/bdp/parcel-index-disposable-smoke.mjs --disposable-only
+```
 
 ## 40D — Incremental Cesium rendering (DESIGN / NOT STARTED)
 
