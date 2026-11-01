@@ -1,6 +1,6 @@
 # Step 40 — Scalable parcel delivery (incremental engineering plan)
 
-**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged**; Phase 40C-4 **unrouted metadata-only server boundary staged**; Phase 40C-5 **pinned read-only PostGIS transaction adapter staged**; Phase 40C-6 **county-scoped authorization/source resolver staged**; Phase 40C-7 **fixed-query approved-source PostGIS reader staged**; Phase 40C-8 **HMAC-bound county-session verifier staged (all unexposed)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
+**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged**; Phase 40C-4 **unrouted metadata-only server boundary staged**; Phase 40C-5 **pinned read-only PostGIS transaction adapter staged**; Phase 40C-6 **county-scoped authorization/source resolver staged**; Phase 40C-7 **fixed-query approved-source PostGIS reader staged**; Phase 40C-8 **HMAC-bound county-session verifier staged**; Phase 40C-9 **isolated restricted PostGIS RPC verified against synthetic data**; Phase 40C-10 **restricted reader bridge staged and regression-tested**; Phase 40C-11 **unrouted HMAC→restricted RPC metadata runtime composition staged (all unexposed)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
 
 ## Product baseline accepted October 31, 2026
 
@@ -545,6 +545,27 @@ npm.cmd run build
 ```
 
 The existing God’s Eye View/Cesium Free Explorer, 2.4 km threshold, parcel overlays and Property Intelligence interface are **unchanged**. Do not wire this into public HTTP or invoke the restricted role SQL against the existing BDP database until the remaining security and rights prerequisites are met.
+
+### Step 40C-10 operator validation — November 1, 2026
+
+The screenshot after pulling Step 40C-10 shows the **full unit test group had 3,470 tests, 3,464 passed, six skipped, zero failures**. Additional memory/performance test groups completed **1/1** and **13/13**, all passed. The Vite production build succeeded with **250 transformed modules** in **16.15 seconds**. Bundle-size warnings remain nonfatal; they should be measured and addressed as part of the later client performance phase, rather than dismissed as a measured map improvement. The screenshot confirms local regression/build validation, **not** a live pooled Postgres driver integration.
+
+### Step 40C-11 — Unrouted HMAC/session → restricted RPC metadata runtime (STAGED)
+
+`server/providers/bdp-parcel-metadata-runtime.js` is a single, inert server-side composition of the already staged HMAC-backed county-session verifier, current-session and source/right resolver, Step 40C-10 restricted PostgreSQL source+viewport RPC readers and fail-closed aggregate-only metadata service. The only returned capability is `readViewportMetadata`. The runtime does **not** expose the HMAC key, raw SQL clients, source resolver, browser endpoint, parcel IDs or geometry. Construction performs no network/database access and rejects unknown configuration properties; it requires a trusted 32+ byte server-side key, an authoritative noncached session reader and an injected pinned PostgreSQL `connect()` factory.
+
+`src/bdp/ingestion/parcelMetadataRuntime.test.mjs` introduces **eight targeted contract tests** for configuration failure, inert construction, HMAC validation, county-only access, rights expiry, session revocation after a viewport read, overflow/UNKNOWN coverage, bounded restricted RPC usage and generic database errors. **Committed only: these new tests and the entire regression/build after the change have not yet been run in the operator's checkout**, and the test's PostgreSQL clients are mocks rather than a real driver.
+
+This is **not** a login issuer, session store, credentials file, secure cookie transport, actual database pool, per-user quota, licensed GIS import, polygon delivery API or public service. Before exposing a route, require commercial county GIS rights, an independent DBA/security review of SECURITY DEFINER function ownership and role memberships, a proper session+entitlement store, TLS/security headers/Cookie isolation, bounded connections with cancellation/rate enforcement, data provenance and complete/partial source-window evidence. Keep the 2.4 km Free Explorer and original Cesium/UI untouched until the full integration is secure.
+
+Operator verification (one command per line in PowerShell):
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelMetadataRuntime.test.mjs
+npm.cmd test
+npm.cmd run build
+```
 
 ## 40D — Incremental Cesium rendering (DESIGN / NOT STARTED)
 
