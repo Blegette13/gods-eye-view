@@ -8,7 +8,7 @@ import { createParcelViewportMetadataService } from '../../../server/providers/b
 const key = randomBytes(48);
 const handle = randomBytes(32).toString('base64url');
 const digest = createHmac('sha256', key).update(handle, 'utf8').digest('hex');
-const nowMs = 10_000_000;
+const nowMs = 100_000_000;
 const validRecord = () => ({
   sessionDigest: digest,
   subject: 'test-operator',
