@@ -143,7 +143,7 @@ export function createRestrictedParcelRpcReaders({ connect } = {}) {
     },
     queryViewport(original, options) {
       const rpc = viewportRpcStatement(original);
-      return run(rpc, options, 201);
+      return run(rpc, options, rpc?.values[7] ?? 0);
     },
   });
 }
