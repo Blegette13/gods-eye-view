@@ -5,6 +5,7 @@ import { parcelGeoJsonWithBoundaries } from './parcelGeojson.js';
 import { styleSelectedParcelEntities, recommendedParcelFocusRange } from './parcelSelectionStyle.js';
 import { shouldDiscoverFreeParcels } from '../map/freeBrowseParcels.js';
 import { createProgressiveParcelCache } from './progressiveParcelCache.js';
+import { createParcelDiscoveryMetrics } from '../map/parcelDiscoveryMetrics.js';
 
 const MAX_VIEW_SPAN_DEGREES = 0.12;
 const QUERY_INTERVAL_MS = 30_000;
@@ -64,6 +65,7 @@ export function createCountyParcelLayer({
   let focusedLookupToken = null;
   const parcelById = new Map();
   const progressiveCache = createProgressiveParcelCache();
+  const discoveryMetrics = createParcelDiscoveryMetrics();
   const normalOutline = Cesium.Color.fromCssColorString('#f2f2f2').withAlpha(0.82);
   const selectedOutline = Cesium.Color.fromCssColorString('#42c5ed').withAlpha(0.98);
   const normalFill = Cesium.Color.fromCssColorString('#ffffff').withAlpha(0.055);
@@ -360,7 +362,9 @@ export function createCountyParcelLayer({
       lastError = null;
       requestController?.abort();
       requestController = new AbortController();
-
+      const observation = discoveryMetrics.start();
+      let metricsSourceRequests = null;
+      let metricsCacheHit = false;
       try {
         const progressive = freeMode && adapter.county === 'Travis';
         // A recently queried COMPLETE central source window can safely
@@ -371,6 +375,7 @@ export function createCountyParcelLayer({
             county: adapter.county, viewBounds: bounds, cameraHeightMeters: height,
           })
           : null;
+        if (parcels) metricsCacheHit = true;
         if (!parcels) {
           parcels = await adapter.fetchParcelsInBounds(bounds, {
             limit: adapter.county === 'Bexar' ? 1000 : 500,
@@ -387,6 +392,11 @@ export function createCountyParcelLayer({
         }
         assertActive(requestController.signal);
         const coverage = parcels.viewportCoverage;
+        // A sourceQueryCount is recorded only when the provider adapter
+        // observed its actual GIS fetch calls. Unknown is not assumed zero.
+        metricsSourceRequests = metricsCacheHit ? 0
+          : Number.isSafeInteger(coverage?.sourceQueryCount)
+            ? coverage.sourceQueryCount : null;
         if (coverage?.overLimit === true) {
           // The provider explicitly reported that this viewport was cut off
           // (or returned more than the request cap). Never display a subset as
@@ -404,6 +414,11 @@ export function createCountyParcelLayer({
           lastUpdate = Date.now();
           lastError = null;
           status = 'degraded';
+          observation.finish({
+            outcome: 'over-limit',
+            sourceRequests: metricsSourceRequests,
+            cachedWindows: progressiveCache.size?.() ?? 0,
+          });
           return true;
         }
         const omitted = coverage?.omittedUnidentified || 0;
@@ -436,9 +451,23 @@ export function createCountyParcelLayer({
         lastBoundsKey = key;
         lastUpdate = Date.now();
         status = omitted || focalOnly ? 'degraded' : 'nominal';
+        observation.finish({
+          outcome: 'success', sourceRequests: metricsSourceRequests,
+          fromCache: metricsCacheHit, parcelCount: parcels.length,
+          sourceFootprints: coverage?.focalBoundsList?.length
+            || (coverage?.focalBounds ? 1 : 1),
+          cachedWindows: progressiveCache.size?.() ?? 0,
+          entityCount: dataSource?.entities?.values?.length ?? null,
+        });
         return true;
       } catch (error) {
-        if (error?.name === 'AbortError') return false;
+        if (error?.name === 'AbortError') {
+          observation.finish({ outcome: 'cancelled',
+            sourceRequests: metricsSourceRequests });
+          return false;
+        }
+        observation.finish({ outcome: 'error',
+          sourceRequests: metricsSourceRequests });
         notifyViewportCandidates([], false, 'error');
         if (freeMode && !selectedParcelId && dataSource) dataSource.show = false;
         lastError = error instanceof Error ? error.message : String(error);
@@ -462,6 +491,9 @@ export function createCountyParcelLayer({
         lastError,
         error: lastError,
         available: status !== 'unavailable',
+        // Aggregated, bounded local diagnostics: never addresses, coordinates,
+        // owners or parcel identifiers. Not persisted or auto-uploaded.
+        discoveryMetrics: discoveryMetrics.snapshot(),
       };
     },
 
