@@ -1,6 +1,6 @@
 # Step 40 — Scalable parcel delivery (incremental engineering plan)
 
-**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
+**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged and not routed**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
 
 ## Product baseline accepted October 31, 2026
 
@@ -32,11 +32,19 @@ Logical tables now staged (not deployed):
 
 Require explicit `ST_IsValid`/SRID checks, source-ID deduplication and controlled geometry comparison. Never silently infer legal parcel validity, sale status, source currency or countywide completeness. Keep existing session-scoped PostgreSQL role, pinned connection and RLS safeguards; do not introduce browser-supplied DB roles or row-level permissions by cosmetic UI attributes.
 
-## 40C — Bounded server map pages / tiles (DESIGN / NOT STARTED)
+## 40C — Bounded server map pages / tiles (40C-1 REQUEST CONTRACT STAGED / NO API)
 
 A future server endpoint should accept **bounded WGS84 viewport / stable tile coordinates**, enforce supported county and per-user permissions, serve at most a fixed number of source features per page, cancel stale requests, and carry an explicit coverage state per tile: `complete`, `partial`, `unavailable`, `unknown`. Unknown-source IDs, truncated provider pages, out-of-date snapshots, retracted geometries, ambiguous duplicate source IDs or missing polygons cannot be labeled `complete`. For overflow, return a continuation cursor or per-tile `partial` result, not a quietly chopped list.
 
 Prefer server-side `ST_Intersects` with GiST index, prepared static vector tiles and payload/geometry simplification controls **only for map display**, never for official parcel descriptions or legal acreage. When accessible, use versioned source evidence for the property card instead of deriving legal conclusions from tiles.
+
+### 40C-1 pure request contract (IMPLEMENTED AS UNROUTED CODE; NOT IN PRODUCTION)
+
+`src/bdp/ingestion/parcelPageContract.js` introduces strict, in-process planning helpers, **not** a live endpoint or database service. Only exact Texas county FIPS, WGS84 bounding boxes narrower than 0.12 degrees in each axis, and 1–200 requested features are accepted. A one-feature overflow probe avoids silently presenting truncated results as complete. Caller-supplied source IDs, auth/roles, coverage claims, SQL and unfinished pagination cursors are rejected. A **server-only preflight** checks a matching source with rights explicitly approved through a trusted database record and not yet expired. Coverage classification remains `unknown` unless count, source ID completeness, non-truncation and overflow evidence are explicit. A page overflow is `partial` and MUST NOT imply that the rest of the viewport was surveyed.
+
+Tests: `node --test src/bdp/ingestion/parcelPageContract.test.mjs` (six targeted checks, also auto-discovered by `npm.cmd test`). These pure helpers were run against Node 22 in a detached check (6/6 passed); full repository test/build and deployment have NOT been verified by this change.
+
+**Critical integration gate:** Do not wire this into `server/providers/local.js`, the public HTTP listener or the Cesium viewer until a real trusted session/auth policy, least-privilege DB read role, SQL-level rights filtering at **read time** (including revoked/expired source rights), county-supported source resolution, per-user rate limits, geometry/payload budgets, stable signed cursor or explicit partial tiles, and a tested PostGIS instance are present. This module contains no secure session proof and cannot grant access. The current browser makes **zero requests** to the planned endpoint.
 
 ## 40D — Incremental Cesium rendering (DESIGN / NOT STARTED)
 
