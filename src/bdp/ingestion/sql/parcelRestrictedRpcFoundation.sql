@@ -138,10 +138,7 @@ AS $parcel_view_rpc$
   WHERE p_county_fips ~ '^48[0-9]{3}$'
     AND p_source_id ~ '^[a-z][a-z0-9_-]{2,79}$'
     AND p_run_id > 0
-    AND pg_catalog.isfinite(p_west)
-    AND pg_catalog.isfinite(p_south)
-    AND pg_catalog.isfinite(p_east)
-    AND pg_catalog.isfinite(p_north)
+    -- Min/max and strict ordering also fail closed for NaN and infinities.
     AND p_west >= -180 AND p_east <= 180
     AND p_south >= -90 AND p_north <= 90
     AND p_west < p_east AND p_south < p_north
