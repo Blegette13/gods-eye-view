@@ -523,6 +523,29 @@ A DBA-review-only SQL design is staged in `src/bdp/ingestion/sql/parcelRestricte
 
 Before continuing, validate the fixed SQL syntax, the installed PostGIS extension schema, source/geometry function grants and the rights/revocation safeguards in a disposable PostGIS container. The existing adapters still issue direct source-controlled SQL against underlying tables and are **not** wired to these new RPC functions; without a reviewed migration to the restricted RPC query contract, connecting an application login would fail or grant too much access. Actual per-user authorization, license review, bounded pool acquisition, revocation checks and authenticated transport remain prerequisites. The 2.4 km Cesium Free Explorer is unchanged.
 
+### November 1 — Step 40C-9 disposable restricted-role runtime PASSED
+
+The operator's screenshot of `node scripts/bdp/parcel-rpc-disposable-smoke.mjs --disposable-only` shows **9/9 targeted Node checks passed**, successful PostgreSQL 17/PostGIS 3.5 startup, both restricted RPC functions created, and a synthetic fixture executed under the NOLOGIN role with `SET ROLE`. The fixture ended with `ROLLBACK` and the exact success message: `PASS: isolated PostGIS restricted RPC, synthetic data, and role isolation.` The disposable role can call the approved source/viewport functions but cannot read the raw parcel tables directly. **This clears the Step 40C-9 isolated testing gate, not the production DBA/security review.** No production schema or authenticated service login was created by this test.
+
+### Step 40C-10 — Fixed restricted RPC reader bridge (STAGED, UNROUTED)
+
+`server/providers/bdp-parcel-restricted-rpc-readers.js` now stages a server-only bridge that accepts ONLY the exact earlier source-controlled query statements from the 40C-6 approved source/run resolver and 40C-4 metadata service. It rechecks the exact county FIPS, trusted source ID, numeric run ID, WGS84 viewport bounds and 1–200 feature cap before acquiring a driver connection. Instead of direct raw-table SQL (which the restricted role **cannot** execute), it substitutes two fixed **parameterized function calls**: `bdp_parcel_index.approved_sources_rpc($1::text)` and `bdp_parcel_index.parcel_viewport_probe_rpc($1...$8)`. The returned row field names align with existing server-side metadata summarizers. It does not return any data directly to the browser.
+
+The bridge requires a trusted pinned database connection, executes `BEGIN TRANSACTION READ ONLY`, applies bounded PostgreSQL `SET LOCAL` statement, lock and idle timeouts, and rolls back/evicts a failed connection. It rejects unknown SQL, browser roles, malformed counties/runs/bounds, client-supplied query fields, invalid timeouts and excess result counts before any success. Viewport rows are capped at that request's exact probe size (`limit + 1`). AbortSignal is checked before/after driver work; it is **not active query cancellation**. The existing server metadata service still performs the final authorization recheck and never promotes source coverage beyond `unknown`.
+
+`src/bdp/ingestion/parcelRestrictedRpcReaders.test.mjs` adds **7 targeted tests**, including a mock composition of the entire resolver → restricted source reader → restricted viewport reader → aggregate-only metadata flow. This staged code is **committed but has not yet been executed in the operator's checkout**, nor tested against a live PostgreSQL client driver. No HTTP endpoint, account/login, auth issuer, DB membership, credentials, county GIS ingestion, parcel polygon payload or public route is activated. Production blockers remain: DBA review of SECURITY DEFINER ownership and role memberships, a truly current authenticated session/entitlement authority, approved caching/redistribution rights per source, a separate restricted DB login/pool, driver cancellation and rate limits, provenance and exact source-window coverage, and stable paged geometry delivery.
+
+PowerShell verification (one command per line):
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelRestrictedRpcReaders.test.mjs
+npm.cmd test
+npm.cmd run build
+```
+
+The existing God’s Eye View/Cesium Free Explorer, 2.4 km threshold, parcel overlays and Property Intelligence interface are **unchanged**. Do not wire this into public HTTP or invoke the restricted role SQL against the existing BDP database until the remaining security and rights prerequisites are met.
+
 ## 40D — Incremental Cesium rendering (DESIGN / NOT STARTED)
 
 Replace entire `GeoJsonDataSource` swaps with keyed incremental additions/removals using `county_fips:source_parcel_id:version`. Retain selected parcel and card even when a viewport tile is evicted; selected source geometry must remain explainable. Bound geometry/entity count and tile/decoded memory. Prioritize visible tiles and coalesce camera movement; abort obsolete network requests before changing current geometry; preserve exact source polygon geometry for selected parcels. Clear all external tiles in free-view when zoomed above 2.4 km except explicitly focused parcel. Never infer that a tile is empty because a provider call failed.
