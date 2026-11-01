@@ -236,7 +236,10 @@ export async function runParcelPgDriverSmoke(args = process.argv.slice(2), {
   } catch(error) {
     // Never print generated DB passwords or session keys.
     const details = created ? '\nDisposable Docker status/logs:\n'+captureDiagnostics(name) : '';
-    throw new Error('Real pg driver smoke failed: '+String(error.message).slice(0,800)+details);
+    const redact = (value) => String(value).replaceAll(adminPassword,'[redacted]')
+      .replaceAll(rolePassword,'[redacted]');
+    throw new Error('Real pg driver smoke failed: '
+      +redact(String(error.message).slice(0,800)+details));
   } finally {
     if (session) await session.connector.close().catch(() => {});
     if (created) {
