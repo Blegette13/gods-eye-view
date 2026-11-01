@@ -100,8 +100,7 @@ async function waitForImageInitialization(name) {
   for (let attempt = 0; attempt < 60; attempt++) {
     const state = docker(['inspect','--format','{{.State.Status}}',name]).trim();
     if (state !== 'running') throw new Error('Disposable PostGIS exited during startup');
-    const startup = docker(['logs',name],{ timeout: 15_000 });
-    // docker logs often writes to stderr, not stdout; use combined streams below.
+    // Docker typically sends init logs to stderr, not stdout.
     const logProc = spawnSync('docker',['logs',name],{
       encoding:'utf8',timeout: 15_000,maxBuffer: 1 * 1024 * 1024,
     });
@@ -111,7 +110,6 @@ async function waitForImageInitialization(name) {
         {encoding:'utf8', timeout:10_000});
       if (ready.status === 0) return;
     }
-    void startup;
     await sleep(1000);
   }
   throw new Error('Disposable PostGIS did not complete initialization');
@@ -129,7 +127,6 @@ async function verifyRealDriver(Pool, port, password) {
   const now = Date.now();
   let sessionChecks = 0;
   let revoked = false;
-  let sourceRevoked = false;
   const runtime = createParcelMetadataRuntime({
     connect: connector.connect,
     sessionHmacKey: key,
@@ -179,10 +176,8 @@ async function verifyRealDriver(Pool, port, password) {
 
     revoked = false;
     // The admin fixture will be revoked below; new queries must then deny.
-    sourceRevoked = true;
-    return { ready: true, request, runtime, handle, connector,
+    return { connector,
       assertDeniedAfterSourceRevocation: async () => {
-        assert.equal(sourceRevoked,true);
         const answer = await runtime.readViewportMetadata({ sessionHandle:handle,request });
         assert.deepEqual(answer,{status:'denied',viewportCoverage:'unknown'});
       } };
