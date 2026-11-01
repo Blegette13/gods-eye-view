@@ -32,6 +32,22 @@ Logical tables now staged (not deployed):
 
 Require explicit `ST_IsValid`/SRID checks, source-ID deduplication and controlled geometry comparison. Never silently infer legal parcel validity, sale status, source currency or countywide completeness. Keep existing session-scoped PostgreSQL role, pinned connection and RLS safeguards; do not introduce browser-supplied DB roles or row-level permissions by cosmetic UI attributes.
 
+### 40B runtime defect correction — November 1, 2026 (RETEST PENDING)
+
+The operator ran `node scripts/bdp/parcel-index-disposable-smoke.mjs --disposable-only` against an **isolated disposable PostGIS 17 / PostGIS 3.5 container**. The schema migration **applied successfully**, but the initial SQL smoke failed with `record "new" has no field "coverage_state"` while inserting a `parcel_versions` row. This was a **real runtime defect** that static contract tests did not detect. It was **not a failure of the Vite build or the user's commands**.
+
+Cause: the shared `guard_source_write()` trigger referenced table-specific `NEW.coverage_state` and `NEW.source_version` in boolean `AND` conditions involving `TG_TABLE_NAME`. A PL/pgSQL trigger `NEW` record has only columns from its actual target table; the boolean expression did not safely guard against referencing a missing column. The function now branches on `TG_TABLE_NAME` first, and only then accesses the target table's fields. The SQL smoke now positively inserts into both `parcel_versions` and `coverage_windows` and explicitly rejects mismatched source versions and false completeness claims from partial runs. A static regression test protects against reintroducing this cross-table field access.
+
+The updated SQL and tests are committed, but **the fixed SQL has not yet been rerun against the operator's Docker PostGIS instance**. The disposable test stops and removes its own temporary container. No source GIS data is imported, and the existing BDP/PostGIS volume is not touched. For retest:
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelIndexFoundation.test.mjs
+node scripts/bdp/parcel-index-disposable-smoke.mjs --disposable-only
+```
+
+Do **not** enable production data ingestion, geographic APIs, or claims of countywide coverage until the runtime smoke and other previously documented security/rights gates pass.
+
 ## 40C — Bounded server map pages / tiles (40C-1 REQUEST CONTRACT STAGED / NO API)
 
 A future server endpoint should accept **bounded WGS84 viewport / stable tile coordinates**, enforce supported county and per-user permissions, serve at most a fixed number of source features per page, cancel stale requests, and carry an explicit coverage state per tile: `complete`, `partial`, `unavailable`, `unknown`. Unknown-source IDs, truncated provider pages, out-of-date snapshots, retracted geometries, ambiguous duplicate source IDs or missing polygons cannot be labeled `complete`. For overflow, return a continuation cursor or per-tile `partial` result, not a quietly chopped list.
