@@ -22,6 +22,15 @@ test('two fixed PostGIS metadata functions enforce bounds and expiry', () => {
   assert.doesNotMatch(foundation, /ST_AsGeoJSON|ST_AsMVT/);
 });
 
+test('approved-source function uses valid PostgreSQL EXTRACT special syntax', () => {
+  // EXTRACT(EPOCH FROM timestamp) is PostgreSQL grammar, not a normal
+  // schema-qualified function call. Qualifying it with pg_catalog.extract
+  // causes a runtime syntax error near FROM when the function is created.
+  assert.match(foundation,
+    /FLOOR\(EXTRACT\(EPOCH FROM sr\.approved_caching_until\) \* 1000\)::double precision/);
+  assert.doesNotMatch(foundation, /pg_catalog\.extract\s*\(/i);
+});
+
 test('isolated fixture always rolls back invented parcel data', () => {
   assert.match(fixture, /BEGIN;/);
   assert.match(fixture, /ROLLBACK;/);
