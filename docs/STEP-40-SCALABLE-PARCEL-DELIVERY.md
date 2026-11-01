@@ -450,6 +450,15 @@ npm.cmd run build
 
 **Next planned stage:** Verify the restricted database role and fixed-query reader against synthetic records under a non-owner credential; keep public HTTP and polygon delivery disabled until rights, identity and payload/coverage checks pass.
 
+
+### Step 40C-9 — Restricted metadata RPC design (STAGED; UNVALIDATED)
+
+The November 1 operator screenshot confirms that the previously committed work still builds (250 Vite modules, 9.82 seconds) and the visible final test group passed 13/13 with no failures. Earlier parts of the screenshot include separate memory/performance test groups with some skips; the image does not establish an independent live restricted-role validation.
+
+A DBA-review-only SQL design is staged in `src/bdp/ingestion/sql/parcelRestrictedRpcFoundation.sql` with a rollback-only synthetic fixture at `src/bdp/ingestion/sql/parcelRestrictedRpcSmoke.sql`. The design proposes a non-login metadata executor role with no raw parcel table grants and two fixed, bounded SQL functions for approved-source/run lookup and PostGIS metadata probing. It DOES NOT install a role in the existing BDP database, issue a database login, grant a browser account, enable a public API or acquire county GIS data. The code has not been applied or runtime-tested. **Do not apply either SQL file to a production or existing database before DBA review.**
+
+Before continuing, validate the fixed SQL syntax, the installed PostGIS extension schema, source/geometry function grants and the rights/revocation safeguards in a disposable PostGIS container. The existing adapters still issue direct source-controlled SQL against underlying tables and are **not** wired to these new RPC functions; without a reviewed migration to the restricted RPC query contract, connecting an application login would fail or grant too much access. Actual per-user authorization, license review, bounded pool acquisition, revocation checks and authenticated transport remain prerequisites. The 2.4 km Cesium Free Explorer is unchanged.
+
 ## 40D — Incremental Cesium rendering (DESIGN / NOT STARTED)
 
 Replace entire `GeoJsonDataSource` swaps with keyed incremental additions/removals using `county_fips:source_parcel_id:version`. Retain selected parcel and card even when a viewport tile is evicted; selected source geometry must remain explainable. Bound geometry/entity count and tile/decoded memory. Prioritize visible tiles and coalesce camera movement; abort obsolete network requests before changing current geometry; preserve exact source polygon geometry for selected parcels. Clear all external tiles in free-view when zoomed above 2.4 km except explicitly focused parcel. Never infer that a tile is empty because a provider call failed.
