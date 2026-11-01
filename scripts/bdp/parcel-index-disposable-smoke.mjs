@@ -169,6 +169,18 @@ function docker(args, { input = undefined, timeout = 120_000, quiet = false } = 
   return result.stdout || '';
 }
 
+// The Docker image starts a TEMPORARY PostgreSQL instance while its init
+// script installs PostGIS. pg_isready succeeds against that temporary server.
+// Connecting before the entrypoint finishes can race extension installation.
+function postgisInitializationComplete(name) {
+  const out = spawnSync('docker', ['logs', name], {
+    encoding: 'utf8', timeout: 10_000, maxBuffer: 1024 * 1024,
+  });
+  return out.status === 0
+    && (out.stdout + '\n' + out.stderr)
+      .includes('PostgreSQL init process complete; ready for start up.');
+}
+
 export async function runDisposableParcelSmoke(args = process.argv.slice(2)) {
   if (args.length !== 1 || args[0] !== '--disposable-only') {
     throw new Error('Refusing to run without explicit --disposable-only. No existing DB is ever used.');
@@ -182,16 +194,25 @@ export async function runDisposableParcelSmoke(args = process.argv.slice(2)) {
     { timeout: 240_000, quiet: true });
     created = true;
     let ready = false;
-    for (let i = 0; i < 40; i++) {
-      const probe = spawnSync('docker', ['exec', container, 'pg_isready', '-U', 'postgres', '-d', 'postgres'],
+    for (let i = 0; i < 60; i++) {
+      if (postgisInitializationComplete(container)) {
+        const probe = spawnSync('docker',
+          ['exec', container, 'pg_isready', '-U', 'postgres', '-d', 'postgres'],
+          { encoding: 'utf8', timeout: 10_000 });
+        if (probe.status === 0) { ready = true; break; }
+      }
+      const inspect = spawnSync('docker',
+        ['inspect', '--format', '{{.State.Status}}', container],
         { encoding: 'utf8', timeout: 10_000 });
-      if (probe.status === 0) { ready = true; break; }
+      if (inspect.status !== 0 || inspect.stdout.trim() !== 'running') {
+        throw new Error('Disposable PostGIS container exited during image initialization');
+      }
       await sleep(1000);
     }
     if (!ready) throw new Error('Disposable PostGIS container never became ready');
     const psql = (text) => docker(['exec', '-i', container, 'psql', '-X', '-v', 'ON_ERROR_STOP=1',
       '-U', 'postgres', '-d', 'postgres'], { input: text });
-    psql('CREATE EXTENSION IF NOT EXISTS postgis;\n');
+    psql('SELECT PostGIS_Version();\n');
     psql(sql('parcelIndexFoundation.sql'));
     psql(sql('parcelIndexFoundationSmoke.sql'));
     psql(createSyntheticParcelProbeSmokeSql());
