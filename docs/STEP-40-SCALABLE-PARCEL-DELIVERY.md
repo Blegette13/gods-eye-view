@@ -451,6 +451,20 @@ npm.cmd run build
 **Next planned stage:** Verify the restricted database role and fixed-query reader against synthetic records under a non-owner credential; keep public HTTP and polygon delivery disabled until rights, identity and payload/coverage checks pass.
 
 
+### Step 40C-9 SQL syntax failure after startup gate passed — correction committed, runtime retest pending
+
+The operator's follow-up November 1 Docker run confirms **8/8 Node unit tests passed** and that the disposable PostGIS image finished initialization without the previous extension-install race. The schema base migration then completed, but restricted RPC creation failed on **line 19 of `approved_sources_rpc`**, reporting `syntax error at or near "FROM"` in `pg_catalog.extract(epoch FROM sr.approved_caching_until)`. The problem is real SQL syntax: PostgreSQL's `EXTRACT(EPOCH FROM ...)` is special grammar and must not be called as a schema-qualified regular function. The SQL has now been updated to `FLOOR(EXTRACT(EPOCH FROM sr.approved_caching_until) * 1000)::double precision`, retaining the same millisecond-conversion behavior, with an explicit targeted static regression test preventing `pg_catalog.extract(...)` from returning.
+
+**The restricted RPC is not yet validated.** Only the base schema and PostGIS startup succeeded in the failing run. The new correction has not yet passed the operator's Docker runtime check, and no changes were made to the existing BDP database, live parcel map, or public endpoints. Before advancing, rerun in PowerShell, one line at a time:
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelRestrictedRpc.test.mjs src/bdp/ingestion/parcelRestrictedRpcRunner.test.mjs
+node scripts/bdp/parcel-rpc-disposable-smoke.mjs --disposable-only
+```
+
+If any further SQL error occurs, preserve the first `ERROR` and do not declare the checkpoint complete until **both fixed RPCs and the restricted-role fixture execute**.
+
 ### November 1 — PostGIS init-race root cause identified; retest pending
 
 The diagnostic-enabled disposable Docker run returned **7/7 passing local unit tests** followed by a failed container with `status=exited exit=3 oom=false`. Crucially, its PostgreSQL startup log shows the image's `/docker-entrypoint-initdb.d/10_postgis.sh` was **still installing PostGIS into the default `postgres` database** when a concurrent `CREATE EXTENSION IF NOT EXISTS postgis` appeared; PostgreSQL reported a duplicate `pg_extension_name_index` key. The likely root cause is our smoke runner's readiness race: `pg_isready` can succeed against PostgreSQL's temporary **initialization** server, before the image has finished its extension installation. The runner attempted SQL too early. This is an initialization collision in a disposable test harness, **not evidence of a GIS schema failure or corrupted BDP project database**.
