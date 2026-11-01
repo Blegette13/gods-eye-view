@@ -1,6 +1,6 @@
 # Step 40 — Scalable parcel delivery (incremental engineering plan)
 
-**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged**; Phase 40C-4 **unrouted metadata-only server boundary staged**; Phase 40C-5 **pinned read-only PostGIS transaction adapter staged**; Phase 40C-6 **county-scoped authorization/source resolver staged**; Phase 40C-7 **fixed-query approved-source PostGIS reader staged (all unexposed)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
+**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged**; Phase 40C-4 **unrouted metadata-only server boundary staged**; Phase 40C-5 **pinned read-only PostGIS transaction adapter staged**; Phase 40C-6 **county-scoped authorization/source resolver staged**; Phase 40C-7 **fixed-query approved-source PostGIS reader staged**; Phase 40C-8 **HMAC-bound county-session verifier staged (all unexposed)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
 
 ## Product baseline accepted October 31, 2026
 
@@ -426,6 +426,29 @@ node scripts/bdp/parcel-index-disposable-smoke.mjs --disposable-only
 The last command requires Docker Desktop and runs a **fresh, isolated, automatically removed** disposable PostGIS container. A successful run must end with `PASS: disposable PostGIS migration, rollback smoke, viewport probe and source resolver SQL.`. If it fails, do not proceed to integration or production: capture the first SQL error and correct it. Do not run migrations against the existing or production PostgreSQL database.
 
 **Deployment gates remain:** evidence of rights to cache/redistribute each county GIS source; an actual trusted identity/session issuer and per-county entitlement store; a separate minimally privileged database login, pool limits and database-side permissions; real Node PostgreSQL driver integration with cancellation tests; distributed quotas and query budgets; properly attributed polygon geometry delivery and explicit source-window coverage. The inherited God’s Eye/Cesium map, 2.4 km Free Explorer discovery threshold, parcel borders and Property Intelligence UI remain unchanged.
+
+
+### Step 40C-8 — Opaque county-session verification (STAGED / UNROUTED)
+
+**Operator checkpoint:** The November 1, 2026 screenshot confirms the Step 40C-7 **production Vite build succeeded** (250 modules, 4.30 seconds) and an isolated Docker/PostGIS test ended with:
+`PASS: disposable PostGIS migration, rollback smoke, viewport probe and source resolver SQL.` This demonstrates live PostGIS execution of the synthetic source registry permissions, ambiguity and geography test; it does not show any real licensed county GIS replication, production data, or deployed API. The yellow large-chunk warning is nonfatal.
+
+`server/providers/bdp-parcel-county-session.js` now stages a server-only `createTrustedParcelCountySessionVerifier` that can be provided as `verifyCountySession` to Step 40C-6. It requires a **separate 32+ byte secret key** and a trusted `findSessionByDigest` authority. It computes HMAC-SHA-256 of a canonical 32-byte URL-safe opaque session handle; the store must use the digest (never the raw cookie) as its lookup key and return a current authoritative record. It then verifies matching stored digest using constant-time comparison, active account status, verified MFA, no revocation, issued/last-seen/expiration timestamps (8-hour maximum total lifetime and 30-minute maximum idle time), an exact Texas county grant (`48xxx`), no duplicate county grants or wildcards, and positive `allowParcelDiscovery: true` for the requested county. It never trusts browser-provided role/status/grant claims; caller may only pass the opaque handle and county FIPS through a trusted server integration. The result contains only the minimal server-authorized proof expected by the resolver.
+
+`src/bdp/ingestion/parcelCountySession.test.mjs` includes **11 targeted tests** for canonical handles, HMAC key mismatch, expired/revoked/idle accounts, MFA, county-scoped grants, malformed grants, query-side cancellation, session rechecking, and an unexposed end-to-end metadata service scenario where mid-request revocation denies even aggregate counts. These tests are committed; **they have not yet been run in the operator's checkout**. No login, token issuance, cookie transport, session database, data redistribution permission, database login role, HTTP route or production service is introduced by this stage. The existing 2.4 km Cesium Free Explorer and Property Intelligence UI remain unchanged.
+
+**Critical integration requirements:** Design the actual identity/session issuer and secure HttpOnly, Secure, SameSite cookie transport; keep the independent HMAC key server-only and outside Git; ensure the session lookup checks revocation and county entitlements against a *strongly current authoritative store* (not an eventually consistent cache); add explicit lifecycle/rotation/logout and per-account rate limits; create/test a restricted PostGIS service login whose privileges cannot expose unapproved raw geometry; and audit commercial use and caching rights county-by-county. These are prerequisites before enabling public server parcel discovery. Do not forward browser headers as session proof or treat the presence of this verifier as a deployed authentication system.
+
+Local verification from the existing PowerShell project folder, each on a separate line:
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelCountySession.test.mjs
+npm.cmd test
+npm.cmd run build
+```
+
+**Next planned stage:** Verify the restricted database role and fixed-query reader against synthetic records under a non-owner credential; keep public HTTP and polygon delivery disabled until rights, identity and payload/coverage checks pass.
 
 ## 40D — Incremental Cesium rendering (DESIGN / NOT STARTED)
 
