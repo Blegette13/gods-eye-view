@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   createRestrictedRoleSmokeSql,
   runRestrictedRpcDisposableSmoke,
@@ -28,4 +29,13 @@ test('runtime test executes as restricted role before revoking fixture', () => {
 test('the runner rejects unexpected source fixture and does not accept custom DB connection', () => {
   assert.throws(() => createRestrictedRoleSmokeSql('SELECT 1'), TypeError);
   assert.throws(() => createRestrictedRoleSmokeSql('BEGIN; ROLLBACK;'), TypeError);
+});
+
+test('disposable container diagnostics survive early PostgreSQL exit and teardown removes anonymous volumes', () => {
+  const runner = readFileSync(new URL('../../../scripts/bdp/parcel-rpc-disposable-smoke.mjs', import.meta.url), 'utf8');
+  assert.match(runner, /'inspect', '--format'/);
+  assert.match(runner, /'logs', '--tail', '60'/);
+  assert.match(runner, /'rm', '--force', '--volumes', name/);
+  assert.match(runner, /Disposable PostGIS container exited before readiness/);
+  assert.doesNotMatch(runner, /'run', '-d', '--rm'/);
 });
