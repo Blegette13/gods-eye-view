@@ -46,12 +46,29 @@ test('versioned source geometry and bounded coverage keep immutable source ident
   assert.match(schema,/v_run_outcome <> 'complete'/);
 });
 
+test('shared trigger branches before dereferencing table-specific NEW fields',()=>{
+  // A row from parcel_versions has no coverage_state, while one from
+  // coverage_windows has no source_version. A boolean AND guard does not
+  // reliably protect a missing PL/pgSQL record field.
+  assert.match(schema,
+    /IF TG_TABLE_NAME = 'parcel_versions' THEN\s+IF v_run_version IS DISTINCT FROM NEW\.source_version THEN/);
+  assert.match(schema,
+    /ELSIF TG_TABLE_NAME = 'coverage_windows' THEN\s+IF NEW\.coverage_state = 'complete' AND v_run_outcome <> 'complete' THEN/);
+  assert.doesNotMatch(schema,
+    /IF TG_TABLE_NAME = 'coverage_windows' AND\s+NEW\.coverage_state/);
+  assert.doesNotMatch(schema,
+    /IF TG_TABLE_NAME = 'parcel_versions' AND\s+v_run_version/);
+});
+
 test('manual database smoke rolls back and exercises revocation, incompleteness and county boundaries',()=>{
   assert.match(smoke,/^BEGIN;/m);
   assert.match(smoke,/^ROLLBACK;/m);
   assert.match(smoke,/Unreviewed source was admitted/);
   assert.match(smoke,/Cross-county source parcel accepted/);
   assert.match(smoke,/Truncated GIS query certified complete/);
+  assert.match(smoke,/Parcel with mismatched source version accepted/);
+  assert.match(smoke,/Incomplete ingestion run certified complete/);
+  assert.match(smoke,/partial-ok/);
   assert.match(smoke,/Revoked source accepted more parcel geometries/);
   assert.doesNotMatch(smoke,/\bGRANT\s+/i);
 });
