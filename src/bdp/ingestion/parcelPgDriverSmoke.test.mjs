@@ -65,5 +65,13 @@ test('runner uses real pg, synchronized init, randomized private password and lo
   assert.match(code,/SELECT source_parcel_id FROM bdp_parcel_index.parcel_versions/);
   assert.match(code,/rights_state='revoked'/);
   assert.match(code,/PASS: disposable real pg Pool, restricted LOGIN, HMAC metadata and revocation/);
-  assert.doesNotMatch(code,/docker run -P|--network host|--privileged|--mount|--volume|POSTGRES_HOST_AUTH_METHOD=trust/);
+  // Inspect the Docker RUN arguments, not the entire source file:
+  // '--volumes' is intentionally present on 'docker rm' for safe cleanup.
+  const runArgs = code.match(/docker\(\['run',[\s\S]*?DRIVER_SMOKE_IMAGE\]/)?.[0];
+  assert.ok(runArgs, 'Must find the disposable docker run invocation');
+  assert.match(runArgs, /'--network','bridge'/);
+  assert.match(runArgs, /'-p','127\.0\.0\.1::5432'/);
+  assert.doesNotMatch(runArgs, /'--(?:mount|volume|volumes|privileged)'|'-P'|'--network','host'|POSTGRES_HOST_AUTH_METHOD=trust/);
+  // Removing the anonymous volume on teardown is REQUIRED, not unsafe.
+  assert.match(code, /\['rm','--force','--volumes',name\]/);
 });
