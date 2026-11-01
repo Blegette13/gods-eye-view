@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
+import { createParcelDiscoveryMetrics } from '../map/parcelDiscoveryMetrics.js';
 
 // Exercise the actual shared county layer lifecycle without starting Cesium,
 // touching official county services, or altering manager source registration.
@@ -57,6 +58,7 @@ function layerFixture({ freeBrowsing = false } = {}) {
     Cesium: fakeCesium,
     shouldDiscoverFreeParcels: (meters) => Number.isFinite(meters)
       && meters >= 0 && meters <= 2400,
+    createParcelDiscoveryMetrics,
     createProgressiveParcelCache: () => ({
       reuse: () => null,
       add: () => null,
@@ -262,5 +264,58 @@ test('2.4km Free Explorer renders sourced central parcel footprint as PARTIAL, n
     'a sourced center window must not certify the rest of the visible map');
   assert.equal(stats.available,true,'provisional source records remain usable');
   assert.equal(calls.render,1);
+  layer.destroy();
+});
+
+test('Step 40 metrics report real ArcGIS source calls, map entity count and partial source windows', async () => {
+  const {layer,viewer,adapter,calls}=layerFixture({freeBrowsing:true});
+  adapter.fetchParcelsInBounds=async()=>{
+    calls.viewport++;
+    const records=[{
+      id:'48453:302959', county:'Travis', parcelId:'302959',
+      source:{sourceNotice:'County GIS only'},
+      property:{geometry:{type:'Polygon',coordinates:[[
+        [-97.758,30.246],[-97.757,30.246],[-97.757,30.247],[-97.758,30.246],
+      ]]},acres:0.3},
+    }];
+    Object.defineProperty(records,'viewportCoverage',{value:{
+      focalOnly:true, focalBounds:{west:-97.78,south:30.23,east:-97.74,north:30.27},
+      receivedCount:1,omittedUnidentified:0,sourceQueryCount:3,
+    }});
+    return records;
+  };
+  layer.init(viewer);layer.enable();
+  viewer.camera.positionCartographic.height=2400;
+  assert.equal(await layer.update(viewer),true);
+  const perf=layer.getStats().discoveryMetrics;
+  assert.equal(perf.successes,1);
+  assert.equal(perf.knownSourceRequests,3,'count must be supplied by GIS adapter');
+  assert.equal(perf.last.sourceFootprints,1);
+  assert.equal(perf.last.parcelCount,1);
+  assert.equal(perf.cacheHits,0);
+  assert.equal(perf.runs,1);
+  assert.equal(typeof perf.p95DurationMs,'number');
+  assert.doesNotMatch(JSON.stringify(perf),/302959|\-97\.758|Travis/);
+  layer.destroy();
+});
+
+test('GIS provider over-limit is recorded as capped, not a successful completed map',async()=>{
+  const {layer,viewer,adapter}=layerFixture({freeBrowsing:true});
+  adapter.fetchParcelsInBounds=async()=>{
+    const records=[];
+    Object.defineProperty(records,'viewportCoverage',{value:{
+      overLimit:true,sourceQueryCount:11,tileQueries:8,receivedCount:501,
+    }});
+    return records;
+  };
+  layer.init(viewer);layer.enable();
+  viewer.camera.positionCartographic.height=2400;
+  assert.equal(await layer.update(viewer),true);
+  const perf=layer.getStats().discoveryMetrics;
+  assert.equal(perf.capped,1);
+  assert.equal(perf.successes,0);
+  assert.equal(perf.knownSourceRequests,11);
+  assert.equal(perf.last.parcelCount,0);
+  assert.equal(perf.last.sourceFootprints,0);
   layer.destroy();
 });
