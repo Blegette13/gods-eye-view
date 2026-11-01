@@ -83,23 +83,53 @@ function docker(args, { input, quiet = false, timeout = 180_000 } = {}) {
   return out.stdout ?? '';
 }
 
+/**
+ * Capture the reason the isolated database exited BEFORE removing it.
+ * Do not use docker --rm on startup: it destroys the diagnostic logs when
+ * PostgreSQL exits during initialization (which is what happened locally).
+ * This helper never connects to an existing application database.
+ */
+function disposableContainerDiagnostics(name) {
+  const inspect = spawnSync('docker', [
+    'inspect', '--format',
+    'status={{.State.Status}} exit={{.State.ExitCode}} oom={{.State.OOMKilled}}',
+    name,
+  ], { encoding: 'utf8', timeout: 10_000, maxBuffer: 64 * 1024 });
+  const logs = spawnSync('docker', ['logs', '--tail', '60', name], {
+    encoding: 'utf8', timeout: 10_000, maxBuffer: 128 * 1024,
+  });
+  const state = inspect.status === 0 ? inspect.stdout.trim() : 'container state unavailable';
+  const text = logs.status === 0 ? (logs.stderr + logs.stdout).trim()
+    : 'Postgres startup logs unavailable';
+  return 'Disposable PostGIS diagnostics: ' + state + '\n'
+    + String(text).slice(-4000);
+}
+
 export async function runRestrictedRpcDisposableSmoke(args = process.argv.slice(2)) {
   if (args.length !== 1 || args[0] !== '--disposable-only') {
     throw new Error('Refusing to run except with --disposable-only; never use an existing database');
   }
   const name = 'ldos-restricted-rpc-test-' + randomBytes(6).toString('hex');
-  let running = false;
+  let created = false;
   try {
-    docker(['run', '-d', '--rm', '--network', 'none', '--name', name,
+    // --rm would erase PostgreSQL startup logs if the container exits early.
+    // The finally block removes the container AND anonymous test volumes.
+    docker(['run', '-d', '--network', 'none', '--name', name,
       '-e', 'POSTGRES_HOST_AUTH_METHOD=trust', PARCEL_RPC_SMOKE_IMAGE],
     { quiet: true, timeout: 240_000 });
-    running = true;
+    created = true;
     let ready = false;
     for (let tries = 0; tries < 40; tries++) {
       const result = spawnSync('docker',
         ['exec', name, 'pg_isready', '-U', 'postgres', '-d', 'postgres'],
         { encoding: 'utf8', timeout: 10_000 });
       if (result.status === 0) { ready = true; break; }
+      const inspected = spawnSync('docker', [
+        'inspect', '--format', '{{.State.Status}}', name,
+      ], { encoding: 'utf8', timeout: 10_000 });
+      if (inspected.status !== 0 || inspected.stdout.trim() !== 'running') {
+        throw new Error('Disposable PostGIS container exited before readiness');
+      }
       await sleep(1000);
     }
     if (!ready) throw new Error('Disposable restricted RPC container not ready');
@@ -113,13 +143,22 @@ export async function runRestrictedRpcDisposableSmoke(args = process.argv.slice(
     psql(fixtures('parcelRestrictedRpcFoundation.sql'));
     psql(createRestrictedRoleSmokeSql());
     process.stdout.write('PASS: isolated PostGIS restricted RPC, synthetic data, and role isolation.\n');
+  } catch (error) {
+    if (created) {
+      // Preserve the first real error, then append why PostgreSQL exited.
+      throw new Error(error.message + '\n' + disposableContainerDiagnostics(name));
+    }
+    throw error;
   } finally {
-    if (running) {
+    if (created) {
       try {
-        docker(['stop', '--time', '2', name], { quiet: true, timeout: 30_000 });
+        // One command handles running and exited containers and deletes the
+        // image-created anonymous PostgreSQL test volume.
+        docker(['rm', '--force', '--volumes', name],
+          { quiet: true, timeout: 30_000 });
       } catch (error) {
-        process.stderr.write('WARNING: failed to stop disposable container ' + name
-          + ': ' + error.message + '\n');
+        process.stderr.write('WARNING: unable to remove isolated test container '
+          + name + ': ' + error.message + '\n');
       }
     }
   }
