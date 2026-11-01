@@ -1,6 +1,6 @@
 # Step 40 — Scalable parcel delivery (incremental engineering plan)
 
-**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged**; Phase 40C-4 **unrouted metadata-only server boundary staged**; Phase 40C-5 **pinned read-only PostGIS transaction adapter staged (all unexposed)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
+**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged**; Phase 40C-4 **unrouted metadata-only server boundary staged**; Phase 40C-5 **pinned read-only PostGIS transaction adapter staged**; Phase 40C-6 **county-scoped authorization/source resolver staged (all unexposed)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
 
 ## Product baseline accepted October 31, 2026
 
@@ -171,6 +171,33 @@ npm.cmd run build
 ```
 
 Before deploying any server endpoint: security-review the trusted identity+county authorization path, create a least-privilege database access mechanism that cannot read unapproved/revoked records, test the actual driver under statement timeouts and connection aborts, add per-user/server cost caps, and review applicable county GIS caching/redistribution permissions. Preserve the God's Eye view and honest unknown coverage status.
+
+
+### 40C-6 County-scoped session and source/run resolution (STAGED; NOT CONNECTED)
+
+**Operator checkpoint, November 1:** The latest supplied Windows PowerShell screenshot shows **13/13 tests passed, 0 failures** and a **successful Vite production build in 4.36 seconds** (250 modules transformed). It still reports upstream bundles over 1.5 MB; those are nonfatal chunk-size warnings, not errors. This confirms the commands displayed, not a production deployment or any unshown live database test.
+
+`server/providers/bdp-parcel-source-resolver.js` introduces a **server-only, un-routed** source/run resolver that can be injected into the existing 40C-4 metadata service. The resolver needs two independently trusted dependencies:
+
+- `verifyCountySession({ sessionHandle, countyFips, signal })`: a future authoritative server-side session + per-county entitlement check, **not** a browser-provided role/boolean. An acceptable result must declare an active, MFA-verified, non-revoked subject with an explicit grant to the *exact requested Texas county*.
+- `readApprovedSources({ text, values }, { signal, statementTimeoutMs })`: a future least-privilege PostGIS reader for the single, fixed `APPROVED_PARCEL_SOURCE_SQL` statement. It must support parameter binding and the requested database-side timeout; the resolver does not yet supply this driver.
+
+The fixed SQL restricts the query to one exact Texas county, time-limited explicitly **approved** source rights, and a most-recent finished source ingest run with outcome `complete` or `partial`. The query returns a **maximum of two qualifying source rows** (not two parcel records): if more than one source qualifies, the resolver fails closed rather than silently choosing a provider. If there are none, if any source metadata is malformed, or if source approval expires, no index run is selected. Query results normalize native PostgreSQL `BIGINT` run IDs safely, reject malformed or unsafe values and never expose raw parcel geometries, owners or addresses.
+
+The 40C-4 metadata service re-invokes this resolver after querying parcel metadata, denying even aggregate counts when a trusted session is revoked or source/run approval changes. This implements **contract-level trust separation**, NOT actual login/authentication, an entitlement database, an installed PostGIS reader role, credential provisioning or a browser route. No county dataset has been acquired or persisted as a consequence. A separate session authority and authorization database/transport design are still required, alongside per-user quotas and commercial provider-rights review. The current Cesium map, source providers, 2.4 km discovery, Property Intelligence and map UI remain unchanged.
+
+`src/bdp/ingestion/parcelSourceResolver.test.mjs` adds **9 targeted unit tests** covering valid server-authorized lookup, malformed/noncanonical handles, denied/expired/wrong-county permissions, source ambiguity, PostgreSQL `BIGINT` handling, SQL safety and post-query revocation. These tests are staged in GitHub; **the full suite/build after this commit has not yet been confirmed by the operator**.
+
+Local verification (PowerShell, one command per line):
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelSourceResolver.test.mjs
+npm.cmd test
+npm.cmd run build
+```
+
+**Next gate:** connect the resolver's fixed SQL to a pinned, least-privilege database reader in an isolated environment, verify genuine session/entitlement revocation, apply a source-rights review and make zero changes to Free Explorer rendering until authorization and real map payload/coverage are properly implemented.
 
 ## 40D — Incremental Cesium rendering (DESIGN / NOT STARTED)
 
