@@ -81,7 +81,7 @@ The optional in-process GeoJSON inspection accepts only 2D WGS84 Polygon/MultiPo
 
 Every accepted result keeps `viewportCoverage: 'unknown'`, and the GeoJSON preflight explicitly returns `publishAuthorized: false`. Passing a budget does **not** grant a data right, access token, read permission or permission to expose a tile. A page over any budget requires an explicitly partial/unavailable result or a smaller permitted spatial request; truncation must not be hidden.
 
-Ten targeted Node unit tests were run in an isolated Node 22 fixture using local copies of the 40C-1/40C-2 modules (**10/10 passing**); the previous 40C-2 tests also ran together (**17/17 total passing**). The user's latest screenshot also confirmed the prior production Vite build, but the complete suite/build **after 40C-3** has not yet been run or confirmed in the user's checkout. No Docker/PostGIS instance was reachable in the assistant's environment, so schema application, SQL execution and real GIS performance remain **untested**.
+Ten geometry-budget targeted Node unit tests were run in an isolated Node 22 fixture using local copies of the 40C-1/40C-2 modules (**10/10 passing**); the previous 40C-2 tests also ran together (**17/17 total passing**). The user's latest screenshot also confirmed the prior production Vite build, but the complete suite/build **after 40C-3** has not yet been run or confirmed in the user's checkout. No Docker/PostGIS instance was reachable in the assistant's environment, so schema application, SQL execution and real GIS performance remain **untested**.
 
 ```powershell
 git pull --ff-only origin bdp-development
@@ -90,7 +90,14 @@ npm.cmd test
 npm.cmd run build
 ```
 
-**Integration gates remain:** a disposable PostGIS migration + rollback-only SQL smoke test, synthetic-run query checks for approval/revocation, county-specific provider data rights, verified server identity and least-privilege database role, trusted server-side source/run selection, request concurrency/rate/time budgets, geometry provenance, coverage evidence and overflow pagination. Nothing in 40C-3 is routed into the live Cesium Free Explorer, and its existing 2.4 km behavior is unchanged.
+**Opt-in disposable PostGIS verification now staged (NOT RUN IN THIS ENVIRONMENT):** `scripts/bdp/parcel-index-disposable-smoke.mjs` creates a uniquely named `postgis/postgis:17-3.5` Docker container **without ports, bind mounts, volumes or network access**, loads only the staged index foundation into that container, runs the existing rollback-only schema smoke, then executes the **actual source-controlled 40C-2 SQL** with invented WGS84 test polygons. It checks the spatial match and verifies that revoked and expired source permissions immediately yield zero rows. The synthetic rows rollback, then the Docker container is stopped/removed. No real GIS records are retrieved or redistributed; the ordinary `bdp-postgis` container/database and persistent volume are not referenced or modified. The script requires `--disposable-only` and will refuse accidental execution. Only run this on a machine with Docker installed and enough disk to pull the test image. **The code and three opt-in-guard/generator tests were checked with Node 22 (3/3 passed); full Docker/PostGIS execution still needs an operator machine.**
+
+```powershell
+# Optional isolated database smoke (no existing BDP database or PostGIS volume is touched):
+node scripts/bdp/parcel-index-disposable-smoke.mjs --disposable-only
+```
+
+**Integration gates remain:** execute the above disposable PostGIS smoke on an available Docker host and examine its results; secure county-specific provider data rights; implement verified server identity and least-privilege database reader; trusted server-side source/run selection, request concurrency/rate/time budgets, full geometry provenance, coverage evidence and overflow pagination. A synthetic SQL smoke result validates only this staged test schema/query, **not** a production deployment or legal data reuse. Nothing in 40C-3 is routed into the live Cesium Free Explorer, and its existing 2.4 km behavior is unchanged.
 
 ## 40D — Incremental Cesium rendering (DESIGN / NOT STARTED)
 
