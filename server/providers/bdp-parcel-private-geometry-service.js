@@ -156,14 +156,22 @@ export function createPrivateParcelGeometryService({
 
       // DO NOT send this private string in the existing metadata HTTP route.
       // No code path in this module authorizes downstream publication.
-      return Object.freeze({
+      const safeStatus = {
         status: 'validated-private',
-        privateCandidateGeoJson: candidate.candidateGeoJson,
         featureCount: candidate.featureCount,
         overflow: candidate.overflow,
         viewportCoverage: 'unknown',
         publishAuthorized: false,
+      };
+      // Deliberately non-enumerable: generic JSON serializers cannot
+      // accidentally convert a private in-process candidate into a polygon
+      // HTTP response. A future separately reviewed transport must opt in
+      // to reading the private field and revalidate rights immediately.
+      Object.defineProperty(safeStatus, 'privateCandidateGeoJson', {
+        value: candidate.candidateGeoJson,
+        enumerable: false, configurable: false, writable: false,
       });
+      return Object.freeze(safeStatus);
     } catch {
       return signal?.aborted ? CANCELLED : UNAVAILABLE;
     } finally {
