@@ -674,6 +674,24 @@ npm.cmd run build
 
 The targeted HTTP test is a new addition; do not describe it as passed until the operator shows results. The whole-suite/build checks are regression gates, not proof of live authenticated deployment.
 
+### November 1 — Step 40C-14 operator validation and focused BDP testing
+
+The operator's screenshot confirms the **10/10** standalone `parcelInternalMetadataHttp.test.mjs` tests passed with no failures, and the Vite 6.4.5 production build completed in **12.34 seconds**, transforming 250 modules. The yellow >1500 kB chunk warnings are nonfatal but remain a performance follow-up.
+
+The previous full `npm.cmd test` invocation had **3,496/3,502 main-suite checks passing, six skipped, zero main-suite failures**, then the GC-bracketed, serialized inherited world-overlay test group timed out in **3 of 13** heavyweight child-process benchmarks. The three failures were `spawnSync node.exe ETIMEDOUT`, not measured B/frame budget violations; the other 10 passed. The exact reason for these intermittent slow workers is not verified, and the **full release test gate is therefore NOT green for this run**. A separate operator-triggered parcel test group (30/30) also passed; that does not substitute for all regression tests.
+
+To reduce repeated unnecessary multi-minute legacy-performance runs while iterating on land development, `scripts/bdp/run-land-tests.mjs` now **discovers all `src/bdp/**/*.test.mjs` files recursively** and executes them with Node's test runner at file concurrency 2. `package.json` adds `npm.cmd run test:land`. Four contract tests verify recursive file discovery, stable ordering, argument safety, and that the parcel metadata and driver tests are included; no tests are manually cherry-picked. This command is a **developer feedback loop**, not a release-quality substitute. The existing `npm.cmd test` full runner, GC thresholds, 180-second worker deadline, original God’s Eye overlay code and build configuration have **not been changed**.
+
+Local verification, one command per line:
+
+```powershell
+git pull --ff-only origin bdp-development
+npm.cmd run test:land
+npm.cmd run build
+```
+
+The focused runner and its tests have been committed but **not yet executed in the operator's checkout**. Before a release candidate, rerun `npm.cmd test` under stable CPU/memory conditions and separately diagnose remaining overlay timeouts if they persist. The 2.4 km discovery behavior, Travis County source-coverage discipline, Property Intelligence card and inherited Cesium UI remain untouched. Step 40C-14 is validated as an **unmounted** metadata-only handler; it is not deployed or publicly accessible. A geometry endpoint still requires source-level redistribution rights, accurate bounded coverage, and live authenticated service prerequisites.
+
 ## 40D — Incremental Cesium rendering (DESIGN / NOT STARTED)
 
 Replace entire `GeoJsonDataSource` swaps with keyed incremental additions/removals using `county_fips:source_parcel_id:version`. Retain selected parcel and card even when a viewport tile is evicted; selected source geometry must remain explainable. Bound geometry/entity count and tile/decoded memory. Prioritize visible tiles and coalesce camera movement; abort obsolete network requests before changing current geometry; preserve exact source polygon geometry for selected parcels. Clear all external tiles in free-view when zoomed above 2.4 km except explicitly focused parcel. Never infer that a tile is empty because a provider call failed.
