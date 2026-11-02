@@ -108,6 +108,11 @@ function runId(value) {
 
 function validPlan(plan) {
   if (!plan || typeof plan !== 'object' || Array.isArray(plan)) return null;
+  const proto = Object.getPrototypeOf(plan);
+  if ((proto !== Object.prototype && proto !== null)
+    || Object.keys(plan).length !== 4
+    || !['countyFips', 'bounds', 'limit', 'probeLimit']
+      .every((key) => Object.hasOwn(plan, key))) return null;
   const checked = parseBoundedParcelPageRequest({
     countyFips: plan.countyFips, bounds: plan.bounds, limit: plan.limit,
   });
