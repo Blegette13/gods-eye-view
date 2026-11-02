@@ -88,30 +88,7 @@ WITH bounded AS MATERIALIZED (
     AND ($6::double precision - $4::double precision) <= 0.12
     AND ($7::double precision - $5::double precision) <= 0.12
     AND $8::integer BETWEEN 2 AND 201
-    AND $9::text ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}
-    AND pv.geometry OPERATOR(public.&&)
-      public.ST_MakeEnvelope($4::double precision, $5::double precision,
-        $6::double precision, $7::double precision, 4326)
-    AND public.ST_Intersects(pv.geometry,
-      public.ST_MakeEnvelope($4::double precision, $5::double precision,
-        $6::double precision, $7::double precision, 4326))
-  ORDER BY pv.source_parcel_id COLLATE "C" ASC, pv.id ASC
-  LIMIT $8::integer
-)
-SELECT
-  parcel_version_id, source_parcel_id, source_version,
-  source_geometry_sha256, ingest_run_id, source_id, county_fips,
-  geometry_vertices, geometry_memory_bytes,
-  CASE WHEN row_number() OVER (
-    ORDER BY source_parcel_id COLLATE "C" ASC, parcel_version_id ASC
-  ) < $8::integer
-    AND geometry_vertices BETWEEN 1 AND 8000
-    AND geometry_memory_bytes BETWEEN 1 AND 524288
-    THEN public.ST_AsGeoJSON(raw_geometry, 9, 0)::json
-    ELSE NULL
-  END AS geometry
-FROM bounded
-ORDER BY source_parcel_id COLLATE "C" ASC, parcel_version_id ASC
+    AND $9::text ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$'
     AND $10::bigint > 0
     AND (
       pv.source_parcel_id COLLATE "C" > ($9::text COLLATE "C")
