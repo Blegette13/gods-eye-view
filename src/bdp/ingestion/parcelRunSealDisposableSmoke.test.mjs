@@ -55,6 +55,11 @@ test('before sealing incomplete/mismatched counts/source/version are all denied'
     "indexed_records",
   ]) assert.ok(file.includes(expected), expected);
   assert.match(file, /assert\.equal\(runSql\('SELECT count\(\*\) FROM bdp_parcel_index\.parcel_versions/);
+  // Regression: psql emits "INSERT 0 1" after INSERT ... RETURNING, so
+  // synthetic run IDs must be fetched using a separate SELECT statement.
+  assert.match(file, /SELECT id FROM bdp_parcel_index\.ingest_runs/);
+  assert.match(file, /source_version='incomplete-only'/);
+  assert.doesNotMatch(file, /RETURNING id;/);
 });
 
 test('successful completed run checks indexed count and server-created timestamp', () => {
