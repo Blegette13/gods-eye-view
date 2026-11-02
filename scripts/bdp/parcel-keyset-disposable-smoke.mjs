@@ -118,6 +118,9 @@ export async function runKeysetDisposableSmoke(args = process.argv.slice(2)) {
     apply("INSERT INTO bdp_parcel_index.geometry_publication_reviews " +
       "(source_id,county_fips) VALUES ('" + SOURCE + "','" + COUNTY + "');");
     apply(file('parcelGeometryRestrictedRpcFoundation.sql'));
+    // Seals are required before CREATE of the new keyset RPC; install the
+    // proposed guard in this fresh synthetic container only.
+    apply(file('parcelRunSealFoundation.sql'));
     apply(file('parcelGeometryKeysetRpcFoundation.sql'));
 
     // Keep both the existing metadata-only role and PUBLIC out of new RPC.
@@ -194,8 +197,27 @@ export async function runKeysetDisposableSmoke(args = process.argv.slice(2)) {
       "expires_at=clock_timestamp()+interval '2 hours' " +
       "WHERE source_id='" + SOURCE + "';");
 
-    // Initial page is read under test-container superuser ONLY, because the
-    // test NOLOGIN keyset role intentionally has no initial snapshot EXECUTE.
+    // Even independently approved geometry rights cannot bypass the
+    // explicit immutable-run seal gate. Both the first page and later
+    // keyset pages still require a separate trusted HTTP authorization layer.
+    assert.deepEqual(output(fixedQuery), [],
+      'Approved publication without an immutable run seal must return no geometry');
+
+    // Only the disposable synthetic run is eligible for sealing.
+    const syntheticRunId = apply("SELECT id FROM bdp_parcel_index.ingest_runs " +
+      "WHERE source_id='" + SOURCE + "' AND source_version='v1';");
+    assert.match(syntheticRunId, /^[1-9][0-9]*$/);
+    assert.equal(apply("SELECT count(*) FROM bdp_parcel_index.parcel_versions " +
+      "WHERE ingest_run_id=" + syntheticRunId + ';'), '3');
+    apply("INSERT INTO bdp_parcel_index.parcel_run_seals " +
+      "(ingest_run_id,source_id,county_fips,source_version,indexed_records) " +
+      "VALUES (" + syntheticRunId + ",'" + SOURCE + "','" + COUNTY + "','v1',3);");
+    assert.equal(apply("SELECT indexed_records FROM bdp_parcel_index.parcel_run_seals " +
+      "WHERE ingest_run_id=" + syntheticRunId + ';'), '3');
+
+    // Initial page uses the earlier, unsealed snapshot SQL solely to stage
+    // the synthetic continuation fixture as admin in this disposable DB.
+    // The real server must never accept an unsealed first page.
     const first = output("SELECT * FROM bdp_parcel_index.parcel_geometry_snapshot_rpc('" +
       COUNTY + "','" + SOURCE + "',1,-97.76,30.24,-97.71,30.27,2)", false);
     assert.deepEqual(first.map(x => [x.id, x.hasPolygon]), [
