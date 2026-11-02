@@ -57,7 +57,7 @@ test('privileged fixture probes a NOLOGIN geometry-only role, not metadata role 
   assert.equal(GEOMETRY_RPC_PROBE_ROLE, 'ldos_geometry_probe_test');
   assert.match(GEOMETRY_RPC_PROBE_GRANT, /CREATE ROLE ldos_geometry_probe_test\s+NOLOGIN NOINHERIT/);
   assert.match(GEOMETRY_RPC_PROBE_GRANT, /GRANT EXECUTE ON FUNCTION/);
-  assert.doesNotMatch(GEOMETRY_RPC_PROBE_GRANT, /GRANT SELECT|GRANT ALL|LOGIN NOINHERIT/);
+  assert.doesNotMatch(GEOMETRY_RPC_PROBE_GRANT, /GRANT SELECT|GRANT ALL|\bLOGIN NOINHERIT/);
   assert.doesNotMatch(migration, /^\s*GRANT\s/mi);
   assert.match(migration, /FROM PUBLIC;/);
   assert.match(migration, /FROM ldos_parcel_rpc_client;/);
