@@ -1,6 +1,6 @@
 # Step 40 — Scalable parcel delivery (incremental engineering plan)
 
-**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged**; Phase 40C-4 **unrouted metadata-only server boundary staged**; Phase 40C-5 **pinned read-only PostGIS transaction adapter staged**; Phase 40C-6 **county-scoped authorization/source resolver staged**; Phase 40C-7 **fixed-query approved-source PostGIS reader staged**; Phase 40C-8 **HMAC-bound county-session verifier staged**; Phase 40C-9 **isolated restricted PostGIS RPC verified against synthetic data**; Phase 40C-10 **restricted reader bridge staged and regression-tested**; Phase 40C-11 **unrouted HMAC→restricted RPC metadata runtime composition validated by operator tests**; Phase 40C-12 **unrouted pg Pool connector locally regression-tested**; Phase 40C-13 **isolated real pg-driver smoke PASSED (operator confirmed)**; Phase 40C-14 **unmounted origin/quota-gated metadata HTTP transport staged (not deployed)**. Phase 40C-15 **unpublished geometry candidate with separate redistribution-rights gate staged (not delivered)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
+**Status:** Phase 40A in-memory **measurement baseline** implemented; Phase 40B **rights-gated PostGIS index migration staged in source control but NOT applied**; Phase 40C-1 **pure request/coverage contract staged**; Phase 40C-2 **parameterized PostGIS metadata probe staged**; Phase 40C-3 **strict in-memory geometry and GeoJSON delivery budgets staged**; Phase 40C-4 **unrouted metadata-only server boundary staged**; Phase 40C-5 **pinned read-only PostGIS transaction adapter staged**; Phase 40C-6 **county-scoped authorization/source resolver staged**; Phase 40C-7 **fixed-query approved-source PostGIS reader staged**; Phase 40C-8 **HMAC-bound county-session verifier staged**; Phase 40C-9 **isolated restricted PostGIS RPC verified against synthetic data**; Phase 40C-10 **restricted reader bridge staged and regression-tested**; Phase 40C-11 **unrouted HMAC→restricted RPC metadata runtime composition validated by operator tests**; Phase 40C-12 **unrouted pg Pool connector locally regression-tested**; Phase 40C-13 **isolated real pg-driver smoke PASSED (operator confirmed)**; Phase 40C-14 **unmounted origin/quota-gated metadata HTTP transport staged (not deployed)**. Phase 40C-15 **unpublished geometry candidate with separate redistribution-rights gate staged (not delivered)**. Phase 40C-16 **unrouted fixed single-snapshot PostGIS geometry plan + deny-default publication registry STAGED (not validated against SQL, no geometry delivered)**. Countywide ingestion, PostGIS streaming and public tile API **have NOT been built or enabled**. This document distinguishes completed work from planned work.
 
 ## Product baseline accepted October 31, 2026
 
@@ -712,6 +712,32 @@ npm.cmd run build
 ```
 
 The full npm test suite remains required before any release; budget/timeout requirements are unchanged.
+
+
+### Step 40C-15 local validation and Step 40C-16 snapshot read plan
+
+The operator's screenshot confirms that Step 40C-15's **9 targeted tests passed (0 failed, 0 skipped)**, and the Vite 6.4.5 production build passed (**250 modules; 16.06 seconds**). The build's large-chunk warnings remain nonfatal but have not been optimized. The screenshot does **not** include the newer 40C-16 tests or a full `test:land` result for this revision; these gates remain open.
+
+Step 40C-16 introduces two staged artifacts, neither applied to the current PostGIS database:
+
+- `src/bdp/ingestion/sql/parcelGeometryPublicationRightsFoundation.sql`: **manual DBA/legal review only**. Proposes `geometry_publication_reviews`, a **separate** source/county-specific rights registry with `review_state='unreviewed'` and `allow_geometry_redistribution=FALSE` defaults. Approved rows must have a recorded review reference and validity dates. Explicitly revokes all table privileges from PUBLIC and the existing `ldos_parcel_rpc_client`. It imports no GIS data, creates no login, grants no polygon access, changes no Cesium UI and approves **no actual county**. The migration must be reviewed before any execution, and its apparent SQL validity remains **untested in Docker**.
+
+- `src/bdp/ingestion/parcelGeometrySnapshotPlan.js`: **unrouted server-only fixed SQL candidate** using the existing validated eight bind parameters (`countyFips`, trusted source/run, constrained WGS84 bounds, `limit + 1`). The SQL reads from the same indexed parcel_version in one statement, joins the separate independent approved redistribution-rights record, and rechecks current source caching permission and run validity. It uses a bounded `MATERIALIZED` PostGIS candidate set; the overflow probe geometry is returned as `NULL`, and oversized individual geometries similarly return `NULL` so the validator rejects rather than silently omitting parcels. The pure staging function returns only minimal map-safe FeatureCollection fields, uses the previous 40C-3 per-feature/page/2 MB wire budgets, and **always** returns `publishAuthorized: false`, `viewportCoverage: 'unknown'`. A zero-row query is never proof that a viewport is empty.
+
+**Security:** Because the Step 40C-9 restricted `ldos_parcel_service` login must NOT have raw table privileges, this SQL is **NOT runnable by that service**. That is deliberate. Before any live execution, a DBA must review a bounded, fixed privileged RPC/function that enforces both independent redistributable geometry rights and source rights inside the database and grants only tightly scoped EXECUTE. The service must still check session/entitlement and legal rights again after queries; no browser-facing endpoint, tile encoder, paging cursor, durable source window coverage or active cancellation is added by this stage. Source geometry SHA in rows is *not* cryptographic proof the returned GeoJSON equals original WKB, nor a legal boundary/title guarantee. Do not run with the database-owner account as an application workaround.
+
+Nine Step 40C-16 unit/contract tests in `src/bdp/ingestion/parcelGeometrySnapshotPlan.test.mjs` cover fixed query bindings, independent rights checks, SQL registry deny defaults, private minimal output, overflow/null sentinel, invalid/oversized geometry, missing rights, forged plans, and unknown empty pages. They are **committed but not yet executed in the operator's checkout**. Do not claim the SQL is migration-tested until a separate synthetic disposable PostGIS DBA test has passed.
+
+Local PowerShell validation, each separately:
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelGeometrySnapshotPlan.test.mjs
+npm.cmd run test:land
+npm.cmd run build
+```
+
+Any failure pauses Step 40C-16 for repair. Full `npm.cmd test` remains the release requirement, with the existing intermittent inherited overlay timeouts handled separately. The original God’s Eye View 2.4 km Free Explorer and Property Intelligence panel remain unchanged.
 
 ## 40D — Incremental Cesium rendering (DESIGN / NOT STARTED)
 
