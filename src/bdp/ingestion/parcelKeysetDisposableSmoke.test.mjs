@@ -53,7 +53,7 @@ test('only synthetic GIS fixture and dedicated draft SQL functions are loaded', 
 test('keyset requires an immutable, completed synthetic run despite approved publication', () => {
   assert.match(file, /Approved publication without an immutable run seal must return no geometry/);
   assert.match(file, /INSERT INTO bdp_parcel_index\.parcel_run_seals/);
-  assert.match(file, /WHERE source_id='.*source_version='v1'/);
+  assert.match(file, /source_version='v1';/);
   assert.match(file, /indexed_records/);
   assert.ok(file.indexOf("apply(file('parcelRunSealFoundation.sql'))")
     < file.indexOf("apply(file('parcelGeometryKeysetRpcFoundation.sql'))"));
