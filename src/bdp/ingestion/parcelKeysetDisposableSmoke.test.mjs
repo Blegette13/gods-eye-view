@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   KEYSET_SMOKE_SUCCESS,
   KEYSET_PROBE_ROLE, KEYSET_RPC_SIGNATURE, SNAPSHOT_RPC_SIGNATURE,
+  SEALED_INITIAL_RPC_SIGNATURE,
   requireKeysetSmokeOptIn, runKeysetDisposableSmoke,
 } from '../../../scripts/bdp/parcel-keyset-disposable-smoke.mjs';
 
@@ -41,6 +42,7 @@ test('only synthetic GIS fixture and dedicated draft SQL functions are loaded', 
     'parcelGeometryPublicationRightsFoundation.sql',
     'parcelGeometryRestrictedRpcFoundation.sql',
     'parcelGeometryKeysetRpcFoundation.sql',
+    'parcelGeometrySealedInitialRpcFoundation.sql',
     'parcelRunSealFoundation.sql',
     'SYNTHETIC_DRIVER_FIXTURE_SQL',
     'EXTRA_SYNTHETIC_PARCELS_SQL',
@@ -61,10 +63,30 @@ test('keyset requires an immutable, completed synthetic run despite approved pub
     < file.indexOf('INSERT INTO bdp_parcel_index.parcel_run_seals'));
 });
 
+test('first-page RPC refuses cache-only and rights-only access until immutable seal exists', () => {
+  assert.match(file, /Approved caching alone must never allow sealed first-page geometry/);
+  assert.match(file, /Approved publication without a seal must return no first-page geometry/);
+  assert.match(file, /const first = output\(initialQuery\)/);
+  assert.ok(file.indexOf('INSERT INTO bdp_parcel_index.parcel_run_seals')
+    < file.indexOf('const first = output(initialQuery)'));
+  assert.ok(file.indexOf("apply(file('parcelRunSealFoundation.sql'))")
+    < file.indexOf("apply(file('parcelGeometrySealedInitialRpcFoundation.sql'))"));
+});
+
+test('disposable NOLOGIN role independently gains two sealed RPCs but never legacy snapshot', () => {
+  assert.match(file, /Granting one RPC must NOT implicitly authorize the other/);
+  assert.match(file, /GRANT EXECUTE ON FUNCTION ' \+ SEALED_INITIAL_RPC_SIGNATURE/);
+  assert.match(file, /has_function_privilege\('ldos_parcel_rpc_client'/);
+  assert.match(file, /'t\|t\|f\|f'/);
+  assert.match(file, /Publication revocation must prevent initial-page delivery/);
+  assert.match(file, /source-caching revocation must prevent initial-page delivery/);
+});
+
 test('metadata-only role and fresh ungranted geometry role cannot execute keyset', () => {
   assert.equal(KEYSET_PROBE_ROLE, 'ldos_geometry_keyset_probe');
   assert.match(KEYSET_RPC_SIGNATURE, /parcel_geometry_keyset_rpc\(/);
   assert.match(SNAPSHOT_RPC_SIGNATURE, /parcel_geometry_snapshot_rpc\(/);
+  assert.match(SEALED_INITIAL_RPC_SIGNATURE, /parcel_geometry_sealed_initial_rpc\(/);
   assert.match(file, /has_function_privilege\('ldos_parcel_rpc_client'/);
   assert.match(file, /NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE/);
   assert.match(file, /With schema USAGE but no EXECUTE/);
@@ -75,7 +97,7 @@ test('metadata-only role and fresh ungranted geometry role cannot execute keyset
 
 test('actual smoke verifies ordered three-page cursor progression and null overflow', () => {
   for (const phrase of [
-    'Initial page is read under test-container superuser ONLY',
+    'Initial page uses sealed RPC under disposable NOLOGIN geometry role',
     'Fetch after last ACCEPTED parcel, not after the extra sentinel',
     'SYNTHETIC-PARCEL-002',
     'SYNTHETIC-PARCEL-003',
