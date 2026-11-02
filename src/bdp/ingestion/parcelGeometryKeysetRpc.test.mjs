@@ -20,7 +20,7 @@ const after = `    AND $9::text ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$'
 
 test('keyset function reuses the original snapshot SQL verbatim except for fixed position filter', () => {
   assert.ok(body);
-  assert.equal(body.replace(after, ''), PARCEL_GEOMETRY_SNAPSHOT_SQL,
+  assert.equal(body.replace('\n' + after, ''), PARCEL_GEOMETRY_SNAPSHOT_SQL,
     'Changing the source/publication-rights snapshot must update the keyset function');
 });
 
