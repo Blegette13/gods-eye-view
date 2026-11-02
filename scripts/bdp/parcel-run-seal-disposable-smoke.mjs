@@ -111,12 +111,19 @@ export async function runParcelRunSealDisposableSmoke(args = process.argv.slice(
       'WHERE ingest_run_id=' + runId + ';'), '3');
 
     // A finished but incomplete run must not be sealable.
-    const incompleteId = runSql(
+    // psql -t -A still appends the command tag "INSERT 0 1" to a
+    // data-modifying statement with RETURNING. Do not mistake that full
+    // output for a scalar BIGINT. Write first, then SELECT the fixture ID.
+    runSql(
       "INSERT INTO bdp_parcel_index.ingest_runs " +
       "(source_id,source_version,outcome,finished_at,received_records," +
       "omitted_unidentified,source_reported_truncated) " +
       "VALUES ('" + SOURCE + "','incomplete-only','partial',clock_timestamp()," +
-      "0,0,FALSE) RETURNING id;"
+      "0,0,FALSE);"
+    );
+    const incompleteId = runSql(
+      "SELECT id FROM bdp_parcel_index.ingest_runs " +
+      "WHERE source_id='" + SOURCE + "' AND source_version='incomplete-only';"
     );
     assert.match(incompleteId, /^[1-9][0-9]*$/);
     const seal = (id, source, version, count) =>
