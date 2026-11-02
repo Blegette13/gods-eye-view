@@ -46,6 +46,15 @@ function validPublicationReview({ plan, trustedSource, trustedPublicationRights,
     && rights.expiresAtMs <= trustedSource.approvedCachingUntilMs;
 }
 
+function safeRunId(value) {
+  if (Number.isSafeInteger(value) && value > 0) return value;
+  // node-postgres returns PostgreSQL BIGINT (int8) as a decimal string by
+  // default; never coerce imprecise, negative or exponent-form identifiers.
+  if (typeof value !== 'string' || !/^[1-9][0-9]{0,15}$/.test(value)) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 function validRowIdentity(meta, geometry, trustedSource, plan, trustedRunId) {
   if (!meta || !geometry || typeof meta !== 'object' || typeof geometry !== 'object'
     || Array.isArray(meta) || Array.isArray(geometry)) return false;
@@ -58,9 +67,8 @@ function validRowIdentity(meta, geometry, trustedSource, plan, trustedRunId) {
     && typeof meta.source_version === 'string'
     && SOURCE_VERSION.test(meta.source_version)
     && geometry.source_version === meta.source_version
-    && Number.isSafeInteger(meta.ingest_run_id)
-    && meta.ingest_run_id === trustedRunId
-    && geometry.ingest_run_id === trustedRunId
+    && safeRunId(meta.ingest_run_id) === trustedRunId
+    && safeRunId(geometry.ingest_run_id) === trustedRunId
     && geometry.source_id === trustedSource.sourceId
     && geometry.county_fips === plan.countyFips;
 }
