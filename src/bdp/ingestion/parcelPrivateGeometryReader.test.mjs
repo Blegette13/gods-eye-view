@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseBoundedParcelPageRequest } from './parcelPageContract.js';
+import { stageParcelGeometrySnapshot } from './parcelGeometrySnapshotPlan.js';
 import {
   createPrivateParcelGeometryRpcReader, GEOMETRY_RPC_SQL,
   MAX_PRIVATE_GEOMETRY_BYTES,
@@ -143,4 +144,27 @@ test('cancellation immediately after query triggers rollback and no stale result
   await assert.rejects(f.reader.readSnapshot(request(), { signal: controller.signal }), /unavailable/);
   assert.equal(f.calls.at(-1), 'ROLLBACK');
   assert.ok(f.releases[0] instanceof Error);
+});
+
+test('private RPC result can only become a nonpublishable geometry candidate', async () => {
+  const f = fixture();
+  const privateRows = await f.reader.readSnapshot(request());
+  const nowMs = 1_000_000;
+  const candidate = stageParcelGeometrySnapshot({
+    plan: plan(), rows: privateRows.rows, trustedRunId: 42, nowMs,
+    trustedSource: {
+      sourceId: 'travis-cad', countyFips: '48453',
+      rightsState: 'approved', approvedCachingUntilMs: nowMs + 100_000,
+    },
+    trustedPublicationRights: {
+      sourceId: 'travis-cad', countyFips: '48453',
+      reviewState: 'approved', allowGeometryRedistribution: true,
+      reviewReference: 'synthetic/test-review',
+      reviewedAtMs: nowMs - 1000, expiresAtMs: nowMs + 50_000,
+    },
+  });
+  assert.equal(candidate.ok, true);
+  assert.equal(candidate.publishAuthorized, false);
+  assert.equal(candidate.viewportCoverage, 'unknown');
+  assert.equal(candidate.featureCount, 1);
 });
