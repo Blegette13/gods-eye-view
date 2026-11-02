@@ -1,11 +1,14 @@
--- Step 40C-24: DBA-REVIEW-ONLY draft of source-bound private keyset RPC.
+-- Step 40C-24/29: DBA-REVIEW-ONLY source-bound, SEALED private keyset RPC.
 -- This migration is NOT applied by the application, build, or dev scripts.
 -- The existing metadata-only LOGIN must NEVER receive EXECUTE or raw SELECT.
 -- No source is automatically approved for GIS geometry redistribution.
 --
 -- The inner query mirrors Step 40C-18's exact source/run, county, bounds,
 -- independent geometry-publication and source-caching rights checks; it
--- additionally constrains the keyset AFTER (source_parcel_id, parcel_version_id).
+-- constrains the keyset AFTER (source_parcel_id, parcel_version_id).
+-- Step 40C-29 additionally REQUIRES a 40C-26 validated immutable run seal.
+-- Run-seal foundation must be installed BEFORE this draft is created.
+-- Old unsealed snapshot RPC is NOT a safe starting page for production.
 -- Ordering is source_parcel_id COLLATE "C", then BIGINT parcel version ID.
 --
 -- Tokens are verified by a future trusted server BEFORE this RPC is called.
@@ -59,6 +62,13 @@ WITH bounded AS MATERIALIZED (
     AND rights.county_fips = sr.county_fips
   JOIN bdp_parcel_index.ingest_runs AS ir
     ON ir.source_id = sr.source_id
+  JOIN bdp_parcel_index.parcel_run_seals AS seal
+    ON seal.ingest_run_id = ir.id
+    AND seal.source_id = ir.source_id
+    AND seal.county_fips = sr.county_fips
+    AND seal.source_version = ir.source_version
+    AND seal.indexed_records = ir.received_records
+    AND seal.sealed_at >= ir.finished_at
   JOIN bdp_parcel_index.parcel_versions AS pv
     ON pv.ingest_run_id = ir.id
     AND pv.source_id = sr.source_id
@@ -69,7 +79,11 @@ WITH bounded AS MATERIALIZED (
     AND sr.source_id = $2::text
     AND ir.id = $3::bigint
     AND ir.finished_at IS NOT NULL
-    AND ir.outcome IN ('complete', 'partial')
+    AND seal.sealed_at IS NOT NULL
+    AND ir.outcome = 'complete'
+    AND ir.received_records IS NOT NULL
+    AND ir.omitted_unidentified = 0
+    AND ir.source_reported_truncated = FALSE
     AND sr.rights_state = 'approved'
     AND sr.approved_caching_until > pg_catalog.clock_timestamp()
     AND rights.review_state = 'approved'
@@ -133,6 +147,8 @@ REVOKE ALL ON FUNCTION bdp_parcel_index.parcel_geometry_keyset_rpc(
   double precision,integer,text,bigint
 ) FROM ldos_parcel_rpc_client;
 
+-- No historical/partial/unsealed run can satisfy the inner join.
+-- Immutability is operational, not a cross-request MVCC snapshot.
 -- Deliberately ZERO GRANTs to any production application or metadata role.
 -- A disposable synthetic NOLOGIN probe role may be granted EXECUTE only
 -- by the separate opt-in test harness (never by this foundation).
@@ -140,6 +156,6 @@ COMMENT ON FUNCTION bdp_parcel_index.parcel_geometry_keyset_rpc(
   text,text,bigint,double precision,double precision,double precision,
   double precision,integer,text,bigint
 ) IS
-  'STAGED only: bounded, rights-gated keyset geometry; no public grant, authorization or verified viewport completeness.';
+  'STAGED only: sealed-run, rights-gated keyset geometry; no public grant, authorization or verified viewport completeness.';
 
 COMMIT;
