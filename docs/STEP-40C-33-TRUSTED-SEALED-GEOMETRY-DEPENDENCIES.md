@@ -2,7 +2,7 @@
 
 ## Scope and status — November 2, 2026
 
-Step 40C-32 is already committed at `036a226`, but its **13 focused tests and post-pull land/build checks were still awaiting operator confirmation** at this checkpoint. This phase adds no browser feature, service listener, endpoint, migration, production DB role or GIS license. Its own tests are **staged only** until run by the operator.
+Operator screenshots now confirm Step 40C-32 **13/13 focused tests PASSED**, the following post-pull land suite **752/752 PASSED**, and the Vite production build **PASSED (250 modules, 4.95 s)**. The screenshots show the local branch pulled through `036a226` only, BEFORE the later Step 40C-33 commits: **the Step 40C-33 tests have NOT yet been run locally**. This phase adds no browser feature, service listener, endpoint, migration, production DB role or GIS license. Its own tests are **staged only** until run by the operator.
 
 ## Added server-only source files
 
