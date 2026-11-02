@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { randomBytes } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
+import { createTrustedParcelCountySessionVerifier } from '../../../server/providers/bdp-parcel-county-session.js';
+import { createAuthorizedParcelSourceResolver } from '../../../server/providers/bdp-parcel-source-resolver.js';
 import { createPrivateParcelGeometryService } from '../../../server/providers/bdp-parcel-private-geometry-service.js';
 
 const NOW = 1_000_000;
@@ -101,6 +103,9 @@ test('private success uses independently reviewed rights before and after query 
   assert.deepEqual(calls, { quota: 1, resolve: 2, review: 2, read: 1 });
   assert.deepEqual(JSON.parse(result.privateCandidateGeoJson).features[0].properties,
     { sourceParcelId: 'SYNTHETIC-001' });
+  // Accidental serialization of this internal status must NOT expose polygons.
+  assert.equal(Object.keys(result).includes('privateCandidateGeoJson'), false);
+  assert.equal(JSON.stringify(result).includes('SYNTHETIC-001'), false);
 });
 
 test('unauthorized requests, invalid handles and browser-injected source IDs never query', async () => {
@@ -223,15 +228,63 @@ test('in-process concurrency limit also rejects extra live requests before datab
       return { rows: [row()], viewportCoverage: 'unknown', publishAuthorized: false };
     },
   });
-  let reached;
-  const started = new Promise((resolve) => { reached = resolve; });
   const first = service({ sessionHandle: handle, request: request() });
   // Let promise-based quota, source and rights lookups complete.
   for (let i = 0; i < 10 && calls.read === 0; i++) await Promise.resolve();
   assert.equal(calls.read, 1);
   assert.deepEqual(await invoke(service), busy);
   assert.equal(calls.read, 1);
-  void reached; void started;
   release();
   assert.equal((await first).status, 'validated-private');
+});
+
+test('real HMAC county verifier and approved-source resolver are rechecked after the private query', async () => {
+  const key = randomBytes(48);
+  const signedHandle = randomBytes(32).toString('base64url');
+  const digest = createHmac('sha256', key).update(signedHandle).digest('hex');
+  let revoked = false;
+  let sessionLookups = 0;
+  let sourceReads = 0;
+  let geometryReads = 0;
+  const verifier = createTrustedParcelCountySessionVerifier({
+    sessionHmacKey: key, now: () => NOW,
+    findSessionByDigest: async (lookup) => {
+      sessionLookups++;
+      assert.equal(lookup, digest);
+      return {
+        sessionDigest: digest, subject: 'fixture-subject', accountStatus: 'active',
+        mfaVerified: true, revokedAtMs: revoked ? NOW : null,
+        issuedAtMs: NOW - 20_000, lastSeenAtMs: NOW - 1000,
+        expiresAtMs: NOW + 100_000,
+        countyGrants: [{ countyFips: '48453', allowParcelDiscovery: true }],
+      };
+    },
+  });
+  const resolver = createAuthorizedParcelSourceResolver({
+    verifyCountySession: verifier, now: () => NOW,
+    readApprovedSources: async () => {
+      sourceReads++;
+      return { rows: [{
+        source_id: 'travis-cad', county_fips: '48453', rights_state: 'approved',
+        approved_caching_until_ms: NOW + 400_000, run_id: '42',
+      }] };
+    },
+  });
+  const service = createPrivateParcelGeometryService({
+    resolveAuthorizedSource: resolver,
+    readPublicationReview: async () => publication(),
+    consumeQuota: async () => true,
+    readSnapshot: async () => {
+      geometryReads++;
+      revoked = true; // Simulates logout during an in-flight query.
+      return { rows: [row()], viewportCoverage: 'unknown', publishAuthorized: false };
+    },
+    now: () => NOW,
+  });
+  assert.deepEqual(await service({
+    sessionHandle: signedHandle, request: request(),
+  }), denied);
+  assert.equal(geometryReads, 1);
+  assert.equal(sessionLookups, 2);
+  assert.equal(sourceReads, 1, 'revoked session must deny before source registry re-read');
 });
