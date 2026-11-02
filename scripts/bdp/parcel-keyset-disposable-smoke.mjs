@@ -123,10 +123,9 @@ export async function runKeysetDisposableSmoke(args = process.argv.slice(2)) {
     // Keep both the existing metadata-only role and PUBLIC out of new RPC.
     const privileges = apply("SELECT has_function_privilege('ldos_parcel_rpc_client'," +
       "'" + KEYSET_RPC_SIGNATURE + "','EXECUTE')," +
-      "has_function_privilege('public','" + KEYSET_RPC_SIGNATURE + "','EXECUTE')," +
       "has_table_privilege('ldos_parcel_rpc_client'," +
       "'bdp_parcel_index.geometry_publication_reviews','SELECT')");
-    assert.equal(privileges, 'f|f|f');
+    assert.equal(privileges, 'f|f');
 
     const query = (sourceParcelId, version, { county = COUNTY, run = 1,
       source = SOURCE, probeLimit = 2 } = {}) => {
@@ -149,8 +148,12 @@ export async function runKeysetDisposableSmoke(args = process.argv.slice(2)) {
     // This role is NOLOGIN and exists ONLY inside the temporary DB.
     apply('CREATE ROLE ' + KEYSET_PROBE_ROLE +
       ' NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION;' +
-      '\nGRANT USAGE ON SCHEMA bdp_parcel_index TO ' + KEYSET_PROBE_ROLE + ';' +
-      '\nGRANT EXECUTE ON FUNCTION ' + KEYSET_RPC_SIGNATURE +
+      '\nGRANT USAGE ON SCHEMA bdp_parcel_index TO ' + KEYSET_PROBE_ROLE + ';');
+    // With schema USAGE but no EXECUTE, this newly created role also proves
+    // the function has no accidental inherited PUBLIC permission.
+    expectDenied('BEGIN READ ONLY;\nSET LOCAL ROLE ' + KEYSET_PROBE_ROLE +
+      ';\n' + fixedQuery + ';');
+    apply('GRANT EXECUTE ON FUNCTION ' + KEYSET_RPC_SIGNATURE +
       ' TO ' + KEYSET_PROBE_ROLE + ';');
 
     assert.equal(apply("SELECT has_function_privilege('" + KEYSET_PROBE_ROLE +
