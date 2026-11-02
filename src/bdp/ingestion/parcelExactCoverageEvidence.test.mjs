@@ -176,7 +176,7 @@ test('browser-supplied coverage or unexpected source state cannot affect the fix
   const requestWithClaims = { ...p, coverageState: 'complete' };
   assert.equal(buildExactParcelCoverageStatement({
     plan: requestWithClaims, trustedSourceId: 'travis-cad', trustedRunId: 42,
-  })?.text, EXACT_PARCEL_COVERAGE_SQL);
+  }), null);
   assert.deepEqual(assessExactParcelCoverageEvidence({
     ...args(), rows: [{ ...row(), coverage_state: 'complete', exact_window: false }],
   }), unknown);
