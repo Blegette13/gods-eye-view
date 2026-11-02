@@ -215,8 +215,10 @@ export async function runKeysetDisposableSmoke(args = process.argv.slice(2)) {
     assert.equal(apply("SELECT indexed_records FROM bdp_parcel_index.parcel_run_seals " +
       "WHERE ingest_run_id=" + syntheticRunId + ';'), '3');
 
-    // Initial page uses the earlier, unsealed snapshot SQL solely to stage
-    // the synthetic continuation fixture as admin in this disposable DB.
+    // Initial page is read under test-container superuser ONLY, because
+    // the fresh NOLOGIN role has no snapshot RPC privilege.
+    // Initial page uses the older unsealed snapshot SQL solely for synthetic
+    // fixture setup AFTER we have already sealed this test run.
     // The real server must never accept an unsealed first page.
     const first = output("SELECT * FROM bdp_parcel_index.parcel_geometry_snapshot_rpc('" +
       COUNTY + "','" + SOURCE + "',1,-97.76,30.24,-97.71,30.27,2)", false);
