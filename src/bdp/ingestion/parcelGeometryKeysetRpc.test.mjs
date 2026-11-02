@@ -18,10 +18,45 @@ const after = `    AND $9::text ~ '^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$'
       )
     )`;
 
-test('keyset function reuses the original snapshot SQL verbatim except for fixed position filter', () => {
+const sealedJoin = `  JOIN bdp_parcel_index.parcel_run_seals AS seal
+    ON seal.ingest_run_id = ir.id
+    AND seal.source_id = ir.source_id
+    AND seal.county_fips = sr.county_fips
+    AND seal.source_version = ir.source_version
+    AND seal.indexed_records = ir.received_records
+    AND seal.sealed_at >= ir.finished_at
+`;
+const sealedEvidence = `    AND ir.outcome = 'complete'
+    AND ir.received_records IS NOT NULL
+    AND ir.omitted_unidentified = 0
+    AND ir.source_reported_truncated = FALSE`;
+
+test('keyset retains original snapshot query except for fixed position and seal gates', () => {
   assert.ok(body);
-  assert.equal(body.replace('\n' + after, ''), PARCEL_GEOMETRY_SNAPSHOT_SQL,
-    'Changing the source/publication-rights snapshot must update the keyset function');
+  const unsealed = body
+    .replace(sealedJoin, '')
+    .replace('\n' + after, '')
+    .replace('    AND seal.sealed_at IS NOT NULL\n', '')
+    .replace(sealedEvidence, "    AND ir.outcome IN ('complete', 'partial')");
+  assert.equal(unsealed, PARCEL_GEOMETRY_SNAPSHOT_SQL,
+    'Changing source, bounds or publication rights must update keyset SQL');
+});
+
+test('unsealed and partially ingested runs cannot qualify for continuation', () => {
+  assert.ok(body.includes(sealedJoin));
+  assert.ok(body.includes(sealedEvidence));
+  assert.match(body, /JOIN bdp_parcel_index\.parcel_run_seals AS seal/);
+  assert.match(body, /seal\.ingest_run_id = ir\.id/);
+  assert.match(body, /seal\.indexed_records = ir\.received_records/);
+  assert.match(body, /seal\.source_version = ir\.source_version/);
+  assert.match(body, /seal\.county_fips = sr\.county_fips/);
+  assert.match(body, /seal\.sealed_at >= ir\.finished_at/);
+  assert.doesNotMatch(body, /ir\.outcome IN \('complete', 'partial'\)/);
+});
+
+test('seal foundation must be installed first and does not create a public grant', () => {
+  assert.match(sql, /Run-seal foundation must be installed BEFORE this draft/);
+  assert.doesNotMatch(sql, /^\s*GRANT\s/mi);
 });
 
 test('exact 10-argument SQL signature matches the existing cursor planner', () => {
@@ -58,7 +93,7 @@ test('cache and independent redistribution-rights gates are mandatory on every n
     'rights.allow_geometry_redistribution = TRUE',
     'rights.expires_at > pg_catalog.clock_timestamp()',
     'rights.expires_at <= sr.approved_caching_until',
-    "ir.outcome IN ('complete', 'partial')",
+    "ir.outcome = 'complete'",
     'AND ir.id = $3::bigint',
     "sr.county_fips = $1::char(5)",
     'sr.source_id = $2::text',
