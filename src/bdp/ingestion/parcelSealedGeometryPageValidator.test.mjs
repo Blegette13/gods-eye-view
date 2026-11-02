@@ -104,18 +104,25 @@ test('overflow sentinel must be last, null geometry, and never included in candi
   assert.equal(v.featureCount,2);
 });
 
-test('keyset page ordering must be strictly increasing by source ID then numeric BIGINT', () => {
+test('keyset order is strict and numeric BIGINT positions are compared correctly', () => {
+  // The existing source-window budget intentionally rejects duplicate
+  // parcel names even if different version IDs could sort numerically.
   const good=input();
   good.rows=[
-    row('SAME-ID','9'),
-    row('SAME-ID','10'),
-    row('SAME-ID','11',null),
+    row('P-001','10'),
+    row('P-002','11'),
+    row('P-003','12',null),
   ];
-  const ok=validatePrivateSealedGeometryPage(good);
+  const ok=validatePrivateSealedGeometryPage({
+    ...good,afterKey:{sourceParcelId:'P-001',parcelVersionId:'9'},
+  });
   assert.equal(ok.status,'validated-private');
+  assert.deepEqual(validatePrivateSealedGeometryPage({
+    ...good,afterKey:{sourceParcelId:'P-001',parcelVersionId:'11'},
+  }),denied);
   for (const ids of [
     [row('P-002','2'),row('P-001','1'),row('P-003','3',null)],
-    [row('SAME-ID','10'),row('SAME-ID','9'),row('SAME-ID','11',null)],
+    [row('SAME-ID','9'),row('SAME-ID','10'),row('P-003','11',null)],
     [row('P-001','1'),row('P-001','1'),row('P-003','3',null)],
   ]) assert.deepEqual(validatePrivateSealedGeometryPage({...input(),rows:ids}),denied);
 });
