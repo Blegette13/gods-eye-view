@@ -83,7 +83,8 @@ test('separate review table is deny-by-default and gives no read or public grant
   assert.match(sql,/geometry_publication_approval_requires_evidence/);
   assert.match(sql,/REVOKE ALL ON TABLE bdp_parcel_index\.geometry_publication_reviews FROM PUBLIC/);
   assert.match(sql,/REVOKE ALL ON TABLE bdp_parcel_index\.geometry_publication_reviews FROM ldos_parcel_rpc_client/);
-  assert.doesNotMatch(sql,/\bGRANT\b/i);
+  // Comments may discuss grants; disallow a SQL GRANT statement itself.
+  assert.doesNotMatch(sql,/^\s*GRANT\s/mi);
 });
 
 test('single query serializes an unpublished, sanitized map candidate only', () => {
