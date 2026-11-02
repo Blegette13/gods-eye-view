@@ -41,12 +41,24 @@ test('only synthetic GIS fixture and dedicated draft SQL functions are loaded', 
     'parcelGeometryPublicationRightsFoundation.sql',
     'parcelGeometryRestrictedRpcFoundation.sql',
     'parcelGeometryKeysetRpcFoundation.sql',
+    'parcelRunSealFoundation.sql',
     'SYNTHETIC_DRIVER_FIXTURE_SQL',
     'EXTRA_SYNTHETIC_PARCELS_SQL',
   ]) assert.ok(file.includes(expected), expected);
   assert.doesNotMatch(file, /connectionString|bdp-postgis|createServer\(|\.listen\(/);
   assert.match(file, /step40c13-synthetic/);
   assert.match(file, /INSERT INTO bdp_parcel_index\.geometry_publication_reviews/);
+});
+
+test('keyset requires an immutable, completed synthetic run despite approved publication', () => {
+  assert.match(file, /Approved publication without an immutable run seal must return no geometry/);
+  assert.match(file, /INSERT INTO bdp_parcel_index\.parcel_run_seals/);
+  assert.match(file, /WHERE source_id='.*source_version='v1'/);
+  assert.match(file, /indexed_records/);
+  assert.ok(file.indexOf("apply(file('parcelRunSealFoundation.sql'))")
+    < file.indexOf("apply(file('parcelGeometryKeysetRpcFoundation.sql'))"));
+  assert.ok(file.indexOf('Approved publication without an immutable run seal')
+    < file.indexOf('INSERT INTO bdp_parcel_index.parcel_run_seals'));
 });
 
 test('metadata-only role and fresh ungranted geometry role cannot execute keyset', () => {
