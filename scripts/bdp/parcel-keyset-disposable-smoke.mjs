@@ -28,6 +28,10 @@ export const SNAPSHOT_RPC_SIGNATURE =
   'bdp_parcel_index.parcel_geometry_snapshot_rpc(' +
   'text,text,bigint,double precision,double precision,double precision,' +
   'double precision,integer)';
+export const SEALED_INITIAL_RPC_SIGNATURE =
+  'bdp_parcel_index.parcel_geometry_sealed_initial_rpc(' +
+  'text,text,bigint,double precision,double precision,double precision,' +
+  'double precision,integer)';
 const IMAGE_READY_MARKER = 'PostgreSQL init process complete; ready for start up.';
 const SOURCE = 'step40c13-synthetic';
 const COUNTY = '48453';
@@ -122,13 +126,16 @@ export async function runKeysetDisposableSmoke(args = process.argv.slice(2)) {
     // proposed guard in this fresh synthetic container only.
     apply(file('parcelRunSealFoundation.sql'));
     apply(file('parcelGeometryKeysetRpcFoundation.sql'));
+    apply(file('parcelGeometrySealedInitialRpcFoundation.sql'));
 
     // Keep both the existing metadata-only role and PUBLIC out of new RPC.
     const privileges = apply("SELECT has_function_privilege('ldos_parcel_rpc_client'," +
       "'" + KEYSET_RPC_SIGNATURE + "','EXECUTE')," +
+      "has_function_privilege('ldos_parcel_rpc_client'," +
+      "'" + SEALED_INITIAL_RPC_SIGNATURE + "','EXECUTE')," +
       "has_table_privilege('ldos_parcel_rpc_client'," +
       "'bdp_parcel_index.geometry_publication_reviews','SELECT')");
-    assert.equal(privileges, 'f|f');
+    assert.equal(privileges, 'f|f|f');
 
     const query = (sourceParcelId, version, { county = COUNTY, run = 1,
       source = SOURCE, probeLimit = 2 } = {}) => {
@@ -145,8 +152,12 @@ export async function runKeysetDisposableSmoke(args = process.argv.slice(2)) {
         ",'" + sourceParcelId + "'," + version + ')';
     };
     const fixedQuery = query('SYNTHETIC-PARCEL', 1);
+    const initialQuery = "SELECT * FROM bdp_parcel_index.parcel_geometry_sealed_initial_rpc('" +
+      COUNTY + "','" + SOURCE + "',1,-97.76,30.24,-97.71,30.27,2)";
     expectDenied('BEGIN READ ONLY;\nSET LOCAL ROLE ldos_parcel_rpc_client;\n' +
       fixedQuery + ';');
+    expectDenied('BEGIN READ ONLY;\nSET LOCAL ROLE ldos_parcel_rpc_client;\n' +
+      initialQuery + ';');
 
     // This role is NOLOGIN and exists ONLY inside the temporary DB.
     apply('CREATE ROLE ' + KEYSET_PROBE_ROLE +
@@ -156,15 +167,24 @@ export async function runKeysetDisposableSmoke(args = process.argv.slice(2)) {
     // the function has no accidental inherited PUBLIC permission.
     expectDenied('BEGIN READ ONLY;\nSET LOCAL ROLE ' + KEYSET_PROBE_ROLE +
       ';\n' + fixedQuery + ';');
+    expectDenied('BEGIN READ ONLY;\nSET LOCAL ROLE ' + KEYSET_PROBE_ROLE +
+      ';\n' + initialQuery + ';');
     apply('GRANT EXECUTE ON FUNCTION ' + KEYSET_RPC_SIGNATURE +
+      ' TO ' + KEYSET_PROBE_ROLE + ';');
+    // Granting one RPC must NOT implicitly authorize the other.
+    expectDenied('BEGIN READ ONLY;\nSET LOCAL ROLE ' + KEYSET_PROBE_ROLE +
+      ';\n' + initialQuery + ';');
+    apply('GRANT EXECUTE ON FUNCTION ' + SEALED_INITIAL_RPC_SIGNATURE +
       ' TO ' + KEYSET_PROBE_ROLE + ';');
 
     assert.equal(apply("SELECT has_function_privilege('" + KEYSET_PROBE_ROLE +
       "','" + KEYSET_RPC_SIGNATURE + "','EXECUTE')," +
       "has_function_privilege('" + KEYSET_PROBE_ROLE +
+      "','" + SEALED_INITIAL_RPC_SIGNATURE + "','EXECUTE')," +
+      "has_function_privilege('" + KEYSET_PROBE_ROLE +
       "','" + SNAPSHOT_RPC_SIGNATURE + "','EXECUTE')," +
       "has_table_privilege('" + KEYSET_PROBE_ROLE +
-      "','bdp_parcel_index.parcel_versions','SELECT')"), 't|f|f');
+      "','bdp_parcel_index.parcel_versions','SELECT')"), 't|t|f|f');
     expectDenied('BEGIN READ ONLY;\nSET LOCAL ROLE ' + KEYSET_PROBE_ROLE +
       ';\nSELECT source_parcel_id FROM bdp_parcel_index.parcel_versions LIMIT 1;');
     expectDenied('BEGIN READ ONLY;\nSET LOCAL ROLE ' + KEYSET_PROBE_ROLE +
@@ -188,6 +208,8 @@ export async function runKeysetDisposableSmoke(args = process.argv.slice(2)) {
 
     assert.deepEqual(output(fixedQuery), [],
       'Approved caching alone must never allow geometry publication');
+    assert.deepEqual(output(initialQuery), [],
+      'Approved caching alone must never allow sealed first-page geometry');
 
     // Authorize ONLY the invented, disposable source fixture.
     apply("UPDATE bdp_parcel_index.geometry_publication_reviews " +
@@ -202,6 +224,8 @@ export async function runKeysetDisposableSmoke(args = process.argv.slice(2)) {
     // keyset pages still require a separate trusted HTTP authorization layer.
     assert.deepEqual(output(fixedQuery), [],
       'Approved publication without an immutable run seal must return no geometry');
+    assert.deepEqual(output(initialQuery), [],
+      'Approved publication without a seal must return no first-page geometry');
 
     // Only the disposable synthetic run is eligible for sealing.
     const syntheticRunId = apply("SELECT id FROM bdp_parcel_index.ingest_runs " +
@@ -215,13 +239,9 @@ export async function runKeysetDisposableSmoke(args = process.argv.slice(2)) {
     assert.equal(apply("SELECT indexed_records FROM bdp_parcel_index.parcel_run_seals " +
       "WHERE ingest_run_id=" + syntheticRunId + ';'), '3');
 
-    // Initial page is read under test-container superuser ONLY, because
-    // the fresh NOLOGIN role has no snapshot RPC privilege.
-    // Initial page uses the older unsealed snapshot SQL solely for synthetic
-    // fixture setup AFTER we have already sealed this test run.
-    // The real server must never accept an unsealed first page.
-    const first = output("SELECT * FROM bdp_parcel_index.parcel_geometry_snapshot_rpc('" +
-      COUNTY + "','" + SOURCE + "',1,-97.76,30.24,-97.71,30.27,2)", false);
+    // Initial page uses sealed RPC under disposable NOLOGIN geometry role.
+    // Legacy unsealed snapshot RPC remains inaccessible to this test role.
+    const first = output(initialQuery);
     assert.deepEqual(first.map(x => [x.id, x.hasPolygon]), [
       ['SYNTHETIC-PARCEL', true],
       ['SYNTHETIC-PARCEL-002', false], // overflow sentinel
@@ -255,6 +275,8 @@ export async function runKeysetDisposableSmoke(args = process.argv.slice(2)) {
       "WHERE source_id='" + SOURCE + "';");
     assert.deepEqual(output(query(first[0].id, first[0].version)), [],
       'Publication revocation must prevent next-page delivery');
+    assert.deepEqual(output(initialQuery), [],
+      'Publication revocation must prevent initial-page delivery');
 
     apply("UPDATE bdp_parcel_index.geometry_publication_reviews " +
       "SET review_state='approved',allow_geometry_redistribution=TRUE " +
@@ -263,6 +285,8 @@ export async function runKeysetDisposableSmoke(args = process.argv.slice(2)) {
       "WHERE source_id='" + SOURCE + "';");
     assert.deepEqual(output(query(first[0].id, first[0].version)), [],
       'Independent source-caching revocation must prevent next-page delivery');
+    assert.deepEqual(output(initialQuery), [],
+      'Independent source-caching revocation must prevent initial-page delivery');
 
     process.stdout.write(KEYSET_SMOKE_SUCCESS + '\n');
   } catch (error) {
