@@ -54,7 +54,7 @@ test('test connects as an actual separate password-login, not SET ROLE',()=>{
   assert.match(code,/LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE/);
   assert.match(code,/NOREPLICATION NOBYPASSRLS PASSWORD/);
   assert.match(code,/'-h','127\.0\.0\.1','-U',AUTHORITY_DB_LOGIN/);
-  assert.match(code,/PGPASSWORD=\+loginPassword/);
+  assert.match(code,/'PGPASSWORD='\+loginPassword/);
   assert.doesNotMatch(code,/SET LOCAL ROLE|SET SESSION AUTHORIZATION/);
 });
 
