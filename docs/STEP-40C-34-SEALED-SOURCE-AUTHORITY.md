@@ -4,7 +4,7 @@
 
 The user confirmed Step 40C-33 **15/15 focused tests passed**, the land suite **752/752 passed**, and the **Vite production build passed** (250 modules, 10.73 s). The land suite's count remained 752 despite the newly staged tests; explicitly check the test runner's discovery of the new file before treating a pass count as proof that every new file was included.
 
-Step 40C-34 files have been committed to `bdp-development` but are **NOT YET operator-tested**. NO SQL has been applied to a real database. NO frontend, public API, database role, secrets, credentials or county licensing rights were changed.
+The operator's latest Windows PowerShell screenshots confirm Step 40C-34 **22/22 focused tests PASSED** and the post-pull land-development suite **774/774 PASSED** with zero failures. This is exactly 22 tests more than the previous 752/752. The new production Vite build, explicit discovery command and **real disposable PostGIS smoke are NOT YET shown**; keep these gates pending. NO SQL has been applied to a real database. NO frontend, public API, database role, secrets, credentials or county licensing rights were changed.
 
 ## Changes
 
@@ -30,7 +30,7 @@ npm.cmd run test:land
 npm.cmd run build
 ```
 
-Expected Step 40C-34 source-level total: **22 tests**, NOT yet confirmed. Stop at the first failure. Confirm discovery separately:
+Confirmed Step 40C-34 source-level total: **22/22 passed**, land-development suite **774/774 passed**. Stop at the first failure in the remaining gates. Confirm discovery separately:
 
 ```powershell
 node -e "import('./scripts/bdp/run-land-tests.mjs').then(m=>console.log(m.discoverLandTestFiles().filter(p=>p.includes('SealedSourceAuthority') || p.includes('SealedGeometryRuntime'))))"
