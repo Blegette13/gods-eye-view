@@ -4,7 +4,7 @@
 
 The user confirmed Step 40C-33 **15/15 focused tests passed**, the land suite **752/752 passed**, and the **Vite production build passed** (250 modules, 10.73 s). The land suite's count remained 752 despite the newly staged tests; explicitly check the test runner's discovery of the new file before treating a pass count as proof that every new file was included.
 
-The operator's latest Windows PowerShell screenshots confirm Step 40C-34 **22/22 focused tests PASSED** and the post-pull land-development suite **774/774 PASSED** with zero failures. This is exactly 22 tests more than the previous 752/752. The new production Vite build, explicit discovery command and **real disposable PostGIS smoke are NOT YET shown**; keep these gates pending. NO SQL has been applied to a real database. NO frontend, public API, database role, secrets, credentials or county licensing rights were changed.
+The operator's latest Windows PowerShell screenshots confirm Step 40C-34 **22/22 focused tests PASSED** and the post-pull land-development suite **774/774 PASSED** with zero failures. This is exactly 22 tests more than the previous 752/752. The next operator screenshots confirm a **successful Vite production build (250 modules, 16.82 s)**, explicitly list all THREE staged files in the land-test discovery output (40C-33 runtime plus both 40C-34 suites), and show the **real disposable PostGIS smoke PASS**: `PASS: disposable PostGIS sealed-source authority, isolated EXECUTE, latest-run gating and revocation.` This closes the 40C-34 operator verification gates. The Vite large-chunk advisory is nonfatal. NO SQL has been applied to a real database. NO frontend, public API, database role, secrets, credentials or county licensing rights were changed.
 
 ## Changes
 
@@ -44,7 +44,7 @@ node scripts/bdp/parcel-sealed-source-authority-disposable-smoke.mjs --disposabl
 
 Expected success message: `PASS: disposable PostGIS sealed-source authority, isolated EXECUTE, latest-run gating and revocation.`
 
-Passing code-level tests does not establish any production GIS rights. The original Cesium / God’s Eye interface, **2.4 km Free Explorer**, Travis CAD browsing behavior and property panel are unchanged.
+The operator-confirmed disposable SQL smoke verifies the temporary synthetic SQL security behavior, NOT any live source license, production role configuration, or GIS publication right. The original Cesium / God’s Eye interface, **2.4 km Free Explorer**, Travis CAD browsing behavior and property panel are unchanged.
 
 ## Next
 
