@@ -34,11 +34,11 @@ AS $ldos_sealed_authority_rpc$
     sr.source_id,
     sr.county_fips::text,
     sr.rights_state,
-    pg_catalog.floor(pg_catalog.extract(EPOCH FROM sr.approved_caching_until) * 1000)
+    FLOOR(EXTRACT(EPOCH FROM sr.approved_caching_until) * 1000)
       ::double precision AS approved_caching_until_ms,
     ir.id AS run_id,
     ir.source_version,
-    pg_catalog.floor(pg_catalog.extract(EPOCH FROM seal.sealed_at) * 1000)
+    FLOOR(EXTRACT(EPOCH FROM seal.sealed_at) * 1000)
       ::double precision AS sealed_at_ms,
     seal.indexed_records,
     TRUE AS sealed_run
