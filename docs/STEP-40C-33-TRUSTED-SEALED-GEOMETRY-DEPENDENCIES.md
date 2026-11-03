@@ -2,7 +2,7 @@
 
 ## Scope and status — November 2, 2026
 
-Operator screenshots now confirm Step 40C-32 **13/13 focused tests PASSED**, the following post-pull land suite **752/752 PASSED**, and the Vite production build **PASSED (250 modules, 4.95 s)**. The screenshots show the local branch pulled through `036a226` only, BEFORE the later Step 40C-33 commits: **the Step 40C-33 tests have NOT yet been run locally**. This phase adds no browser feature, service listener, endpoint, migration, production DB role or GIS license. Its own tests are **staged only** until run by the operator.
+Operator screenshots now confirm Step 40C-32 **13/13 focused tests PASSED**, the following post-pull land suite **752/752 PASSED**, and the Vite production build **PASSED (250 modules, 4.95 s)**. A second operator screenshot confirms **Step 40C-33 15/15 focused tests PASSED**, **752/752 land-development tests PASSED**, and a **successful production build** (250 modules, 10.73 seconds). Note: the land-suite count remained 752 despite 15 new focused tests, so the test-discovery path should be explicitly checked; the independent 15/15 focused result is conclusive for those cases. This phase adds no browser feature, service listener, endpoint, migration, production DB role or GIS license. Its own tests are **staged only** until run by the operator.
 
 ## Added server-only source files
 
@@ -32,7 +32,7 @@ npm.cmd run test:land
 npm.cmd run build
 ```
 
-Expected focused test totals: **13/13 for Step 40C-32** and **15/15 for Step 40C-33**, subject to independent local execution. No PostgreSQL connection is necessary for the new synthetic tests. Stop and share any first failure; do not run SQL migrations or enable geometry delivery.
+Confirmed on operator's local Windows Node environment: **13/13 for Step 40C-32**, **15/15 for Step 40C-33**, and a green land suite/build. Future steps still require their own tests. No PostgreSQL connection is necessary for the new synthetic tests. Stop and share any first failure; do not run SQL migrations or enable geometry delivery.
 
 Next: **Step 40C-34 — Fixed sealed-source authority/read-privilege design & disposable SQL probe**. Build a separate, DBA-reviewed and **NO GRANT by default** SQL authority source for the runtime, then test revocation and isolation with a disposable PostGIS database. Do not use the existing database owner to simulate the real geometry-only service principal.
 
