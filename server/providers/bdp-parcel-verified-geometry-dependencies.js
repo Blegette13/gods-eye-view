@@ -37,7 +37,7 @@ const REQUIRED=[
   'sessionHmacKey','cursorHmacKey','findSessionByDigest','consumeQuota',
   'connectSourceAuthority','sourceAuthorityLogin',
   'connectPublicationReview','publicationReviewLogin',
-  'connectSealedGeometry',
+  'connectSealedGeometry','geometryLogin',
 ];
 const ALLOWED=new Set([...REQUIRED,'now']);
 
@@ -87,7 +87,7 @@ export function createPrivateVerifiedGeometryDependencies(config={}) {
     consumeQuota:config.consumeQuota,
     readSealedSource:authority.readSealedSource,
     readPublicationReview:review.readPublicationReview,
-    connect:connectSealedGeometry,now,
+    connect:connectSealedGeometry,geometryLogin:config.geometryLogin,now,
   });
 
   // Expose ONLY the already validated private result (counts and a signed
