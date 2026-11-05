@@ -21,6 +21,7 @@ import { PRIVATE_PARCEL_KEYSET_RPC_SQL } from './parcelKeysetPagination.js';
 const NOW=1_000_000;
 const LOGIN_A='ldos_parcel_authority_test';
 const LOGIN_P='ldos_parcel_publication_test';
+const LOGIN_G='ldos_parcel_geometry_test';
 const KEY_SESSION=Buffer.alloc(32,0x31);
 const KEY_CURSOR=Buffer.alloc(32,0x32);
 const HANDLE=Buffer.alloc(32,0x33).toString('base64url');
@@ -39,6 +40,8 @@ const geometryKeys=[
   'unsealed_snapshot_denied','metadata_source_denied',
   'metadata_viewport_denied','sealed_authority_denied',
   'publication_review_denied',
+  'exact_login','safe_login','no_role_memberships','schema_usage',
+  'no_index_table_access','no_index_sequence_access','no_other_index_rpc',
 ];
 const proof=keys=>Object.fromEntries(keys.map(key=>[key,true]));
 const source=()=>({
@@ -94,7 +97,9 @@ function setup({
     events.push(kind+':connect');
     return {
       async query(stmt) {
-        if(kind==='geometry'&&stmt===SEALED_GEOMETRY_ROLE_ATTESTATION_SQL) {
+        if(kind==='geometry'&&typeof stmt==='object'
+          &&stmt.text===SEALED_GEOMETRY_ROLE_ATTESTATION_SQL) {
+          assert.deepEqual(stmt.values,[LOGIN_G]);
           events.push('geometry:attest');
           return {rows:[geometryRole()]};
         }
@@ -145,7 +150,8 @@ function setup({
     },
     connectSourceAuthority:connection('source'),sourceAuthorityLogin:LOGIN_A,
     connectPublicationReview:connection('review'),publicationReviewLogin:LOGIN_P,
-    connectSealedGeometry:connection('geometry'),now:()=>NOW,
+    connectSealedGeometry:connection('geometry'),geometryLogin:LOGIN_G,
+    now:()=>NOW,
   };
   const runtime=createPrivateVerifiedGeometryDependencies(config);
   return {runtime,events,counts,config};
@@ -168,6 +174,9 @@ test('factory strictly rejects missing, arbitrary config and shared SQL factorie
   }),TypeError);
   assert.throws(()=>createPrivateVerifiedGeometryDependencies({
     ...ctx.config,connectSealedGeometry:ctx.config.connectPublicationReview,
+  }),TypeError);
+  assert.throws(()=>createPrivateVerifiedGeometryDependencies({
+    ...ctx.config,geometryLogin:'ldos_parcel_authority_test',
   }),TypeError);
 });
 
@@ -302,7 +311,8 @@ test('publication role drift rejects before review RPC and without geometry',asy
 });
 
 test('geometry role cannot inherit source-authority or publication RPC',async()=>{
-  for(const key of ['sealed_authority_denied','publication_review_denied']) {
+  for(const key of ['sealed_authority_denied','publication_review_denied',
+    'no_other_index_rpc','exact_login','no_index_table_access']) {
     const ctx=setup({geometryRole:()=>({...proof(geometryKeys),[key]:false})});
     assert.deepEqual(await ctx.runtime.readPrivatePage(call()),denied);
     assert.equal(ctx.counts.geometry,0);
