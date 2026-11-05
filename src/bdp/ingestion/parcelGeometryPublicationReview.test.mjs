@@ -139,7 +139,7 @@ test('review cannot be inferred from caching approval or unsupported status',asy
     {review_state:'revoked'},{allow_geometry_redistribution:false},
     {review_reference:'SYNTHETIC TEST ONLY'},
     {review_reference:'x'}, {reviewed_at_ms:NOW+1},
-    {reviewed_at_ms:NOW},{expires_at_ms:NOW},
+    {reviewed_at_ms:0},{expires_at_ms:NOW},
     {expires_at_ms:NOW-1}, {county_fips:'48029'},
     {source_id:'different-cad'}, {bad:'extra'},
   ]) {
