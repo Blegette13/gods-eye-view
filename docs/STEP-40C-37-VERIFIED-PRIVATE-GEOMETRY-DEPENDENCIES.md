@@ -4,9 +4,9 @@
 
 The operator's PowerShell screenshots confirm **Step 40C-36 25/25 focused tests PASSED**, **819/819 land regression tests PASSED**, **production Vite build PASSED** (250 modules, 18.67 s), and the **real disposable PostGIS independent geometry-publication LOGIN security smoke PASSED**. The npm upgrade notice and Vite large-bundle advisory are nonfatal. These results do NOT establish a live GIS redistribution license, actual source ingestion, a public map API, or production credentials.
 
-## Step 40C-37 changes — awaiting operator testing
+## Step 40C-37 changes — operator validated November 4, 2026
 
-**All new files are SERVER-ONLY, PRIVATE, UNMOUNTED and UNROUTED. None connect to production; no browser/HTTP route, DB migration, login, secret, PostGIS table, GIS source or Cesium property layer was changed.**
+**Operator screenshots confirm Step 40C-37 31/31 focused tests, the 835/835 land-development suite and a successful Vite production build (250 modules, 10.32 seconds), with zero failures. No new disposable multi-principal PostgreSQL test was included in this step.**\n\n**All new files are SERVER-ONLY, PRIVATE, UNMOUNTED and UNROUTED. None connect to production; no browser/HTTP route, DB migration, login, secret, PostGIS table, GIS source or Cesium property layer was changed.**
 
 1. `server/providers/bdp-parcel-verified-geometry-dependencies.js`: composes the prior sealed-source adapter + pinned source-authority SQL reader (Steps 40C-34/35), independent publication-review adapter + pinned publication-only SQL reader (Step 40C-36), and private sealed-geometry session/rights/quota runtime (Step 40C-33). It accepts **three distinct** server-injected connection factories, separate dedicated SQL LOGIN names for source and publication, distinct server-only session/cursor HMAC keys, a strongly current server session-digest lookup, an **atomic distributed quota** callback, and an optional trusted clock. Every source and review lookup is independently attested at the SQL principal level. The Step 40C-33 boundary revalidates session/county, immutable source run seal, source-caching approval, and separate redistribution review **before and after** the fixed geometry RPC. The only returned method is `readPrivatePage`, providing internal count/overflow/short-lived signed cursor only. **No GeoJSON or polygons can be serialized into its result.**
 2. `server/providers/bdp-parcel-sealed-geometry-rpc.js` and its existing 15-test runtime suite are updated to explicitly demand that the **geometry-only** SQL principal *cannot execute* the new sealed-source authority or independent geometry-publication-review RPCs. The query attestation is fail closed if either function is missing or a permission is unexpectedly granted.
@@ -24,7 +24,7 @@ npm.cmd run test:land
 npm.cmd run build
 ```
 
-Expected **31 focused tests** (16 new three-principal integration + 15 previously existing geometry runtime tests), pending local execution. Based on the prior **819/819** suite and 16 additional discovered cases, the new land suite may reach **835/835**; do not mark it passed until verified.
+Confirmed **31/31 focused tests** (16 new integration plus 15 existing runtime cases), **835/835 full land suite**, and a successful production build.
 
 **No new disposable PostGIS smoke was added in this step** because the source and publication SQL LOGINs were separately verified by their own real disposable tests in Steps 40C-35/36. This step tests in-process wiring synthetically only; **three simultaneously authenticated real PostGIS connections plus multi-transaction revocation coherence remain unverified**. Do not apply migrations or create/grant any production DB role for this step.
 
