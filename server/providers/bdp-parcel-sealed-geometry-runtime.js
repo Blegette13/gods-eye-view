@@ -30,7 +30,8 @@ const REVIEW_KEYS = [
 ];
 const CONFIG_KEYS = new Set([
   'sessionHmacKey', 'cursorHmacKey', 'findSessionByDigest',
-  'readSealedSource', 'readPublicationReview', 'consumeQuota', 'connect', 'now',
+  'readSealedSource', 'readPublicationReview', 'consumeQuota', 'connect',
+  'geometryLogin', 'now',
 ]);
 const REFUSE = null;
 
@@ -86,7 +87,7 @@ export function createPrivateSealedGeometryRuntime(config = {}) {
   const {
     sessionHmacKey, cursorHmacKey, findSessionByDigest,
     readSealedSource, readPublicationReview, consumeQuota, connect,
-    now = Date.now,
+    geometryLogin, now = Date.now,
   } = config;
   if (!Buffer.isBuffer(sessionHmacKey) || sessionHmacKey.length < 32
     || !Buffer.isBuffer(cursorHmacKey) || cursorHmacKey.length < 32
@@ -100,7 +101,7 @@ export function createPrivateSealedGeometryRuntime(config = {}) {
   const verifyCountySession = createTrustedParcelCountySessionVerifier({
     sessionHmacKey: sessionKey, findSessionByDigest, now,
   });
-  const rpc = createFixedSealedGeometryRpcReader({ connect });
+  const rpc = createFixedSealedGeometryRpcReader({ connect, expectedLogin:geometryLogin });
 
   async function loadCurrentAuthority({ sessionHandle, countyFips, signal } = {}) {
     if (typeof countyFips !== 'string' || !FIPS.test(countyFips)
