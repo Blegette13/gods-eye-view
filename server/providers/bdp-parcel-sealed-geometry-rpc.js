@@ -7,7 +7,7 @@ import { PRIVATE_PARCEL_KEYSET_RPC_SQL } from '../../src/bdp/ingestion/parcelKey
  *
  * DB connection and DBA-approved login are injected, never created here.
  * The separate geometry login must be denied SELECT/WRITE on base tables,
- * must not inherit metadata/old unsealed geometry functions, and may execute
+ * must not inherit metadata, source-authority, publication-review or old unsealed geometry functions, and may execute
  * ONLY reviewed sealed initial and keyset RPCs. A successful attestation is
  * NOT a substitute for DBA review or approval to redistribute geometry.
  * AbortSignal checks do not actively cancel in-flight node-postgres queries.
@@ -28,7 +28,8 @@ const PROOF_KEYS = [
   'no_parcel_table', 'no_coverage_table', 'no_rights_table',
   'sealed_initial_allowed', 'sealed_keyset_allowed',
   'unsealed_snapshot_denied', 'metadata_source_denied',
-  'metadata_viewport_denied',
+  'metadata_viewport_denied', 'sealed_authority_denied',
+  'publication_review_denied',
 ];
 
 /**
@@ -69,7 +70,13 @@ SELECT
     'EXECUTE') AS metadata_source_denied,
   NOT pg_catalog.has_function_privilege(session_user,
     'bdp_parcel_index.parcel_viewport_probe_rpc(text,text,bigint,double precision,double precision,double precision,double precision,integer)',
-    'EXECUTE') AS metadata_viewport_denied
+    'EXECUTE') AS metadata_viewport_denied,
+  NOT pg_catalog.has_function_privilege(session_user,
+    'bdp_parcel_index.parcel_sealed_source_authority_rpc(text)',
+    'EXECUTE') AS sealed_authority_denied,
+  NOT pg_catalog.has_function_privilege(session_user,
+    'bdp_parcel_index.parcel_geometry_publication_review_rpc(text,text)',
+    'EXECUTE') AS publication_review_denied
 `.trim();
 
 function exact(value, keys) {
