@@ -4,7 +4,7 @@
 
 The screenshots show **794/794 land-development tests PASSED**, **Vite production build PASSED** (250 modules, 12.35 seconds), and the opt-in **real disposable password-authenticated source-authority LOGIN PostGIS smoke PASSED twice** for Step 40C-35. The user's `git pull --ff-only origin bdp-development` printed `Already up to date`. The separate focused 20-test transcript was not included; the 794 result is consistent with all 20 new cases being discovered.
 
-**Step 40C-36 has now been committed, but the following 25 NEW local Node tests and the REAL disposable PostGIS publication-rights smoke are STILL PENDING operator validation.** An isolated JavaScript source-level evaluation checked the new test logic but does not replace operator Node execution, a PostgreSQL smoke or legal review.
+**Step 40C-36 is operator-validated November 4, 2026:** screenshots show **25/25 focused tests passed**, **819/819 land regression tests passed** with zero failures, **Vite production build passed** (250 modules, 18.67 seconds), and the opt-in **real disposable PostGIS independent geometry-review LOGIN smoke passed**, including rights expiry/revocation and privilege isolation. These are tests with synthetic records and do not grant production GIS publication rights.
 
 ## Code added
 
@@ -31,7 +31,7 @@ npm.cmd run test:land
 npm.cmd run build
 ```
 
-Expected focused tests: **25/25**, NOT yet operator-verified. Previous land suite was **794/794**; it may become **819/819** if all new tests are discovered. Stop and share the first failing test, if any.
+Confirmed focused tests: **25/25 passed**. Confirmed post-pull land suite: **819/819 passed** and production Vite build succeeded. The SQL smoke completed successfully. Stop and share the first failing test, if any.
 
 If Docker Desktop is running and all earlier checks pass, the real opt-in synthetic security smoke is:
 
