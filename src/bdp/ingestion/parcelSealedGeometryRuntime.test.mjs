@@ -13,6 +13,7 @@ import { PRIVATE_SEALED_INITIAL_RPC_SQL } from './parcelSealedInitialPagePlan.js
 import { PRIVATE_PARCEL_KEYSET_RPC_SQL } from './parcelKeysetPagination.js';
 
 const NOW = 1_000_000;
+const LOGIN_G = 'ldos_parcel_geometry_test';
 const SESSION_KEY = Buffer.alloc(32, 0x11);
 const CURSOR_KEY = Buffer.alloc(32, 0x22);
 const HANDLE = Buffer.alloc(32, 0x33).toString('base64url');
@@ -29,6 +30,8 @@ const proofKeys = [
   'unsealed_snapshot_denied','metadata_source_denied',
   'metadata_viewport_denied','sealed_authority_denied',
   'publication_review_denied',
+  'exact_login','safe_login','no_role_memberships','schema_usage',
+  'no_index_table_access','no_index_sequence_access','no_other_index_rpc',
 ];
 const proof = () => Object.fromEntries(proofKeys.map(key => [key,true]));
 const polygon = () => ({
@@ -78,6 +81,7 @@ function setup({
   let checkouts=0;
   const runtime=createPrivateSealedGeometryRuntime({
     sessionHmacKey:SESSION_KEY,cursorHmacKey:CURSOR_KEY,now:()=>NOW,
+    geometryLogin:LOGIN_G,
     findSessionByDigest:async(digest)=>{
       calls.push('session');
       assert.match(digest,/^[0-9a-f]{64}$/);
@@ -100,7 +104,9 @@ function setup({
           if(statement==='BEGIN TRANSACTION READ ONLY') {
             calls.push('begin');return {rows:[]};
           }
-          if(statement===SEALED_GEOMETRY_ROLE_ATTESTATION_SQL) {
+          if(typeof statement==='object'
+            &&statement.text===SEALED_GEOMETRY_ROLE_ATTESTATION_SQL) {
+            assert.deepEqual(statement.values,[LOGIN_G]);
             calls.push('role');return {rows:[dbProof]};
           }
           if(typeof statement==='object') {
@@ -126,7 +132,7 @@ test('rejects missing collaborators, unknown config, and reused HMAC keys',()=>{
     sessionHmacKey:SESSION_KEY,cursorHmacKey:CURSOR_KEY,
     findSessionByDigest:async()=>record(),readSealedSource:async()=>source(),
     readPublicationReview:async()=>review(),consumeQuota:async()=>true,
-    connect:async()=>null,
+    connect:async()=>null,geometryLogin:LOGIN_G,
   };
   assert.throws(()=>createPrivateSealedGeometryRuntime({...cfg,cursorHmacKey:SESSION_KEY}),TypeError);
   assert.throws(()=>createPrivateSealedGeometryRuntime({...cfg,unsafeBrowserFlag:true}),TypeError);
@@ -253,6 +259,9 @@ test('database role attestation denies missing rights or raw-table privileges',a
     {...proof(),sealed_keyset_allowed:false},
     {...proof(),no_parcel_table:false},
     {...proof(),unsealed_snapshot_denied:false},
+    {...proof(),exact_login:false},
+    {...proof(),no_other_index_rpc:false},
+    {...proof(),no_index_table_access:false},
     {...proof(),sealed_authority_denied:false},
     {...proof(),publication_review_denied:false},
     {...proof(),same_principal:false},
@@ -282,6 +291,7 @@ test('fixed RPC adapter rejects arbitrary SQL, mutable values and forged cursor'
   let connected=0;
   const executor=createFixedSealedGeometryRpcReader({
     connect:async()=>{connected++;throw new Error('should not connect');},
+    expectedLogin:LOGIN_G,
   });
   const signal=new AbortController().signal;
   for(const statement of [
