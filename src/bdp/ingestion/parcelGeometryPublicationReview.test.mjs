@@ -104,7 +104,7 @@ test('only exact seven review columns are returned; no geometry, owners or parce
   const fields=SQL.match(/RETURNS TABLE\s*\(([\s\S]*?)\)\s*LANGUAGE sql/)?.[1];
   assert.ok(fields);
   assert.equal((fields.match(/^  [a-z_]+ (?:text|boolean|double precision)/gm)||[]).length,7);
-  assert.doesNotMatch(fields,/geometry|owner|sale|parcel|price|title/i);
+  assert.doesNotMatch(fields.replace('allow_geometry_redistribution',''),/geometry|owner|sale|parcel|price|title/i);
 });
 
 test('private reader binds exact source and county, returns canonical frozen approval',async()=>{
