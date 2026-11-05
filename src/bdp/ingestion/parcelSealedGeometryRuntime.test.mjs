@@ -27,7 +27,8 @@ const proofKeys = [
   'no_parcel_table','no_coverage_table','no_rights_table',
   'sealed_initial_allowed','sealed_keyset_allowed',
   'unsealed_snapshot_denied','metadata_source_denied',
-  'metadata_viewport_denied',
+  'metadata_viewport_denied','sealed_authority_denied',
+  'publication_review_denied',
 ];
 const proof = () => Object.fromEntries(proofKeys.map(key => [key,true]));
 const polygon = () => ({
@@ -252,6 +253,8 @@ test('database role attestation denies missing rights or raw-table privileges',a
     {...proof(),sealed_keyset_allowed:false},
     {...proof(),no_parcel_table:false},
     {...proof(),unsealed_snapshot_denied:false},
+    {...proof(),sealed_authority_denied:false},
+    {...proof(),publication_review_denied:false},
     {...proof(),same_principal:false},
     {...proof(),extra:true},
   ]) {
