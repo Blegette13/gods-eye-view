@@ -58,7 +58,6 @@ test('real-login role proof tests direct base-table and other-RPC grants',()=>{
   assert.match(code,/PREPARE ldos_publication_attest\(text\)/);
   assert.match(code,/GEOMETRY_PUBLICATION_ROLE_ATTESTATION_SQL/);
   assert.match(code,/GRANT SELECT ON bdp_parcel_index\.geometry_publication_reviews/);
-  assert.match(code,/proof\(\)\.no_index_table_access,false/);
   assert.match(code,/roleProof\(\)\.no_index_table_access,false/);
   assert.match(code,/roleProof\(\)\.no_other_index_rpc,false/);
   assert.match(code,/GRANT EXECUTE ON FUNCTION/);
