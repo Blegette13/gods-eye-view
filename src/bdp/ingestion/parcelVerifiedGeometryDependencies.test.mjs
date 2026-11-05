@@ -94,6 +94,10 @@ function setup({
     events.push(kind+':connect');
     return {
       async query(stmt) {
+        if(kind==='geometry'&&stmt===SEALED_GEOMETRY_ROLE_ATTESTATION_SQL) {
+          events.push('geometry:attest');
+          return {rows:[geometryRole()]};
+        }
         if(typeof stmt==='string') {
           events.push(kind+':'+stmt);
           return {rows:[]};
@@ -117,10 +121,6 @@ function setup({
           events.push('review:rpc');counts.reviews++;
           assert.deepEqual(stmt.values,['48453','travis-cad']);
           return {rows:await reviewRows(counts.reviews)};
-        }
-        if(kind==='geometry'&&stmt===SEALED_GEOMETRY_ROLE_ATTESTATION_SQL) {
-          events.push('geometry:attest');
-          return {rows:[geometryRole()]};
         }
         if(kind==='geometry'&&typeof stmt==='object'
           &&[PRIVATE_SEALED_INITIAL_RPC_SQL,PRIVATE_PARCEL_KEYSET_RPC_SQL]
