@@ -3,9 +3,10 @@ import { buildPrivateSealedInitialRpcStatement, PRIVATE_SEALED_INITIAL_RPC_SQL }
 import { PRIVATE_PARCEL_KEYSET_RPC_SQL } from '../../src/bdp/ingestion/parcelKeysetPagination.js';
 
 /**
- * Step 40C-33 — UNROUTED, pinned, geometry-only, fixed-RPC SQL executor.
+ * Steps 40C-33 / 40C-38 — UNROUTED pinned geometry-only fixed-RPC executor.
  *
- * DB connection and DBA-approved login are injected, never created here.
+ * A dedicated geometry-only login is asserted against an EXACT server-pinned
+ * expected LOGIN on the same transaction as each RPC; never created here.
  * The separate geometry login must be denied SELECT/WRITE on base tables,
  * must not inherit metadata, source-authority, publication-review or old unsealed geometry functions, and may execute
  * ONLY reviewed sealed initial and keyset RPCs. A successful attestation is
@@ -15,6 +16,7 @@ import { PRIVATE_PARCEL_KEYSET_RPC_SQL } from '../../src/bdp/ingestion/parcelKey
 export const PRIVATE_SEALED_GEOMETRY_MAX_BYTES = 2_200_000;
 const TIMEOUT_MS = 1_200;
 const SOURCE_ID = /^[a-z][a-z0-9_-]{2,79}$/;
+const LOGIN = /^ldos_parcel_geometry_[a-z][a-z0-9_]{2,31}$/;
 const PARCEL_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/;
 const BIGINT_MAX = 9223372036854775807n;
 const ROW_KEYS = [
@@ -30,6 +32,8 @@ const PROOF_KEYS = [
   'unsealed_snapshot_denied', 'metadata_source_denied',
   'metadata_viewport_denied', 'sealed_authority_denied',
   'publication_review_denied',
+  'exact_login', 'safe_login', 'no_role_memberships', 'schema_usage',
+  'no_index_table_access', 'no_index_sequence_access', 'no_other_index_rpc',
 ];
 
 /**
@@ -76,7 +80,50 @@ SELECT
     'EXECUTE') AS sealed_authority_denied,
   NOT pg_catalog.has_function_privilege(session_user,
     'bdp_parcel_index.parcel_geometry_publication_review_rpc(text,text)',
-    'EXECUTE') AS publication_review_denied
+    'EXECUTE') AS publication_review_denied,
+  (current_user = session_user AND current_user = $1::text)
+    AS exact_login,
+  COALESCE((
+    SELECT r.rolcanlogin AND NOT (
+      r.rolsuper OR r.rolcreatedb OR r.rolcreaterole
+      OR r.rolreplication OR r.rolbypassrls OR r.rolinherit
+    ) FROM pg_catalog.pg_roles AS r WHERE r.rolname = session_user
+  ), FALSE) AS safe_login,
+  NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_auth_members AS m
+    JOIN pg_catalog.pg_roles AS r ON r.oid = m.member
+    WHERE r.rolname = session_user
+  ) AS no_role_memberships,
+  pg_catalog.has_schema_privilege(
+    session_user, 'bdp_parcel_index', 'USAGE'
+  ) AS schema_usage,
+  NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_class AS c
+    JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'bdp_parcel_index'
+      AND c.relkind IN ('r','p','v','m','f')
+      AND pg_catalog.has_table_privilege(session_user, c.oid,
+        'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER')
+  ) AS no_index_table_access,
+  NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_class AS c
+    JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'bdp_parcel_index'
+      AND c.relkind = 'S'
+      AND pg_catalog.has_sequence_privilege(
+        session_user, c.oid, 'USAGE,SELECT,UPDATE')
+  ) AS no_index_sequence_access,
+  NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_proc AS p
+    JOIN pg_catalog.pg_namespace AS n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'bdp_parcel_index'
+      AND p.oid NOT IN (
+        'bdp_parcel_index.parcel_geometry_sealed_initial_rpc(text,text,bigint,double precision,double precision,double precision,double precision,integer)'::regprocedure,
+        'bdp_parcel_index.parcel_geometry_keyset_rpc(text,text,bigint,double precision,double precision,double precision,double precision,integer,text,bigint)'::regprocedure
+      )
+      AND pg_catalog.has_function_privilege(
+        session_user, p.oid, 'EXECUTE')
+  ) AS no_other_index_rpc
 `.trim();
 
 function exact(value, keys) {
@@ -121,10 +168,14 @@ function validProof(value) {
 }
 
 /** Private rows stay in the server boundary. There is no public data return. */
-export function createFixedSealedGeometryRpcReader({ connect } = {}) {
-  if (typeof connect !== 'function') {
-    throw new TypeError('A pinned least-privileged geometry DB connection is required');
+export function createFixedSealedGeometryRpcReader(config = {}) {
+  if (!exact(config, ['connect','expectedLogin'])
+    || typeof config.connect !== 'function'
+    || typeof config.expectedLogin !== 'string'
+    || !LOGIN.test(config.expectedLogin)) {
+    throw new TypeError('Pinned geometry-only connection and fixed expected LOGIN required');
   }
+  const { connect, expectedLogin } = config;
   return Object.freeze({
     async querySealedRpc(input) {
       if (!exact(input, ['statement','signal'])
@@ -151,10 +202,14 @@ export function createFixedSealedGeometryRpcReader({ connect } = {}) {
         await client.query('SET LOCAL lock_timeout = 800');
         await client.query('SET LOCAL idle_in_transaction_session_timeout = 3000');
         if (input.signal.aborted
-          || !validProof(await client.query(SEALED_GEOMETRY_ROLE_ATTESTATION_SQL))) {
+          || !validProof(await client.query(Object.freeze({
+            text: SEALED_GEOMETRY_ROLE_ATTESTATION_SQL,
+            values: Object.freeze([expectedLogin]),
+          })))) {
           throw new Error('Geometry role not authorized');
         }
 
+        if (input.signal.aborted) throw new Error('Cancelled');
         // One parameterized, allowlisted invocation — NEVER arbitrary SQL.
         const result = await client.query({
           text: statement.text, values: [...statement.values],
