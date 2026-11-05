@@ -5,7 +5,7 @@
 The preceding Step 40C-34 now has **22/22** focused tests, **774/774** land regression tests, an explicitly verified land-test discovery list, a **passing Vite production build** (250 modules, 16.82 seconds), and a **real isolated disposable PostGIS security smoke PASS**. The last proof printed exactly:
 `PASS: disposable PostGIS sealed-source authority, isolated EXECUTE, latest-run gating and revocation.`
 
-This Step 40C-35 code has been committed to the existing `bdp-development` branch but **has NOT been locally verified by the operator**. No real BDP database migration or production grant/login was executed by this change.
+Operator screenshots on November 4, 2026 confirm the post-pull Step 40C-35 land regression suite **794/794 PASSED**, the **Vite production build PASSED** (250 transformed modules, 12.35 seconds), the **real isolated password-authenticated disposable PostGIS authority LOGIN smoke PASSED twice**, and `git pull --ff-only origin bdp-development` reported **Already up to date**. The isolated 20/20 focused test command was not shown in the latest image; their inclusion in the land-suite count is consistent with the prior 774 total, but do not assert that a standalone focused command was observed. No real BDP database migration or production grant/login was executed by this change.
 
 ## What was staged
 
@@ -31,7 +31,7 @@ npm.cmd run test:land
 npm.cmd run build
 ```
 
-**Expected new focused test count: 20/20**, but this has **not yet been operator confirmed**. A complete land-development suite should include the 20 additional cases (prior observed count 774); do not assert 794 until the run finishes.
+The full land suite including the newly staged tests was **operator-confirmed 794/794**, with **no failures**. A separate standalone 20-test focused transcript was not supplied.
 
 **If and only if Docker Desktop is available and all prior checks passed**, run the disposable synthetic actual-LOGIN test:
 
