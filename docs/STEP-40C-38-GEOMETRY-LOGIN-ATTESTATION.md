@@ -18,7 +18,7 @@ The **existing** server-only, UNROUTED geometry-only fixed RPC reader now requir
 
 **New files:** `src/bdp/ingestion/parcelGeometryLoginAttestation.test.mjs` contains **12 focused synthetic tests** for the exact login, read-only transaction, entire parcel-index privilege boundary, SQL allowlisting, malformed rows, cancellation and rollback. `scripts/bdp/parcel-geometry-login-disposable-smoke.mjs` is an explicit opt-in **REAL disposable PostGIS** security smoke that installs only synthetic parcel/rights/seal fixtures and DBA-review SQL inside a fresh network-disabled Docker container, creates a one-use SCRAM password-authenticated `ldos_parcel_geometry_test` LOGIN, grants it ONLY both sealed RPCs, runs the new catalog attestation under the actual LOGIN (not SET ROLE), tests wrong expected login, denied base tables, additional grant/membership drift, default unsealed/unreviewed denial, and publication revocation. The script removes its test container and volume afterward. `src/bdp/ingestion/parcelGeometryLoginDisposableSmoke.test.mjs` has **8** additional static/disposable-only safety checks.
 
-**Status:** All Step 40C-38 files are COMMITTED / STAGED ONLY. The 12+8 new tests and real disposable SQL smoke are **NOT YET OPERATOR-VERIFIED**. Source inspection and simulated JS contract checks are not substitutes for operator Node and PostgreSQL execution. No SQL was applied to an existing BDP database, no production role created and no legal redistribution approval added. Never enable browser geometry from these tests.
+**Operator verification complete (November 6, 2026):** PowerShell screenshots show **51/51 focused tests PASSED**, **855/855 land-development regression tests PASSED**, **Vite production build PASSED** (250 modules; 4.91 seconds), and the **real isolated, password-authenticated PostGIS geometry-only LOGIN smoke PASSED**. No failures were shown. These are developer validations with synthetic GIS records, not permission to redistribute real county geometry. No SQL was applied to an existing BDP database, no production role created and no legal redistribution approval added. Never enable browser geometry from these tests.
 
 ## Operator validation — existing PowerShell (one command at a time)
 
@@ -30,7 +30,7 @@ npm.cmd run test:land
 npm.cmd run build
 ```
 
-Expected **51 focused cases**: 12 new role tests + 8 new smoke guard tests + 16 existing cross-principal integration + 15 existing geometry runtime tests. Prior full land suite was 835/835; it may become **855/855**, but the result must be observed before marking passed. STOP on first failure and do not run any production SQL.
+**Confirmed:** 51/51 focused cases (12 role + 8 smoke guard + 16 integration + 15 runtime), 855/855 land regression cases, successful build and real isolated SQL smoke. STOP on first failure and do not run any production SQL.
 
 **If Docker Desktop is available and the earlier checks pass**, run only the disposable synthetic real-PostGIS smoke:
 
