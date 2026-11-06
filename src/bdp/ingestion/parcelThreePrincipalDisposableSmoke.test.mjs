@@ -37,7 +37,7 @@ test('smoke uses a fresh isolated PostGIS instance without host connectivity',()
   assert.match(source,/docker\(\['rm','--force','--volumes',name\]/);
 });
 
-test('only six reviewed schema drafts and three synthetic setup fixtures load',()=>{
+test('only staged SQL foundations and synthetic fixtures are loaded',()=>{
   for (const item of [
     'parcelIndexFoundation.sql',
     'parcelRestrictedRpcFoundation.sql',
