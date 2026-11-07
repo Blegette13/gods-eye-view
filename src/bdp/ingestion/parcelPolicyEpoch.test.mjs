@@ -56,7 +56,8 @@ test('transactional UPSERT uses prior locked epoch not unsafe sequence nextval',
   assert.match(sql,/epoch = existing\.epoch \+ 1/);
   assert.match(sql,/SECURITY DEFINER/);
   assert.match(sql,/SET search_path = pg_catalog, pg_temp/);
-  assert.doesNotMatch(sql,/SELECT max\(epoch\)|\bnextval\s*\(/i);
+  const statements=sql.split('\n').filter(line=>!line.trim().startsWith('--')).join('\n');
+  assert.doesNotMatch(statements,/SELECT max\(epoch\)|\bnextval\s*\(/i);
 });
 
 test('counter cannot be directly selected by existing metadata or PUBLIC role',()=>{
