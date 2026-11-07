@@ -1,6 +1,6 @@
 # Step 40C-40 — Durable transaction-serialized policy epochs (STAGED / NO PRODUCTION MIGRATION)
 
-**Checkpoint: November 6, 2026**
+**Checkpoint: November 7, 2026 — OPERATOR-VALIDATED SYNTHETIC MILESTONE (NOT DEPLOYED)**
 
 Operator screenshot confirms Step 40C-39 **869/869 land-development regression tests PASSED**, Vite **production build PASSED** (250 modules; 4.92 s), and the actual opt-in **disposable PostGIS three-independent-LOGIN smoke PASSED**. The separate focused 14-case transcript was not included in the screenshot, but the land suite total rose by 14 from the previous 855. The Vite large-chunk warning remains nonfatal. Three database identities were verified in one test database with sequential, fresh SQL sessions; concurrent pooled-connection races remain untested.
 
@@ -32,7 +32,7 @@ npm.cmd run test:land
 npm.cmd run build
 ```
 
-Expected **16/16 focused checks**, **885 total land tests** if all new tests are discovered (869 previous + 16 new), and a successful production build. None of these outcomes are operator-confirmed yet.
+Operator screenshot confirms **885/885 complete land tests PASSED**, **Vite production build PASSED** (250 modules; 5.25 s), and **real isolated PostGIS policy-epoch smoke PASSED**, covering ABA and rollback in synthetic data. The focused 16-case command is not visible in the screenshot, but the full suite increased by 16. No production migration was performed.
 
 With Docker Desktop running and ONLY if those checks are green:
 
