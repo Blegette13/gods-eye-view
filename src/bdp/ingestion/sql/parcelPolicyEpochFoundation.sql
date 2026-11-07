@@ -26,6 +26,13 @@ REVOKE ALL ON TABLE bdp_parcel_index.parcel_policy_epochs FROM PUBLIC;
 REVOKE ALL ON TABLE bdp_parcel_index.parcel_policy_epochs
   FROM ldos_parcel_rpc_client;
 
+-- Lock BOTH rights tables against concurrent writes while backfilling and
+-- creating triggers in this one transaction. Without this, installation
+-- could miss a committed approval/revocation between seed and trigger.
+LOCK TABLE bdp_parcel_index.source_registry,
+  bdp_parcel_index.geometry_publication_reviews
+  IN SHARE ROW EXCLUSIVE MODE;
+
 -- Backfill existing records in the same transaction BEFORE installing
 -- triggers. Initial epoch=1 means only "initially known", NOT historical
 -- proof: historical rights changes cannot be reconstructed.
@@ -55,6 +62,12 @@ DECLARE
 BEGIN
   IF TG_TABLE_SCHEMA IS DISTINCT FROM 'bdp_parcel_index' THEN
     RAISE EXCEPTION 'Unrecognized policy trigger schema'
+      USING ERRCODE='42501';
+  END IF;
+  -- TRUNCATE bypasses row INSERT/UPDATE/DELETE triggers in PostgreSQL.
+  -- Never allow it to silently erase all rights without epoch increments.
+  IF TG_OP = 'TRUNCATE' THEN
+    RAISE EXCEPTION 'Policy rights TRUNCATE prohibited'
       USING ERRCODE='42501';
   END IF;
   IF TG_TABLE_NAME = 'source_registry' THEN
@@ -120,6 +133,18 @@ CREATE TRIGGER geometry_publication_epoch_increment
   AFTER INSERT OR UPDATE OR DELETE
   ON bdp_parcel_index.geometry_publication_reviews
   FOR EACH ROW EXECUTE FUNCTION
+    bdp_parcel_index.bump_parcel_policy_epoch();
+
+-- Statement-level TRUNCATE barriers are mandatory: row triggers do not
+-- fire for TRUNCATE. The same fixed SECURITY DEFINER function refuses it.
+CREATE TRIGGER source_cache_epoch_no_truncate
+  BEFORE TRUNCATE ON bdp_parcel_index.source_registry
+  FOR EACH STATEMENT EXECUTE FUNCTION
+    bdp_parcel_index.bump_parcel_policy_epoch();
+
+CREATE TRIGGER geometry_publication_epoch_no_truncate
+  BEFORE TRUNCATE ON bdp_parcel_index.geometry_publication_reviews
+  FOR EACH STATEMENT EXECUTE FUNCTION
     bdp_parcel_index.bump_parcel_policy_epoch();
 
 COMMENT ON TABLE bdp_parcel_index.parcel_policy_epochs IS
