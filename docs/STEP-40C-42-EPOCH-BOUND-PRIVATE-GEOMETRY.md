@@ -1,6 +1,6 @@
 # Step 40C-42 — Epoch-bound PRIVATE geometry proof / cursor integration (STAGED — UNROUTED)
 
-**Checkpoint: November 7, 2026**
+**Checkpoint: November 7, 2026 — operator full regression and build verified**
 
 ## Verified previous milestone
 
@@ -28,7 +28,7 @@ npm.cmd run test:land
 npm.cmd run build
 ```
 
-Expected **48/48 focused cases** (17 new + 16 prior cross-principal + 15 prior geometry runtime), **928/928 full land cases** (911 previous + 17 new), and a Vite production build. These expected outcomes are **NOT operator confirmed**. Stop immediately on the first failure. No new real PostGIS disposable smoke is added this step: existing 40C-41 real PostGIS isolated epoch role is separately operator validated, but this new four-principal in-process wiring is **synthetic only**.
+Expected **48/48 focused cases** (17 new + 16 prior cross-principal + 15 prior geometry runtime), **928/928 full land cases** (911 previous + 17 new), and a Vite production build. Operator screenshots show **928/928 land tests passed** and **Vite production build succeeded** (250 modules, 4.46 s). The focused command's visible portion is green, but its final test summary is not captured, so **48/48 focused is not independently confirmed from this screenshot**. Stop immediately on the first failure. No new real PostGIS disposable smoke is added this step: existing 40C-41 real PostGIS isolated epoch role is separately operator validated, but this new four-principal in-process wiring is **synthetic only**.
 
 **Never apply any migration, create DB roles, grant execution or mount public parcel geometry for this step.** The original God's Eye View/Cesium Free Explorer at **2.4 km**, existing Travis County CAD overlays and Property Intelligence panel remain unchanged.
 
