@@ -2,6 +2,7 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { createTrustedParcelCountySessionVerifier } from './bdp-parcel-county-session.js';
 import { createPrivateSealedGeometryReadBoundary } from '../../src/bdp/ingestion/parcelPrivateGeometryReadBoundary.js';
 import { createFixedSealedGeometryRpcReader } from './bdp-parcel-sealed-geometry-rpc.js';
+import { isCanonicalPrivatePolicyEpochSnapshot } from './bdp-parcel-policy-epoch-reader.js';
 
 /**
  * Step 40C-33 — PRIVATE/UNROUTED trusted-dependency composition.
@@ -31,9 +32,16 @@ const REVIEW_KEYS = [
 const CONFIG_KEYS = new Set([
   'sessionHmacKey', 'cursorHmacKey', 'findSessionByDigest',
   'readSealedSource', 'readPublicationReview', 'consumeQuota', 'connect',
-  'geometryLogin', 'now',
+  'geometryLogin', 'now', 'readPolicyEpochSnapshot',
+  'readSessionCountyEpoch', 'readSealedRunEpoch',
 ]);
 const REFUSE = null;
+const PG_MAX=9223372036854775807n;
+const EPOCH_CALLBACKS=['readPolicyEpochSnapshot','readSessionCountyEpoch','readSealedRunEpoch'];
+function epochValue(value){
+  if(typeof value!=='string'||!/^[1-9][0-9]{0,18}$/.test(value))return false;
+  try{return BigInt(value)<=PG_MAX;}catch{return false;}
+}
 
 function exact(object, keys) {
   if (!object || typeof object !== 'object' || Array.isArray(object)) return false;
@@ -88,6 +96,7 @@ export function createPrivateSealedGeometryRuntime(config = {}) {
     sessionHmacKey, cursorHmacKey, findSessionByDigest,
     readSealedSource, readPublicationReview, consumeQuota, connect,
     geometryLogin, now = Date.now,
+    readPolicyEpochSnapshot,readSessionCountyEpoch,readSealedRunEpoch,
   } = config;
   if (!Buffer.isBuffer(sessionHmacKey) || sessionHmacKey.length < 32
     || !Buffer.isBuffer(cursorHmacKey) || cursorHmacKey.length < 32
@@ -97,6 +106,17 @@ export function createPrivateSealedGeometryRuntime(config = {}) {
       consumeQuota, connect, now].some((value) => typeof value !== 'function')) {
     throw new TypeError('Distinct HMAC keys and verified private collaborators required');
   }
+  // v1 (no epoch callbacks) is retained for existing isolated tests only.
+  // v2 rejects partial epoch provisioning. The strict v2 factory requires
+  // all three callbacks and separately pinned epoch-only SQL credentials.
+  const supplied=EPOCH_CALLBACKS.filter(k=>Object.hasOwn(config,k));
+  if(supplied.length!==0&&supplied.length!==EPOCH_CALLBACKS.length
+    ||supplied.length===EPOCH_CALLBACKS.length
+      &&[readPolicyEpochSnapshot,readSessionCountyEpoch,readSealedRunEpoch]
+        .some(fn=>typeof fn!=='function')) {
+    throw new TypeError('All independently trusted epoch readers are mandatory together');
+  }
+  const epochMode=supplied.length===EPOCH_CALLBACKS.length;
   const sessionKey = Buffer.from(sessionHmacKey);
   const verifyCountySession = createTrustedParcelCountySessionVerifier({
     sessionHmacKey: sessionKey, findSessionByDigest, now,
@@ -130,17 +150,50 @@ export function createPrivateSealedGeometryRuntime(config = {}) {
         || !validSource(source, countyFips, clock)
         || !validReview(review, source, clock)) return REFUSE;
 
-      // A change to ANY sealed-run, cache or publication fact invalidates
-      // continuation tokens and post-query checks, even if the caller forgot
-      // to bump a manually managed policy version number.
+      // Step 40C-42: do not infer epochs from the currently approved facts.
+      // Epochs are supplied by separate, strongly current authoritative
+      // stores. They remain necessary but NOT sufficient for delivery.
+      let epochRevisions=null;
+      if(epochMode) {
+        const session=await readSessionCountyEpoch(Object.freeze({
+          sessionDigest,countyFips,signal,
+        }));
+        if(signal.aborted||!exact(session,['sessionDigest','countyFips','epoch'])
+          ||session.sessionDigest!==sessionDigest
+          ||session.countyFips!==countyFips||!epochValue(session.epoch))return REFUSE;
+        const run=await readSealedRunEpoch(Object.freeze({
+          countyFips,sourceId:source.sourceId,runId:source.runId,signal,
+        }));
+        if(signal.aborted||!exact(run,['countyFips','sourceId','runId','epoch'])
+          ||run.countyFips!==countyFips||run.sourceId!==source.sourceId
+          ||run.runId!==source.runId||!epochValue(run.epoch))return REFUSE;
+        const policy=await readPolicyEpochSnapshot(Object.freeze({
+          countyFips,sourceId:source.sourceId,signal,
+        }));
+        if(signal.aborted||!isCanonicalPrivatePolicyEpochSnapshot(policy)
+          ||policy.sourceId!==source.sourceId||policy.countyFips!==countyFips)
+          return REFUSE;
+        epochRevisions=Object.freeze([
+          session.epoch,run.epoch,policy.sourceCacheEpoch,policy.publicationEpoch,
+        ]);
+        clock=now();
+        if(!Number.isSafeInteger(clock)||clock<=0
+          ||!validSource(source,countyFips,clock)
+          ||!validReview(review,source,clock))return REFUSE;
+      }
+
+      // The v2 fingerprint includes transactionally maintained epochs so
+      // A→B→A changes invalidate post-read pages AND HMAC-bound keyset cursors.
+      // v1 remains unchanged for legacy synthetic regression fixtures.
       const publicationRevision = createHash('sha256').update(JSON.stringify([
-        'ldos-sealed-geometry-authority-v1',
+        epochMode?'ldos-sealed-geometry-authority-v2':'ldos-sealed-geometry-authority-v1',
         source.sourceId, source.countyFips, source.rightsState,
         source.approvedCachingUntilMs, source.runId, source.sourceVersion,
         source.sealedAtMs, source.indexedRecords, source.sealedRun,
         review.sourceId, review.countyFips, review.reviewState,
         review.allowGeometryRedistribution, review.reviewReference,
         review.reviewedAtMs, review.expiresAtMs,
+        ...(epochRevisions??[]),
       ])).digest('hex');
       return Object.freeze({
         allowed: true, countyFips,
