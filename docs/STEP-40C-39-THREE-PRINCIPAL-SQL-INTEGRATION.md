@@ -1,6 +1,6 @@
 # Step 40C-39 — Three-principal disposable PostGIS integration and revocation-coherence design
 
-**Status: STAGED / UNROUTED — OPERATOR TESTS PENDING. November 6, 2026.**
+**Status: OPERATOR-VALIDATED DISPOSABLE TEST MILESTONE — STILL UNROUTED / NOT PRODUCTION DEPLOYED. November 6, 2026.**
 
 ## Previous milestone confirmed
 
@@ -16,7 +16,7 @@ No production migration, SQL grant/login, PG pool, session cookie, API endpoint,
 
 ## What this DOES and DOES NOT prove
 
-A successful real disposable smoke will prove that the three **actual PostgreSQL identities** can exercise their separate reviewed functions **in one test database**, reject each other's grants, and respond to sequential SQL revocation transitions with fresh separate transactions.
+The operator-confirmed successful real disposable smoke demonstrates that the three **actual PostgreSQL identities** can exercise their separate reviewed functions **in one test database**, reject each other's grants, and respond to sequential SQL revocation transitions with fresh separate transactions.
 
 It will **NOT** verify simultaneous long-lived pooled connections, atomicity among all three role transactions, actual session/MFA revocation, browser publishability, protected tile delivery, live commercial GIS rights, or real multi-user quotas. In particular, the smoke uses separate completed SQL transactions in a controlled sequence; it is **not a concurrent three-connection race test**.
 
@@ -36,7 +36,7 @@ Before mounting any browser/public transport, require independently audited dura
     npm.cmd run test:land
     npm.cmd run build
 
-Expected **14/14 new guard tests**, and the full suite may reach **869/869** (previously 855/855) if discovery includes the new file. These outcomes are **NOT yet operator-verified**.
+PowerShell screenshot confirms **869/869 full land tests PASSED**, **production Vite build PASSED (250 modules; 4.92 seconds)**, and the **real disposable three-independent-LOGIN PostgreSQL smoke PASSED**. The screenshot does not show the separate 14-test focused command output, but the full 869-test suite includes 14 more tests than the preceding 855 suite. The Vite large-chunk advisory is nonfatal.
 
 With Docker Desktop running and the earlier checks green:
 
