@@ -40,6 +40,12 @@ test('both rights tables have INSERT UPDATE DELETE revision triggers',()=>{
   assert.match(sql,/CREATE TRIGGER geometry_publication_epoch_increment/);
   assert.equal((sql.match(/AFTER INSERT OR UPDATE OR DELETE/g)||[]).length,2);
   assert.equal((sql.match(/FOR EACH ROW EXECUTE FUNCTION/g)||[]).length,2);
+  assert.match(sql,/LOCK TABLE bdp_parcel_index.source_registry,/);
+  assert.match(sql,/bdp_parcel_index.geometry_publication_reviews\s+IN SHARE ROW EXCLUSIVE MODE/);
+  assert.match(sql,/CREATE TRIGGER source_cache_epoch_no_truncate/);
+  assert.match(sql,/CREATE TRIGGER geometry_publication_epoch_no_truncate/);
+  assert.equal((sql.match(/BEFORE TRUNCATE ON/g)||[]).length,2);
+  assert.match(sql,/Policy rights TRUNCATE prohibited/);
 });
 
 test('trigger chooses policy scope from trusted table, never supplied epoch',()=>{
@@ -94,6 +100,9 @@ test('Docker uses no network, host ports, bind mounts or persistent database',()
   assert.match(smoke,/'POSTGRES_HOST_AUTH_METHOD=scram-sha-256'/);
   assert.match(smoke,/replaceAll\(password,'\[redacted\]'\)/);
   assert.doesNotMatch(smoke,/connectionString|bdp-postgis|new Pool\(|\.listen\(/);
+  assert.match(smoke,/TRUNCATE bdp_parcel_index.geometry_publication_reviews/);
+  assert.match(smoke,/TRUNCATE bdp_parcel_index.source_registry CASCADE/);
+  assert.match(smoke,/Policy rights TRUNCATE prohibited/);
 });
 
 test('smoke uses only invented source fixtures and exact reviewed schema drafts',()=>{
