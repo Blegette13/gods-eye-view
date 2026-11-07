@@ -90,14 +90,16 @@ BEGIN
 
   -- On an attempted primary-key move, invalidate the previous source
   -- as well; never silently reuse a stale revision for the old identity.
-  IF TG_OP = 'UPDATE' AND OLD.source_id IS DISTINCT FROM NEW.source_id THEN
-    INSERT INTO bdp_parcel_index.parcel_policy_epochs AS existing
-      (policy_scope,source_id,epoch,modified_at)
-    VALUES (v_scope,OLD.source_id,1,clock_timestamp())
-    ON CONFLICT (policy_scope,source_id)
-    DO UPDATE SET
-      epoch = existing.epoch + 1,
-      modified_at = clock_timestamp();
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.source_id IS DISTINCT FROM NEW.source_id THEN
+      INSERT INTO bdp_parcel_index.parcel_policy_epochs AS existing
+        (policy_scope,source_id,epoch,modified_at)
+      VALUES (v_scope,OLD.source_id,1,clock_timestamp())
+      ON CONFLICT (policy_scope,source_id)
+      DO UPDATE SET
+        epoch = existing.epoch + 1,
+        modified_at = clock_timestamp();
+    END IF;
   END IF;
   RETURN NULL;
 END;
