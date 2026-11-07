@@ -1,0 +1,51 @@
+# Step 40C-44 — Concurrent PostGIS epoch races (STAGED / UNROUTED)
+
+**Checkpoint: November 7, 2026. Operator validation PENDING for this step.**
+
+## Verified Step 40C-43
+
+Operator screenshot confirms **947/947 land regression tests passed**, **Vite production build succeeded** (250 modules, **4.33 seconds**) and **real disposable PostGIS session/county and sealed-run epoch smoke PASSED**. The screenshot did not include the separate 19-case focused output, though all 19 were included in the increased full suite. The yellow Vite bundle-size warning is advisory. Nothing in those tests creates a real county GIS redistribution license or production session store.
+
+## Scope of 40C-44
+
+- `scripts/bdp/parcel-epoch-concurrency-disposable-smoke.mjs`: a NEW **strict opt-in** synthetic PostGIS smoke, creating a fresh random Docker container with `--network none`, no exposed port, no bind mount and no existing database connection. It installs only reviewed synthetic index, publication-rights, sealed-run, dual-policy-epoch, session/county-epoch and run-selection-epoch draft SQL.
+- Unlike the earlier sequential multi-login smokes, this test creates **two independently live PostgreSQL backend processes** via `docker exec -i ... psql`. The first holds an UPDATE transaction uncommitted; the second starts a conflicting UPDATE on the same domain key. A separate PostgreSQL session must observe the second backend in `pg_stat_activity.wait_event_type = 'Lock'`. This proves genuine database-level overlap without relying on an arbitrary `pg_sleep` delay.
+- While the second writer is actually waiting, an independent committed read must still see the PREVIOUS epoch and rights facts. Only after the first commit may the second UPDATE complete. Before the second commit an independent read must see exactly the first committed epoch. After both transactions commit the durable version must have increased by **two**, even if the final rights facts are identical to their original values (**ABA**).
+- Three independent domains are tested: session/county discovery permission, geometry-publication legal-review state (synthetic and initially unreviewed), and unsealed ingest-run/source-selection state. A separate fourth race forces the first session/county writer to **ROLLBACK**; only the second committed update is allowed to increment the epoch.
+- Strict final cleanup ends open psql workers and deletes the disposable container plus volume. No actual county data, user MFA, real DB credentials, persistent role, HTTP endpoint or browser geometry is involved.
+- `src/bdp/ingestion/parcelEpochConcurrency.test.mjs`: **14 new Node tests** for exact opt-in, isolated Docker invocation, separate live backends, lock proof, committed visibility, epoch ABA, rollback, no private data leak and cleanup. Source-level simulated verification was **14/14** and the script JavaScript parsed successfully when staged; these are **NOT** a real Node execution or concurrent PostGIS smoke result.
+
+## What this does NOT yet prove
+
+This experiment checks PostgreSQL transaction locking and version increments within a **single disposable DB** for three synthetic policy-change tables. It does not prove distributed session-store consistency, cross-service snapshots, replica freshness, real current-run RPC authority, runtime cancellation, concurrent HTTP response authorization, or secure client-facing polygon delivery. A version increment by itself is not source/redistribution permission. Database-owner trigger tampering, restore-to-old-backup versions, access-role creation, online migrations and crash recovery remain separate DBA work. The 40C-43 session-grant store is synthetic, not integrated with a real identity provider.
+
+**A database race test cannot eliminate the final time-of-check/time-of-use window between authorization and network response release.** Future public geometry requires a separate, agreed-upon linearization point tied to an authoritative current session, county grant, seal and GIS rights state, plus explicit post-revocation behavior. Do not claim that pre/post checks alone solve this.
+
+## Operator commands — existing PowerShell (run individually)
+
+```powershell
+git pull --ff-only origin bdp-development
+node --test src/bdp/ingestion/parcelEpochConcurrency.test.mjs
+npm.cmd run test:land
+npm.cmd run build
+```
+
+Expected: **14/14 focused** and **961/961 land tests** (947 previous + 14 new), assuming no additional commits; these are **unverified predictions**. Stop at the first failure. The Vite chunk warning remains nonfatal.
+
+**Only with Docker Desktop running and all previous commands green:**
+
+```powershell
+node scripts/bdp/parcel-epoch-concurrency-disposable-smoke.mjs --disposable-only
+```
+
+Expected message:
+
+`PASS: disposable PostGIS concurrent epoch writers serialize, ABA increments and rollback preserves committed state.`
+
+This command creates a fresh isolated PostGIS instance and does **not** connect to the local land-development DB.
+
+## Next phase: 40C-45
+
+Stage a private, fixed, separately attested source/run-epoch RPC that checks the **specific newest finished sealed run**; design the real session/county grant epoch trust boundary; test cancellation and controlled release-time decisions; address DB-level backup/revision rollback risk. No production geometry until DBA, authentication and GIS licensing review is independently completed.
+
+**God’s Eye View/Cesium UI, Free Explorer 2.4 km threshold, Travis County browse boundaries and Property Intelligence panel are unchanged.**
