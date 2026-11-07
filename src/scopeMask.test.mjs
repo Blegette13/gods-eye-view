@@ -14,6 +14,8 @@ import {
   installScopeMask,
   destroyScopeMask,
   setScopeMaskEnabled,
+  setScopeMaskAvailable,
+  isScopeMaskEnabled,
   setScopeMaskFeather,
   SCOPE_TERMINUS_MIN_PCT,
   SCOPE_TERMINUS_MAX_PCT,
@@ -159,6 +161,35 @@ function stubScopeMaskDom({ width = 1000, height = 800, dpr = 1 } = {}) {
     },
   };
 }
+
+test('land-development scope availability gate prevents rendering on boot and share restores', () => {
+  const dom = stubScopeMaskDom({ width: 1000, height: 800 });
+  try {
+    // Product boot config runs before original scope canvas installation.
+    setScopeMaskAvailable(false);
+    assert.equal(isScopeMaskEnabled(), false);
+    installScopeMask({ container: dom.container });
+    assert.equal(dom.ops.resizes, 0, 'no full-viewport scope allocation when unavailable');
+    assert.equal(dom.ops.fills, 0, 'full map must remain unmasked');
+
+    // The old share-link/UI restoration may request a tactical scope later.
+    setScopeMaskEnabled(true);
+    assert.equal(isScopeMaskEnabled(), false);
+    assert.equal(dom.ops.fills, 0, 'restoration cannot repaint a forbidden scope');
+    dom.setDpr(2);
+    assert.equal(dom.ops.resizes, 0, 'no hidden mask backing-store work');
+
+    // Default upstream mode is unchanged if the embedding product allows it.
+    setScopeMaskAvailable(true);
+    assert.equal(isScopeMaskEnabled(), false, 'availability alone does not surprise-enable');
+    setScopeMaskEnabled(true);
+    assert.equal(isScopeMaskEnabled(), true);
+    assert.ok(dom.ops.fills > 0, 'upstream scope still works when explicitly enabled');
+  } finally {
+    destroyScopeMask();
+    dom.restore();
+  }
+});
 
 test('a DPR change with no resize still repaints the backing store', () => {
   const dom = stubScopeMaskDom({ width: 1000, height: 800, dpr: 1 });

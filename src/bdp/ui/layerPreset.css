@@ -1,0 +1,49 @@
+.bdp-layer-section-label {
+  pointer-events: auto;
+}
+
+.bdp-layer-section-kicker,
+.bdp-layer-section-title,
+.bdp-layer-section-rule {
+  pointer-events: none;
+}
+
+.bdp-layer-section-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.bdp-layer-preset-button {
+  min-width: 44px;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid rgba(0, 212, 255, 0.18);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  background: rgba(0, 212, 255, 0.035);
+  font-family: var(--font-mono);
+  font-size: 7px;
+  font-weight: 600;
+  letter-spacing: 0.9px;
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.bdp-layer-preset-button:hover,
+.bdp-layer-preset-button:focus-visible {
+  color: var(--accent);
+  border-color: rgba(0, 212, 255, 0.42);
+  background: rgba(0, 212, 255, 0.07);
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.08);
+}
+
+.bdp-layer-preset-button[data-busy='true'] {
+  cursor: progress;
+  opacity: 0.58;
+}

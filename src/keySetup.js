@@ -15,8 +15,16 @@
  */
 
 /** Chip label — pure, exported for tests. */
-export function keySetupChipLabel(status) {
+export function keySetupChipLabel(status, product = null) {
   const missing = Math.max(0, (status?.total || 0) - (status?.setCount || 0));
+  // The legacy diagnostic label stays unchanged for upstream callers/tests.
+  // A land-development operator sees a neutral provider-settings label;
+  // unconfigured optional OSINT credentials are not presented as blockers.
+  if (product === 'land-development-os') {
+    return missing > 0
+      ? `Provider settings · ${missing} unconfigured`
+      : 'Provider settings';
+  }
   return missing > 0 ? `POWER UP · ${missing} ${missing === 1 ? 'KEY' : 'KEYS'} WAITING` : 'POWERED UP';
 }
 
@@ -189,7 +197,7 @@ export async function initKeySetup({ documentRef = globalThis.document, fetchImp
   const render = (nextStatus) => {
     if (disposed) return;
     status = nextStatus;
-    chipLabel.textContent = keySetupChipLabel(status);
+    chipLabel.textContent = keySetupChipLabel(status, documentRef?.body?.dataset?.bdpProduct);
     // Fully powered is the owner's clean screen: the chip retires. The dialog
     // stays reachable this session (and via ?setup=1) to swap or verify keys.
     chip.hidden = status.setCount >= status.total;
