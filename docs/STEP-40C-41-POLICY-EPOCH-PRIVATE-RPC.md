@@ -1,6 +1,6 @@
 # Step 40C-41 — Privileged fixed policy-epoch reads (STAGED / NOT DEPLOYED)
 
-**Checkpoint: November 7, 2026**
+**Checkpoint: November 7, 2026 — operator test validation confirmed; build screenshot not supplied**
 
 ## Confirmed Step 40C-40
 
@@ -15,7 +15,7 @@ The operator's screenshot shows **885/885 land-development tests passed**, **Vit
 5. `scripts/bdp/parcel-epoch-login-disposable-smoke.mjs` — opt-in synthetic real PostGIS test using one fresh network-disabled Docker container, no mapped ports, no host mounts and no existing database. It creates a one-time password-authenticated epoch-only LOGIN and grants only the fixed epoch RPC, proves raw table/function denial, exact role attestation, source and legal review version changes through A→B→A, exact unknown county/source handling, and fail-closed results after privilege creep. Removes the disposable container and its volumes afterward.
 6. `src/bdp/ingestion/parcelPolicyEpochLoginDisposableSmoke.test.mjs` — **8 new safety checks** for Docker isolation, explicit `--disposable-only`, synthetic fixtures, exact principal, privilege drift, separate policy versions, cleanup and credential redaction.
 
-**Total NEW automated tests: 26**. These are staged but **NOT operator validated yet**. A source-level contract simulation of the 18 reader tests and 8 smoke-guard tests was performed when staged, but that is **not** a Node execution, real PostgreSQL test, or production security review.
+**Operator screenshots now confirm 26/26 focused tests, 911/911 full land regression tests, and PASS for the real disposable PostGIS epoch-only SQL LOGIN smoke.** No failed tests were shown. A Vite production build result was **not shown** in the supplied Step 40C-41 screenshots, so that check is still pending visual confirmation. These are synthetic technical validations, not real GIS redistribution rights or production security approval.
 
 ## Mandatory remaining work
 
@@ -31,7 +31,7 @@ npm.cmd run test:land
 npm.cmd run build
 ```
 
-Expected **26/26 focused tests**, and **911/911 land tests** if all new tests are discovered (previous 885 + 26). Stop at the first failure and share the error. Do not execute any migration against the existing land-development database.
+Observed: **26/26 focused tests** and **911/911 full land tests**. The production build remains to be confirmed; do not execute any migration against the existing land-development database.
 
 Once the above are green and Docker Desktop is running, execute the strictly isolated **real SQL** probe:
 
