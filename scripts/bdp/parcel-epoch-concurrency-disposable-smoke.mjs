@@ -111,9 +111,10 @@ export function createDisposableEpochSqlWorker(container){
   });
   return Object.freeze({
     send,until,
+    get output(){return output;},
     async pid(){
-      send("SELECT 'LDO_PID=' || pg_catalog.pg_backend_pid();");
-      const result=await until('LDO_PID=');
+      send("SELECT 'LDO_PID=' || pg_catalog.pg_backend_pid();\n\\echo LDO_PID_READY");
+      const result=await until('LDO_PID_READY');
       const m=result.match(/LDO_PID=([1-9][0-9]*)/);
       if(!m)throw Error('Missing real PostgreSQL backend PID');
       return Number(m[1]);
