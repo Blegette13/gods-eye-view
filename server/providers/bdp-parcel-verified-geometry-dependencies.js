@@ -3,6 +3,8 @@ import { createPinnedSealedSourceAuthorityRpcExecutor } from './bdp-parcel-seale
 import { createPrivateSealedSourceAuthorityReader } from './bdp-parcel-sealed-source-authority.js';
 import { createPinnedGeometryPublicationReviewRpcExecutor } from './bdp-parcel-geometry-publication-review-db.js';
 import { createPrivateGeometryPublicationReviewReader } from './bdp-parcel-geometry-publication-review.js';
+import { createPrivatePolicyEpochReader } from './bdp-parcel-policy-epoch-reader.js';
+import { createPinnedPrivatePolicyEpochRpcExecutor } from './bdp-parcel-policy-epoch-db.js';
 
 /**
  * Step 40C-37 — PRIVATE ONLY / UNROUTED cross-principal dependency composition.
@@ -39,7 +41,9 @@ const REQUIRED=[
   'connectPublicationReview','publicationReviewLogin',
   'connectSealedGeometry','geometryLogin',
 ];
-const ALLOWED=new Set([...REQUIRED,'now']);
+const EPOCH_KEYS=['connectPolicyEpoch','policyEpochLogin',
+  'readSessionCountyEpoch','readSealedRunEpoch'];
+const ALLOWED=new Set([...REQUIRED,'now',...EPOCH_KEYS]);
 
 function plain(value) {
   if(!value||typeof value!=='object'||Array.isArray(value))return false;
@@ -59,13 +63,27 @@ export function createPrivateVerifiedGeometryDependencies(config={}) {
     ||(config.now!==undefined&&typeof config.now!=='function')) {
     throw new TypeError('Explicit independently trusted server dependencies required');
   }
+  // A strict v2 factory supplies ALL four additional fields. Partial
+  // provisioning is rejected, never silently downgraded to v1.
+  const epochNames=EPOCH_KEYS.filter(k=>Object.hasOwn(config,k));
+  if(epochNames.length!==0&&epochNames.length!==EPOCH_KEYS.length
+    ||epochNames.length===EPOCH_KEYS.length&&(
+      typeof config.connectPolicyEpoch!=='function'
+      ||typeof config.readSessionCountyEpoch!=='function'
+      ||typeof config.readSealedRunEpoch!=='function')) {
+    throw new TypeError('Independent epoch connection and session/run readers required together');
+  }
+  const epochMode=epochNames.length===EPOCH_KEYS.length;
   // Connection factories must not silently share a single metadata/owner
   // pool. Factory inequality is a guard, NOT proof of distinct SQL principals:
   // each SQL executor independently checks session_user and exact grants.
   const {connectSourceAuthority,connectPublicationReview,connectSealedGeometry}=config;
   if(connectSourceAuthority===connectPublicationReview
     ||connectSourceAuthority===connectSealedGeometry
-    ||connectPublicationReview===connectSealedGeometry) {
+    ||connectPublicationReview===connectSealedGeometry
+    ||epochMode&&[
+      connectSourceAuthority,connectPublicationReview,connectSealedGeometry,
+    ].some(fn=>fn===config.connectPolicyEpoch)) {
     throw new TypeError('Separate SQL connection factories are mandatory');
   }
   const now=config.now??Date.now;
@@ -81,6 +99,11 @@ export function createPrivateVerifiedGeometryDependencies(config={}) {
   const review=createPrivateGeometryPublicationReviewReader({
     queryFixedPublicationRpc:reviewDb.queryFixedPublicationRpc,now,
   });
+  const epoch=epochMode?createPrivatePolicyEpochReader({
+    queryFixedEpochRpc:createPinnedPrivatePolicyEpochRpcExecutor({
+      connect:config.connectPolicyEpoch,expectedLogin:config.policyEpochLogin,
+    }).queryFixedEpochRpc,
+  }):null;
   const geometry=createPrivateSealedGeometryRuntime({
     sessionHmacKey:config.sessionHmacKey,cursorHmacKey:config.cursorHmacKey,
     findSessionByDigest:config.findSessionByDigest,
@@ -88,6 +111,11 @@ export function createPrivateVerifiedGeometryDependencies(config={}) {
     readSealedSource:authority.readSealedSource,
     readPublicationReview:review.readPublicationReview,
     connect:connectSealedGeometry,geometryLogin:config.geometryLogin,now,
+    ...(epochMode?{
+      readPolicyEpochSnapshot:epoch.readPolicyEpochSnapshot,
+      readSessionCountyEpoch:config.readSessionCountyEpoch,
+      readSealedRunEpoch:config.readSealedRunEpoch,
+    }:{}),
   });
 
   // Expose ONLY the already validated private result (counts and a signed
