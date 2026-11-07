@@ -1,6 +1,6 @@
 # Step 40C-43 — Synthetic session/county & sealed-run revocation epochs
 
-**Status: STAGED / NOT DEPLOYED — operator verification pending. November 7, 2026.**
+**Status: OPERATOR-VALIDATED SYNTHETIC TEST MILESTONE — still NOT deployed. November 7, 2026.**
 
 ## Last validated milestone — Step 40C-42
 
@@ -35,7 +35,7 @@ npm.cmd run test:land
 npm.cmd run build
 ```
 
-Expected **19/19 new tests**, **947/947 land suite cases** (928 previously + 19 new), and a successful Vite production build. These are predicted, not verified.
+**Operator screenshot confirms 947/947 land suite cases PASSED**, **Vite production build PASSED** (250 modules, 4.33 seconds), and a successful **real isolated PostGIS session/county and sealed-run epoch smoke**. The separate 19-test focused command summary was not supplied, though the full suite increased by 19. No failed tests are shown.
 
 With Docker Desktop available, and only if those tests/build are green:
 
