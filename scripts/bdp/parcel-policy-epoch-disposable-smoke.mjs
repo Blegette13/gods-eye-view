@@ -106,6 +106,21 @@ export async function runPolicyEpochDisposableSmoke(args=process.argv.slice(2)) 
     assert.equal(sql("SELECT count(*) FROM bdp_parcel_index.parcel_policy_epochs "+
       "WHERE source_id='"+SOURCE+"';"),'2');
 
+    // TRUNCATE bypasses row triggers. A DBA must not be able to silently
+    // reset review policy history via ordinary TRUNCATE or source CASCADE.
+    for (const truncate of [
+      'TRUNCATE bdp_parcel_index.geometry_publication_reviews;',
+      'TRUNCATE bdp_parcel_index.source_registry CASCADE;',
+    ]) {
+      const result=execSql(truncate);
+      assert.notEqual(result.status,0,'Policy TRUNCATE should fail closed');
+      assert.match(String(result.stderr),/Policy rights TRUNCATE prohibited/i);
+    }
+    assert.equal(epoch('source_cache'),1n);
+    assert.equal(epoch('geometry_publication'),1n);
+    assert.equal(sql("SELECT count(*) FROM bdp_parcel_index.geometry_publication_reviews "+
+      "WHERE source_id='"+SOURCE+"';"),'1');
+
     // Deny even a synthetic non-login role any direct rights-epoch SELECT.
     sql('CREATE ROLE ldos_policy_epoch_probe NOLOGIN NOINHERIT;');
     sql('GRANT USAGE ON SCHEMA bdp_parcel_index TO ldos_policy_epoch_probe;');
