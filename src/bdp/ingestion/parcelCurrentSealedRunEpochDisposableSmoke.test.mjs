@@ -71,3 +71,23 @@ test('test has guaranteed cleanup, generic failure and no browser geometry',()=>
  assert.match(source,/finally\{[\s\S]*?docker\(\['rm','--force','--volumes',container\]/);
  assert.doesNotMatch(source,/createServer\(|\.listen\(|app\.get\(|ST_AsGeoJSON/);
 });
+
+test('45 Docker Desktop health and locally available PostGIS image preflight precedes fixture',()=>{
+ assert.match(source,/docker\(\['info','--format','\{\{\.ServerVersion\}\}'\],\{timeout:30_000\}\)/);
+ assert.match(source,/docker\(\['image','inspect',DRIVER_SMOKE_IMAGE\],\{timeout:30_000\}\)/);
+ assert.match(source,/--pull=never/);
+ assert.ok(source.indexOf("docker(['info'")<source.indexOf("docker(['run'"));
+ assert.ok(source.indexOf("docker(['image'")<source.indexOf("docker(['run'"));
+});
+test('45 a docker run timeout still attempts scoped disposable container cleanup',()=>{
+ assert.match(source,/let created=false,runAttempted=false/);
+ assert.match(source,/runAttempted=true;\s*docker\(\['run'/);
+ assert.match(source,/if\(created\|\|runAttempted\)\{/);
+ assert.match(source,/docker\(\['rm','--force','--volumes',container\]/);
+});
+test('45 Docker timeout error exposes only operation, never startup password or arguments',()=>{
+ assert.match(source,/p\.error\?\.code==='ETIMEDOUT'/);
+ assert.match(source,/Docker command timed out/);
+ assert.match(source,/\['info','image','run','inspect','exec','rm'\]/);
+ assert.doesNotMatch(source,/String\(args\)|JSON\.stringify\(args\)/);
+});
