@@ -1,6 +1,6 @@
 # Step 40C-44 — Concurrent PostGIS epoch races (STAGED / UNROUTED)
 
-**Checkpoint: November 7, 2026. Operator validation PENDING for this step.**
+**Checkpoint: November 7, 2026. Operator 961/961 regression + build VERIFIED; SQL smoke cleanup bug FIX STAGED, CLEAN EXIT PENDING.**
 
 ## Verified Step 40C-43
 
@@ -14,6 +14,14 @@ Operator screenshot confirms **947/947 land regression tests passed**, **Vite pr
 - Three independent domains are tested: session/county discovery permission, geometry-publication legal-review state (synthetic and initially unreviewed), and unsealed ingest-run/source-selection state. A separate fourth race forces the first session/county writer to **ROLLBACK**; only the second committed update is allowed to increment the epoch.
 - Strict final cleanup ends open psql workers and deletes the disposable container plus volume. No actual county data, user MFA, real DB credentials, persistent role, HTTP endpoint or browser geometry is involved.
 - `src/bdp/ingestion/parcelEpochConcurrency.test.mjs`: **14 new Node tests** for exact opt-in, isolated Docker invocation, separate live backends, lock proof, committed visibility, epoch ABA, rollback, no private data leak and cleanup. Source-level simulated verification was **14/14** and the script JavaScript parsed successfully when staged; these are **NOT** a real Node execution or concurrent PostGIS smoke result.
+
+## Operator-discovered cleanup bug and 40C-44 patch
+
+The operator screenshot shows **961/961 land tests PASSED**, **Vite production build PASSED** (250 modules, **5.09 s**), and the real concurrent SQL smoke printed its intended `PASS: disposable PostGIS concurrent epoch writers serialize...` line. **However, Node subsequently crashed with an unhandled `ERR_STREAM_WRITE_AFTER_END`** at `createDisposableEpochSqlWorker.close()`; therefore the full smoke is **NOT YET VERIFIED AS A CLEAN PROCESS EXIT** despite its SQL assertions passing.
+
+**Cause:** each SQL backend was closed on the success path and closed again in the `finally` block. The old `close()` wrote an extra `ROLLBACK;\\q` to a stream that had already ended. The thrown EventEmitter error was asynchronous and escaped the local try/catch.
+
+**Patch committed:** `createDisposableEpochWorkerHandle(child)` now owns the psql child lifecycle; shutdown is **idempotent**, marks `closing` before ending stdin, **never sends SQL after EOF**, listens for asynchronous stdin errors, rejects marker waits on broken input, and waits for the child `close` event before reporting success. Any nonzero child exit fails the smoke. The normal flow awaits both child closures, and the `finally` cleanup awaits safe repeated close attempts before removing the isolated container. **Five new mock-child regression tests** explicitly reproduce double-close, async `ERR_STREAM_WRITE_AFTER_END`, early EPIPE, abnormal child close and cleanup invariants, increasing the focused guard suite from **14 to 19 tests**. A simulated mock preflight ran **19/19**, but **real Node and real SQL reruns are still required**.
 
 ## What this does NOT yet prove
 
@@ -30,7 +38,7 @@ npm.cmd run test:land
 npm.cmd run build
 ```
 
-Expected: **14/14 focused** and **961/961 land tests** (947 previous + 14 new), assuming no additional commits; these are **unverified predictions**. Stop at the first failure. The Vite chunk warning remains nonfatal.
+**After the cleanup patch**, expected **19/19 focused tests** and **966/966 full land tests** (961 previously verified + 5 new regression cases). The previous 961/961 suite and successful 5.09-second build are operator-confirmed. **The patched smoke's clean exit is NOT yet verified.** Stop at the first failure; the Vite chunk warning remains nonfatal.
 
 **Only with Docker Desktop running and all previous commands green:**
 
