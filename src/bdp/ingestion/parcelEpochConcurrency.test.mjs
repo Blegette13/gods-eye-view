@@ -1,11 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {EventEmitter} from 'node:events';
+import {PassThrough} from 'node:stream';
 import {
   EPOCH_CONCURRENT_SMOKE_PASS,
   requireEpochConcurrentDisposableOptIn,
   runEpochConcurrentDisposableSmoke,
   createDisposableEpochSqlWorker,
+  createDisposableEpochWorkerHandle,
 } from '../../../scripts/bdp/parcel-epoch-concurrency-disposable-smoke.mjs';
 
 const src=readFileSync(new URL(
@@ -137,4 +140,77 @@ test('status marker waits for a full backend PID instead of a partial packet',()
   assert.match(src,/await until\('LDO_PID_READY'\)/);
   assert.match(src,/LDO_PID=\(\[1-9\]\[0-9\]\*\)/);
   assert.match(src,/get output\(\)\{return output;\}/);
+});
+
+
+function fakePsqlChild(){
+  const child=new EventEmitter();
+  child.stdin=new PassThrough();
+  child.stdout=new PassThrough();
+  child.stderr=new PassThrough();
+  child.kill=()=>true;
+  return child;
+}
+
+test('cleanup is idempotent even when happy path and finally both close psql',async()=>{
+  const child=fakePsqlChild();
+  let ends=0;
+  const end=child.stdin.end.bind(child.stdin);
+  child.stdin.end=(...args)=>{ends++;return end(...args);};
+  const worker=createDisposableEpochWorkerHandle(child);
+  worker.send('SELECT 1;');
+  const first=worker.close();
+  const second=worker.close();
+  assert.strictEqual(first,second,'double close must return the same promise');
+  assert.equal(ends,1,'stdin.end must be called exactly once');
+  assert.throws(()=>worker.send('ROLLBACK;'),/unavailable/i);
+  child.emit('close',0);
+  await first;
+  assert.strictEqual(worker.close(),first);
+  assert.equal(ends,1);
+});
+
+test('write-after-end stream error during intentional cleanup is handled',async()=>{
+  const child=fakePsqlChild();
+  const worker=createDisposableEpochWorkerHandle(child);
+  const finished=worker.close();
+  assert.doesNotThrow(()=>child.stdin.emit('error',Object.assign(
+    new Error('write after end'),{code:'ERR_STREAM_WRITE_AFTER_END'},
+  )));
+  child.emit('close',0);
+  await finished;
+  // A successful psql close should not be converted into an unhandled
+  // Node EventEmitter "error" after the printed database PASS.
+  assert.equal(worker.close(),finished);
+});
+
+test('unexpected stream write failure rejects an in-flight psql marker wait',async()=>{
+  const child=fakePsqlChild();
+  const worker=createDisposableEpochWorkerHandle(child);
+  const marker=worker.until('NEVER_FINISHED');
+  child.stdin.emit('error',Object.assign(new Error('broken pipe'),{code:'EPIPE'}));
+  await assert.rejects(marker,/input failed/);
+  assert.throws(()=>worker.send('COMMIT;'),/unavailable/);
+  const finished=worker.close();
+  child.emit('close',0);
+  await finished;
+});
+
+test('nonzero child exit after cleanup cannot be reported as a clean PASS',async()=>{
+  const child=fakePsqlChild();
+  const worker=createDisposableEpochWorkerHandle(child);
+  const closing=worker.close();
+  child.emit('close',1);
+  await assert.rejects(closing,/closed abnormally/);
+  await assert.rejects(worker.close(),/closed abnormally/);
+});
+
+test('smoke waits for child exit and never writes ROLLBACK after stdin.end',()=>{
+  assert.match(src,/if\(closePromise\)return closePromise/);
+  assert.match(src,/if\(closing\|\|exited\|\|streamFailed\|\|child\.stdin\.destroyed/);
+  assert.match(src,/child\.stdin\.on\('error'/);
+  assert.match(src,/if\(!child\.stdin\.destroyed&&!child\.stdin\.writableEnded\)child\.stdin\.end\(\)/);
+  assert.match(src,/await Promise\.all\(\[first\.close\(\),second\.close\(\)\]\)/);
+  assert.match(src,/for\(const worker of workers\)try\{await worker\.close\(\)/);
+  assert.doesNotMatch(src,/child\.stdin\.write\('ROLLBACK;/);
 });
