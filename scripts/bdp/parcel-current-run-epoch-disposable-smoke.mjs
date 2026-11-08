@@ -35,8 +35,17 @@ export function requireCurrentRunEpochDisposableOptIn(args){
 function docker(args,{input,timeout=120_000}={}){
   const p=spawnSync('docker',args,{input,encoding:'utf8',
     timeout,maxBuffer:3*1024*1024});
-  if(p.error||p.status!==0)throw Error('Disposable Docker failed: '+
-    String(p.error?.message||p.stderr||p.stdout||'').slice(-1200));
+  if(p.error||p.status!==0){
+    const operation=['info','image','run','inspect','exec','rm'].includes(args[0])
+      ? args[0] : 'unknown';
+    // NEVER echo Docker arguments: the synthetic container startup includes
+    // randomized test passwords. Only the allowlisted operation is emitted.
+    const reason=p.error?.code==='ETIMEDOUT'
+      ? 'Docker command timed out'
+      : 'Docker command failed';
+    throw Error('Disposable '+reason+' during '+operation+': '+
+      String(p.error?.message||p.stderr||p.stdout||'').slice(-800));
+  }
   return String(p.stdout||'');
 }
 async function ready(container){
@@ -61,9 +70,20 @@ export async function runCurrentRunEpochDisposableSmoke(args=process.argv.slice(
   const container='ldos-current-run-epoch-'+randomBytes(6).toString('hex');
   const postgresPassword=randomBytes(32).toString('hex');
   const loginPassword=randomBytes(32).toString('hex');
-  let created=false;
+  let created=false,runAttempted=false;
   try{
+    // Fail BEFORE creating any fixture if Docker Desktop is not responding.
+    // Do not implicitly pull an image from the network in an isolated smoke.
+    docker(['info','--format','{{.ServerVersion}}'],{timeout:30_000});
+    try{
+      docker(['image','inspect',DRIVER_SMOKE_IMAGE],{timeout:30_000});
+    }catch{
+      throw Error('Disposable PostGIS image unavailable or Docker unresponsive. '+
+        'Verify Docker Desktop, then check: docker image inspect '+DRIVER_SMOKE_IMAGE);
+    }
+    runAttempted=true;
     docker(['run','-d','--name',container,'--network','none',
+      '--pull=never',
       '-e','POSTGRES_PASSWORD='+postgresPassword,
       '-e','POSTGRES_HOST_AUTH_METHOD=scram-sha-256',
       DRIVER_SMOKE_IMAGE],{timeout:240_000});
@@ -172,9 +192,13 @@ export async function runCurrentRunEpochDisposableSmoke(args=process.argv.slice(
       '\n'+details).replaceAll(loginPassword,'[redacted]')
       .replaceAll(postgresPassword,'[redacted]').slice(0,2900));
   }finally{
-    if(created){
+    // docker run may have CREATED the container before the CLI timed out.
+    // Always attempt name-scoped cleanup even without a successful run exit.
+    if(created||runAttempted){
       try{docker(['rm','--force','--volumes',container],{timeout:30_000});}
-      catch{process.stderr.write('WARNING: disposable current-run container cleanup failed\n');}
+      catch{process.stderr.write(
+        'WARNING: disposable current-run container cleanup could not be confirmed\n');
+      }
     }
   }
 }
