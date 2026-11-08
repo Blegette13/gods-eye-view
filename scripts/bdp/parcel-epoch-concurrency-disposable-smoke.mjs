@@ -68,7 +68,28 @@ export function createDisposableEpochSqlWorker(container){
     'exec','-i',container,'psql','-X','-q','-t','-A',
     '-v','ON_ERROR_STOP=1','-U','postgres','-d','postgres',
   ],{stdio:['pipe','pipe','pipe']});
-  let output='',errors='',exited=false;
+  return createDisposableEpochWorkerHandle(child);
+}
+
+/**
+ * A small testable lifecycle wrapper for the disposable psql child.
+ * Closing an open PostgreSQL backend at EOF rolls back any uncommitted work.
+ * No ROLLBACK/\\q writes are needed during cleanup, and close() MUST be
+ * idempotent: the happy path and the finally block both call it.
+ *
+ * This helper accepts a mock child in unit tests ONLY. The real Docker
+ * smoke always constructs the child through the container-name guard above.
+ */
+export function createDisposableEpochWorkerHandle(child){
+  if(!child||typeof child.on!=='function'
+    ||!child.stdin||typeof child.stdin.on!=='function'
+    ||!child.stdout||typeof child.stdout.on!=='function'
+    ||!child.stderr||typeof child.stderr.on!=='function'
+    ||typeof child.stdin.end!=='function') {
+    throw new TypeError('Expected a disposable psql child process with streams');
+  }
+  let output='',errors='',exited=false,closing=false,streamFailed=false;
+  let closePromise=null,resolveClose=null,exitCode=null;
   const watchers=new Set();
   const notify=()=>{for(const callback of [...watchers])callback();};
   child.stdout.on('data',chunk=>{
@@ -81,18 +102,40 @@ export function createDisposableEpochSqlWorker(container){
     if(errors.length>2000)errors=errors.slice(-2000);
     notify();
   });
-  child.on('error',error=>{
-    errors+=String(error.message).slice(-500);exited=true;notify();
-  });
-  child.on('exit',code=>{
-    exited=true;
-    errors+=' psql-exit='+code;
+  // Node streams emit errors asynchronously: try/catch around write() is
+  // NOT enough to prevent an unhandled ERR_STREAM_WRITE_AFTER_END crash.
+  child.stdin.on('error',error=>{
+    errors+=String(error?.code||error?.message||'stdin failed').slice(-500);
+    if(!closing)streamFailed=true;
     notify();
   });
+  child.on('error',error=>{
+    errors+=String(error?.message||'child failed').slice(-500);
+    exited=true;
+    exitCode=-1;
+    notify();
+    resolveClose?.(-1);
+  });
+  child.on('close',code=>{
+    exited=true;
+    exitCode=code;
+    errors+=' psql-exit='+code;
+    notify();
+    resolveClose?.(code);
+  });
   const send=statement=>{
-    if(exited||!child.stdin.writable||typeof statement!=='string'
-      ||statement.length>2000)throw new Error('Disposable SQL worker unavailable');
-    child.stdin.write(statement+'\n');
+    if(closing||exited||streamFailed||child.stdin.destroyed
+      ||child.stdin.writableEnded||!child.stdin.writable
+      ||typeof statement!=='string'||statement.length>2000) {
+      throw new Error('Disposable SQL worker unavailable');
+    }
+    child.stdin.write(statement+'\n',error=>{
+      if(error){
+        errors+=String(error.code||error.message||'stdin write failed').slice(-500);
+        if(!closing)streamFailed=true;
+        notify();
+      }
+    });
   };
   const until=(marker,timeout=15_000)=>new Promise((done,fail)=>{
     if(typeof marker!=='string'||!/^[A-Z_0-9:=]+$/.test(marker))
@@ -100,6 +143,7 @@ export function createDisposableEpochSqlWorker(container){
     let timer;
     const cleanup=()=>{clearTimeout(timer);watchers.delete(check);};
     const check=()=>{
+      if(streamFailed){cleanup();fail(new Error('Disposable SQL backend input failed: '+errors));return;}
       if(output.includes(marker)){cleanup();done(output);return;}
       if(exited){cleanup();fail(new Error('Disposable SQL backend exited: '+errors));}
     };
@@ -109,8 +153,43 @@ export function createDisposableEpochSqlWorker(container){
     },timeout);
     check();
   });
+  const close=()=>{
+    if(closePromise)return closePromise;
+    closing=true;
+    if(exited) {
+      closePromise=exitCode===0?Promise.resolve():Promise.reject(
+        new Error('Disposable SQL backend exited abnormally: '+errors));
+      return closePromise;
+    }
+    closePromise=new Promise((done,fail)=>{
+      let settled=false;
+      const timer=setTimeout(()=>{
+        if(settled)return;
+        settled=true;
+        try{child.kill?.('SIGTERM');}catch{/* container removed in finally */}
+        fail(new Error('Timed out closing disposable PostgreSQL backend'));
+      },5000);
+      resolveClose=code=>{
+        if(settled)return;
+        settled=true;
+        clearTimeout(timer);
+        if(code===0)done();
+        else fail(new Error('Disposable SQL backend closed abnormally: '+errors));
+      };
+      try {
+        // End only ONCE, with no extra writes; PostgreSQL rolls back on
+        // connection close. Await the actual child 'close' before PASS.
+        if(!child.stdin.destroyed&&!child.stdin.writableEnded)child.stdin.end();
+      } catch(error){
+        clearTimeout(timer);
+        settled=true;
+        fail(new Error('Unable to close disposable SQL backend'));
+      }
+    });
+    return closePromise;
+  };
   return Object.freeze({
-    send,until,
+    send,until,close,
     get output(){return output;},
     async pid(){
       send("SELECT 'LDO_PID=' || pg_catalog.pg_backend_pid();\n\\echo LDO_PID_READY");
@@ -118,13 +197,6 @@ export function createDisposableEpochSqlWorker(container){
       const m=result.match(/LDO_PID=([1-9][0-9]*)/);
       if(!m)throw Error('Missing real PostgreSQL backend PID');
       return Number(m[1]);
-    },
-    close(){
-      if(!exited){
-        try{child.stdin.write('ROLLBACK;\n\\q\n');child.stdin.end();}
-        catch{/* discard */}
-        // Cleanup is guaranteed again by Docker container removal.
-      }
     },
   });
 }
@@ -271,7 +343,7 @@ export async function runEpochConcurrentDisposableSmoke(
         'Concurrent updates must serialize the committed epoch');
       assert.equal(item.fact(),item.original,
         'A→B→A returns identical facts but NOT the original version');
-      first.close();second.close();
+      await Promise.all([first.close(),second.close()]);
     }
 
     // Two genuinely overlapping committed writes for each independent
@@ -290,7 +362,7 @@ export async function runEpochConcurrentDisposableSmoke(
     throw new Error(('Disposable concurrent epoch SQL smoke failed: '+
       error.message+'\n'+details).replaceAll(password,'[redacted]').slice(0,3000));
   }finally{
-    for(const worker of workers)try{worker.close();}catch{/* discard */}
+    for(const worker of workers)try{await worker.close();}catch{/* discard */}
     if(created){
       try{docker(['rm','--force','--volumes',container],{timeout:30_000});}
       catch{process.stderr.write('WARNING: disposable concurrency container cleanup failed\n');}
