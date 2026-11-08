@@ -1,6 +1,6 @@
 # Step 40C-44 — Concurrent PostGIS epoch races (STAGED / UNROUTED)
 
-**Checkpoint: November 7, 2026. Operator 961/961 regression + build VERIFIED; SQL smoke cleanup bug FIX STAGED, CLEAN EXIT PENDING.**
+**Checkpoint: November 7, 2026. Operator validation COMPLETE: 19/19 focused, 966/966 land regressions, and real SQL concurrency smoke cleanly exited.**
 
 ## Verified Step 40C-43
 
@@ -21,7 +21,7 @@ The operator screenshot shows **961/961 land tests PASSED**, **Vite production b
 
 **Cause:** each SQL backend was closed on the success path and closed again in the `finally` block. The old `close()` wrote an extra `ROLLBACK;\\q` to a stream that had already ended. The thrown EventEmitter error was asynchronous and escaped the local try/catch.
 
-**Patch committed:** `createDisposableEpochWorkerHandle(child)` now owns the psql child lifecycle; shutdown is **idempotent**, marks `closing` before ending stdin, **never sends SQL after EOF**, listens for asynchronous stdin errors, rejects marker waits on broken input, and waits for the child `close` event before reporting success. Any nonzero child exit fails the smoke. The normal flow awaits both child closures, and the `finally` cleanup awaits safe repeated close attempts before removing the isolated container. **Five new mock-child regression tests** explicitly reproduce double-close, async `ERR_STREAM_WRITE_AFTER_END`, early EPIPE, abnormal child close and cleanup invariants, increasing the focused guard suite from **14 to 19 tests**. A simulated mock preflight ran **19/19**, but **real Node and real SQL reruns are still required**.
+**Patch committed:** `createDisposableEpochWorkerHandle(child)` now owns the psql child lifecycle; shutdown is **idempotent**, marks `closing` before ending stdin, **never sends SQL after EOF**, listens for asynchronous stdin errors, rejects marker waits on broken input, and waits for the child `close` event before reporting success. Any nonzero child exit fails the smoke. The normal flow awaits both child closures, and the `finally` cleanup awaits safe repeated close attempts before removing the isolated container. **Five new mock-child regression tests** explicitly reproduce double-close, async `ERR_STREAM_WRITE_AFTER_END`, early EPIPE, abnormal child close and cleanup invariants, increasing the focused guard suite from **14 to 19 tests**. The operator subsequently ran **19/19 real Node focused tests**, **966/966 land tests**, and the real disposable PostgreSQL concurrency smoke **printed PASS and returned to the PowerShell prompt without an error**. The cleanup regression is resolved.
 
 ## What this does NOT yet prove
 
@@ -38,7 +38,7 @@ npm.cmd run test:land
 npm.cmd run build
 ```
 
-**After the cleanup patch**, expected **19/19 focused tests** and **966/966 full land tests** (961 previously verified + 5 new regression cases). The previous 961/961 suite and successful 5.09-second build are operator-confirmed. **The patched smoke's clean exit is NOT yet verified.** Stop at the first failure; the Vite chunk warning remains nonfatal.
+**Observed after patch: 19/19 focused tests passed, 966/966 full land tests passed, and disposable concurrent PostGIS smoke passed with clean exit**. A fresh Vite build result after the cleanup patch is not shown; the prepatch build succeeded. The Vite chunk warning remains nonfatal.
 
 **Only with Docker Desktop running and all previous commands green:**
 
