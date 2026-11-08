@@ -1,6 +1,6 @@
 # Step 40C-45 — Exact latest FINISHED sealed-run epoch (STAGED / UNDEPLOYED)
 
-**Checkpoint: November 7, 2026. Operator validation pending for this step.**
+**Checkpoint: November 7, 2026 — 993/993 full regression and production build PASSED; disposable Docker integration TIMEOUT, pending rerun.**
 
 ## Verified Step 40C-44
 
@@ -17,6 +17,14 @@ PowerShell screenshots show **19/19 focused Node tests PASSED**, **966/966 full 
 
 **Total NEW contracts: 27**. JavaScript source parsing and lightweight source-contract simulations were performed before staging, but these are **NOT** operator Node executions or real PostgreSQL test results. No production migration, pg pool, account, credential, privileged grant, server endpoint, signed cursor wiring, new UI or browser polygon delivery has been added.
 
+## Operator validation and Docker timeout (November 7)
+
+The operator's screenshot confirms **993/993 full land tests PASSED** and a **successful Vite production build** (250 modules, **4.55 seconds**). A separate focused 27-case final summary was not shown, though all 27 newly added contracts appear in the full suite. The opt-in PostGIS smoke **DID NOT PASS**: the host's Docker CLI returned `spawnSync docker ETIMEDOUT`, and the PowerShell prompt returned after the error. This is a Docker command timeout, **not a PostgreSQL assertion or GIS rights failure**; the screenshot alone does not prove whether the timeout happened during initial container creation, inspection or an intermediate Docker operation. **Do not mark Step 40C-45 complete.**
+
+A narrow follow-up patch adds: a preflight `docker info` responsiveness check, explicit verification that the previously used `postgis/postgis:17-3.5` image exists locally, a `--pull=never` guard to avoid unexpectedly downloading while running the isolated synthetic test, safe allowlisted Docker operation labels on CLI timeout errors (never command args/passwords), and **cleanup attempted by the fresh random test-container name even if `docker run` timed out after the daemon created it**. **Three additional source-contract regressions** cover these conditions, increasing the expected full land suite to **996** and the opt-in guard file to **11 cases**. Local JavaScript syntax inspection and 11 source-contract simulations succeeded; this is **not** an operator Node/PostgreSQL test.
+
+Before retrying, verify that Docker Desktop shows its engine running. In PowerShell, run `docker version`, `docker info --format '{{.ServerVersion}}'`, then `docker image inspect postgis/postgis:17-3.5`. If the last command shows a missing image, use `docker pull postgis/postgis:17-3.5` once while the engine is healthy. Do not run or modify any existing land-development database.
+
 ## Remaining blockers
 
 The source/run epoch authority is STILL a staged, synthetic database-only component. The Step 40C-42 `readSealedRunEpoch` dependency is not connected to any production SQL principal, and the existing Step 40C-43 synthetic session/county epoch schema is **not a real user identity/MFA/county-grant store**. Before deployment, a DBA/security review must validate ownership, cross-role permissions, PostgreSQL advisory and row locks, failed ingestion semantics, backups and version rollback; a separate session provider must maintain durable strongly-current revocation epochs in its real authoritative store; the final release-time output gate and live licensing approval remain absent. Never infer county coverage, market value, zoning permission or development feasibility from run state.
@@ -30,7 +38,7 @@ npm.cmd run test:land
 npm.cmd run build
 ```
 
-Expected **27/27 new tests** and **993/993 full land regression tests** (previously 966, plus 27), subject to normal test discovery. These are predicted, not verified; stop at the first failure.
+**Observed before the Docker diagnostic patch:** 993/993 land tests and Vite build PASSED; the Docker smoke timed out. **After the patch** expect **30 new cases in Step 40C-45** (27 original + 3 guards), **996/996 full land tests**, and a successful build; these revised totals are not operator-verified. Stop at the first failure.
 
 With Docker Desktop running and all prior commands green:
 
