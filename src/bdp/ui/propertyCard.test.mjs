@@ -1,0 +1,607 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { createBdpPropertyCard } from './propertyCard.js';
+import { evaluateAcquisitionEconomics } from '../economics/acquisitionEconomics.js';
+import { buildOwnershipTitleReview } from '../title/ownershipReview.js';
+import { buildAcquisitionBrief } from '../intelligence/acquisitionBrief.js';
+import { buildBdpSourceCoverage } from '../intelligence/sourceCoverage.js';
+import { normalizeHarrisFeature } from '../cad/harrisAdapter.js';
+
+// Minimal DOM for interaction tests without changing production dependencies.
+class Element {
+  constructor(tag) { this.tagName = tag; this.children = []; this.dataset = {}; this.style = {}; this.attributes = {}; this.listeners = {}; this.value = ''; }
+  set textContent(value) { this.text = String(value); this.children = []; }
+  get textContent() { return (this.text || '') + this.children.map((child) => child.textContent).join(''); }
+  append(...children) { this.children.push(...children); }
+  appendChild(child) { this.append(child); }
+  replaceChildren(...children) { this.text = ''; this.children = children; }
+  setAttribute(key, value) { this.attributes[key] = value; }
+  getAttribute(key) { return this.attributes[key]; }
+  addEventListener(event, callback) { this.listeners[event] = callback; }
+  remove() {}
+}
+function find(root, predicate) {
+  return [root, ...root.children.flatMap((child) => find(child, () => true))].filter(predicate);
+}
+const parcel = { parcelId: '123', county: 'Bexar', property: { acres: null, geometry: { type: 'Polygon' } }, valuation: { marketValue: null }, source: { recordCurrency: 'unknown' } };
+const tick = () => new Promise((resolve) => setImmediate(resolve));
+function response(candidate) {
+  return { evidence: { developmentConstraints: { status: 'incomplete-fema-coverage', combined_mapped_constraint_acres: 10, outside_mapped_footprint_acres: null }, acquisitionEconomics: evaluateAcquisitionEconomics(candidate), msw: { coverage_complete: false, nearest_msw_site_m: null }, growthRadar: { preliminary_plats_within_25_mi: 4 } }, errors: {},
+    score: { readiness: 'insufficient-evidence', coveragePercent: 0, confidenceAdjustedCoveragePercent: 0 }, redFlags: [], redFlagSummary: { critical: 0, high: 0, medium: 0 }, sourceCoveragePercent: 0 };
+}
+
+test('parcel evidence uses five accessible groups while overview warnings stay outside disclosures', async () => {
+  const originalDocument = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const candidate = {
+      ...parcel,
+      valuation: { landValue: 150000, improvementValue: 0, marketValue: 90000 },
+      source: { recordCurrency: 'unverified' },
+    };
+    card = createBdpPropertyCard({ screeningLoader: async () => response(candidate) });
+    card.show(candidate);
+    await tick();
+    const body = card.root.children[1];
+    const groups = body.children.filter((el) => el.className === 'bdp-property-evidence-group');
+    assert.equal(groups.length, 5);
+    assert.deepEqual(groups.map((group) => group.children[0].textContent), [
+      'Screening summary & red flags',
+      'Acquisition, ownership & title',
+      'Planning, zoning & development',
+      'Environmental & site constraints',
+      'Transportation, utilities & water',
+    ]);
+    assert.equal(groups[0].open, true);
+    assert.ok(groups.slice(1).every((group) => group.open === false));
+    assert.equal(groups.every((group) => group.tagName === 'details'), true);
+    assert.equal(groups.every((group) => group.children[0].tagName === 'summary'), true);
+    const intro = body.children.find((node) => node.className === 'bdp-property-evidence-intro');
+    assert.match(intro.textContent, /Unverified, unavailable and missing data do not establish clearance/);
+    const warningIndex = body.children.findIndex((node) => node.dataset.bdpValuationReview === 'review-required');
+    const firstGroupIndex = body.children.indexOf(groups[0]);
+    assert.ok(warningIndex >= 0 && warningIndex < firstGroupIndex);
+    assert.match(groups[0].textContent, /LAND INTELLIGENCE/);
+    assert.match(groups[1].textContent, /OWNERSHIP \/ TITLE REVIEW/);
+    assert.match(groups[2].textContent, /DEVELOPMENT \/ MAPPED CONSTRAINTS/);
+    assert.match(groups[3].textContent, /FLOOD \/ FEMA/);
+    assert.match(groups[4].textContent, /UTILITIES \/ INFRASTRUCTURE/);
+    // County unknowns, financial controls and source details still exist in
+    // their original evidence nodes; collapsing is visual-only.
+    assert.equal(find(groups[1], (el) => el.tagName === 'form').length, 1);
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    assert.equal(rows.find((row) => row.children[0].textContent === 'Verified vesting')?.children[1].textContent, 'UNKNOWN');
+    assert.equal(rows.find((row) => row.children[0].textContent === 'Record currency')?.children[1].textContent, 'UNVERIFIED');
+  } finally {
+    card?.destroy();
+    globalThis.document = originalDocument;
+  }
+});
+
+test('live-screening mismatch is flagged before investment decisions without editing CAD-reported numbers', async () => {
+  const previous = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const candidate = {
+      ...parcel, county: 'Travis', countyFips: '48453', parcelId: '302959',
+      property: { ...parcel.property, acres: 0.18, situsAddress: '611 W ANNIE ST' },
+      valuation: { landValue: 1198206, improvementValue: 95897, marketValue: 695000 },
+      acquisition: { pricePerAcre: 3902302 },
+      source: { recordCurrency: 'unverified', provider: 'Travis County GIS / TCAD' },
+    };
+    card = createBdpPropertyCard({ screeningLoader: async () => response(candidate) });
+    card.show(candidate);
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const getRow = (key) => rows.find((el) => el.children[0].textContent === key);
+    const valueFor = (key) => getRow(key)?.children[1].textContent;
+    assert.equal(valueFor('Land value'), '$1,198,206');
+    assert.equal(valueFor('Improvements'), '$95,897');
+    assert.equal(valueFor('Reported value'), '$695,000');
+    assert.equal(valueFor('Reported value / acre'), '$3,902,302');
+    assert.match(valueFor('Valuation review'), /REVIEW REQUIRED.*do not|REVIEW REQUIRED.*confirm current values directly/i);
+    assert.equal(getRow('Valuation review').dataset.bdpValuationReview, 'review-required');
+    assert.deepEqual(JSON.parse(getRow('Valuation review').dataset.bdpEvidenceRefs), [
+      'parcel.valuation.landValue',
+      'parcel.valuation.improvementValue',
+      'parcel.valuation.marketValue',
+    ]);
+    assert.equal(valueFor('Record currency'), 'UNVERIFIED');
+    assert.equal(candidate.valuation.landValue, 1198206);
+    assert.equal(candidate.valuation.marketValue, 695000);
+  } finally {
+    card?.destroy();
+    globalThis.document = previous;
+  }
+});
+
+test('missing or noncontradictory component values never get a fabricated approval', async () => {
+  const previous = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    card = createBdpPropertyCard({ screeningLoader: async () => response(parcel) });
+    card.show(parcel);
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    assert.equal(rows.find((el) => el.children[0].textContent === 'Valuation review'), undefined);
+    assert.equal(rows.find((el) => el.children[0].textContent === 'Reported value')?.children[1].textContent, '—');
+  } finally {
+    card?.destroy();
+    globalThis.document = previous;
+  }
+});
+
+test('closing the property panel clears its owning map selection without changing parcel evidence', async () => {
+  const originalDocument = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  let onHideCalls = 0;
+  try {
+    card = createBdpPropertyCard({
+      screeningLoader: async () => response(parcel),
+      onHide: () => { onHideCalls += 1; },
+    });
+    card.show(parcel);
+    const close = find(card.root, (node) => node.tagName === 'button'
+      && node.attributes['aria-label'] === 'Close property intelligence')[0];
+    assert.ok(close);
+    close.listeners.click({});
+    assert.equal(onHideCalls, 1);
+    assert.equal(card.root.style.display, 'none');
+    assert.equal(parcel.parcelId, '123');
+  } finally {
+    card?.destroy();
+    globalThis.document = originalDocument;
+  }
+});
+
+test('Harris source year and stacked-account caveat display without verifying ownership or asking price', async () => {
+  const previous = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const candidate = normalizeHarrisFeature({ type: 'Feature', properties: {
+      HCAD_NUM: '0402810000356', tax_year: '2026', Acreage: '2 AC', total_market_val: 100000, Stacked: 1,
+    }, geometry: { type: 'Polygon', coordinates: [[[-95,29],[-94.99,29],[-94.99,29.01],[-95,29]]] } });
+    card = createBdpPropertyCard({ screeningLoader: async () => response(candidate) });
+    card.show(candidate);
+    await tick();
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const valueFor = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.equal(valueFor('Source tax year'), '2026');
+    assert.match(valueFor('Source note'), /share geometry/);
+    assert.equal(valueFor('Asking price'), '—');
+    assert.equal(valueFor('Verified vesting'), 'UNKNOWN');
+    const lookup = find(card.root, (el) => el.tagName === 'a' && el.textContent === 'Open county land records')[0];
+    assert.equal(lookup.href, 'https://cclerk.hctx.net/RealProperty.aspx');
+  } finally {
+    card?.destroy();
+    globalThis.document = previous;
+  }
+});
+
+test('native property panel keeps nulls unknown, shows Growth Radar and calculates explicit cost scenarios', async () => {
+  const previous = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    let resolveScreening;
+    card = createBdpPropertyCard({ screeningLoader: () => new Promise((resolve) => { resolveScreening = resolve; }) });
+    card.show(parcel);
+    const rows = () => find(card.root, (el) => el.className === 'bdp-property-row');
+    const valueFor = (key) => rows().find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.equal(valueFor('Reported value'), '—');
+    assert.equal(valueFor('Verified vesting'), 'UNKNOWN');
+    assert.equal(valueFor('Title clearance'), 'UNKNOWN');
+    const lookup = find(card.root, (el) => el.tagName === 'a' && el.textContent === 'Open county land records')[0];
+    assert.equal(lookup.href, 'https://www.bexar.org/2950/Real-PropertyLand-Records');
+    assert.equal(lookup.rel, 'noopener noreferrer');
+    assert.equal(valueFor('Asking price'), '—');
+    assert.equal(valueFor('All-in basis'), '—');
+    const input = (name) => find(card.root, (el) => el.tagName === 'input' && el.name === name)[0];
+    input('askingPrice').value = '100000';
+    for (const name of ['closingCosts', 'dueDiligenceCosts', 'siteWorkCosts', 'holdingCosts', 'dispositionCosts']) input(name).value = '0';
+    input('exitPrice').value = '125000';
+    input('targetReturnPercent').value = '25';
+    const form = find(card.root, (el) => el.tagName === 'form')[0];
+    form.listeners.submit({ preventDefault() {} });
+    assert.equal(valueFor('All-in basis'), '$100,000');
+    assert.equal(valueFor('Scenario profit'), '$25,000');
+    assert.equal(valueFor('Residual max offer'), '$100,000');
+    await tick();
+    const screened = response(parcel);
+    screened.evidence.utilities = { water_service_source_status: 'unavailable', puct_water_ccn_overlap_percent: 60 };
+    screened.sourceCoverage = buildBdpSourceCoverage(['utilities', 'msw'], screened.evidence, screened.errors);
+    screened.evidence.ownershipTitle = buildOwnershipTitleReview(parcel, { energy: { pipeline_crossing_count: 1 } });
+    screened.acquisitionBrief = buildAcquisitionBrief({ parcel, evidence: screened.evidence, score: screened.score,
+      redFlags: [{ id: 'pipeline-crossing', severity: 'high', title: 'Pipeline brief trigger', detail: 'Easement dimensions require verification.', source: 'RRC' }] });
+    resolveScreening(screened);
+    await tick();
+    // Late provider responses must not overwrite an edited scenario.
+    assert.equal(valueFor('All-in basis'), '$100,000');
+    assert.match(valueFor('PRIORITY · Survey / easements'), /Mapped pipeline/);
+    assert.equal(valueFor('Verified legal access'), 'UNKNOWN');
+    assert.equal(valueFor('Acquisition recommendation'), 'WITHHELD · VERIFICATION REQUIRED');
+    assert.match(valueFor('HIGH · Pipeline brief trigger'), /Easement dimensions require verification/);
+    const briefRisk = rows().find((el) => el.children[0].textContent === 'HIGH · Pipeline brief trigger');
+    assert.deepEqual(JSON.parse(briefRisk.dataset.bdpEvidenceRefs), ['redFlags.pipeline-crossing']);
+    assert.equal(valueFor('Nearest MSW ≤ 5 mi'), '—');
+    assert.equal(valueFor('Points on parcel'), '—');
+    assert.match(valueFor('MSW coverage'), /UNKNOWN/);
+    assert.match(valueFor('Utility screening'), /LIMITED.*Water-service boundaries: source unavailable/);
+    assert.match(valueFor('Coverage meaning'), /not county coverage/);
+    assert.equal(valueFor('Feed response coverage'), '0%');
+    assert.equal(valueFor('Live feeds'), undefined);
+    const coverageRow = rows().find((el) => el.children[0].textContent === 'Utility screening');
+    assert.deepEqual(JSON.parse(coverageRow.dataset.bdpEvidenceRefs), ['sourceCoverage.utilities']);
+    assert.equal(valueFor('Preliminary plats ≤ 25 mi'), '4');
+    assert.equal(valueFor('Combined footprint'), '10 ac');
+    assert.equal(valueFor('Outside mapped footprint'), '—');
+    assert.equal(valueFor('Verified buildable acres'), 'UNKNOWN');
+    assert.match(valueFor('Economics score'), /WITHHELD/);
+    input('siteWorkCosts').value = '';
+    form.listeners.submit({ preventDefault() {} });
+    assert.equal(valueFor('All-in basis'), '—');
+    card.show({ ...parcel, parcelId: '456' });
+    assert.equal(valueFor('HIGH · Pipeline brief trigger'), undefined);
+    assert.equal(valueFor('Utility screening'), undefined);
+    assert.equal(valueFor('Acquisition brief'), 'Loading evidence…');
+    assert.equal(valueFor('PRIORITY · Survey / easements'), undefined);
+    assert.equal(input('askingPrice').value, '');
+    assert.equal(valueFor('All-in basis'), '—');
+    card.hide();
+  } finally {
+    card?.destroy();
+    globalThis.document = previous;
+  }
+});
+
+test('late acquisition briefs cannot cross parcel selections and failed requests leave no loading verdict', async () => {
+  const previous = globalThis.document;
+  const previousWarn = console.warn;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  console.warn = () => {};
+  let card;
+  try {
+    const pending = new Map();
+    card = createBdpPropertyCard({ screeningLoader: (candidate) => new Promise((resolve, reject) => pending.set(candidate.parcelId, { resolve, reject })) });
+    card.show(parcel);
+    await tick();
+    card.show({ ...parcel, parcelId: '456' });
+    await tick();
+    const old = response(parcel);
+    old.acquisitionBrief = buildAcquisitionBrief({ parcel, redFlags: [{ id: 'fema-floodway', severity: 'high', title: 'OLD PARCEL HAZARD', detail: 'Old evidence', source: 'FEMA' }] });
+    pending.get('123').resolve(old);
+    await tick();
+    assert.ok(!card.root.textContent.includes('OLD PARCEL HAZARD'));
+    pending.get('456').reject(new Error('Unavailable'));
+    await tick();
+    const briefRow = find(card.root, (el) => el.className === 'bdp-property-row' && el.children[0].textContent === 'Acquisition brief')[0];
+    assert.equal(briefRow.children[1].textContent, 'Unavailable · no acquisition recommendation');
+  } finally {
+    card?.destroy();
+    globalThis.document = previous;
+    console.warn = previousWarn;
+  }
+});
+
+test('mapped water overlap and short traffic distances do not imply verified service or road access', async () => {
+  const previous = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const result = response(parcel);
+    result.evidence.transportation = {
+      nearest_road_name: 'W ANNIE ST',
+      nearest_road_m: 7,
+      road_centerline_intersects_parcel: false,
+      road_centerlines_within_250_ft: 3,
+      nearest_aadt_current: 2409,
+      nearest_aadt_route: '1021254',
+      nearest_aadt_m: 1.5,
+      nearest_station_id: '227UR680',
+      nearest_station_m: 48,
+      nearest_station_latest_year: 2025,
+      nearest_station_5yr_change_percent: null,
+    };
+    result.evidence.utilities = {
+      water_service_source_status: 'returned',
+      water_service_overlap_percent: 100,
+      water_service_names: ['CITY OF AUSTIN WATER & WASTEWATER'],
+      water_ccn_source_status: 'unavailable',
+    };
+    card = createBdpPropertyCard({ screeningLoader: async () => result });
+    card.show(parcel);
+    await tick();
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const valueFor = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    // Ownership/title also has a Legal access review task, which must remain
+    // UNKNOWN; check the TxDOT status without conflating the two rows.
+    const legalAccessValues = rows
+      .filter((el) => el.children[0].textContent === 'Legal access')
+      .map((el) => el.children[1].textContent);
+    assert.ok(legalAccessValues.includes('UNVERIFIED'));
+    assert.ok(legalAccessValues.some((value) => value.includes('UNKNOWN · Verify recorded access rights')));
+    assert.equal(valueFor('Nearest road'), 'W ANNIE ST');
+    assert.equal(valueFor('Nearest mapped AADT'), '2,409 / day');
+    assert.equal(valueFor('AADT route / ID'), '1021254');
+    assert.equal(valueFor('AADT distance'), '5 ft');
+    assert.equal(valueFor('Station distance'), '157 ft');
+    assert.equal(valueFor('5-year change'), 'UNKNOWN · no verified trend');
+    assert.match(valueFor('Traffic context'), /may differ from the nearest road/);
+    assert.equal(valueFor('Mapped water area'), '100%');
+    assert.equal(valueFor('Mapped provider(s)'), 'CITY OF AUSTIN WATER & WASTEWATER');
+    assert.match(valueFor('Water area meaning'), /capacity unverified/);
+    assert.equal(valueFor('Water capacity'), 'UNVERIFIED');
+    assert.equal(valueFor('Current water svc'), undefined);
+  } finally {
+    card?.destroy();
+    globalThis.document = previous;
+  }
+});
+
+test('Travis Austin GIS preview displays overlapping polygons but never claims official zoning or ETOD approval', async () => {
+  const previous = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const travis = {
+      ...parcel, county: 'Travis', countyFips: '48453', parcelId: '302959',
+      id: '48453:302959',
+      property: { acres: null, situsAddress: '611 W ANNIE ST', geometry: {
+        type: 'Polygon', coordinates: [[[-97.757,30.247],[-97.756,30.247],
+          [-97.756,30.248],[-97.757,30.248],[-97.757,30.247]]],
+      } },
+    };
+    const screened = response(travis);
+    screened.evidence.austinZoning = {
+      status: 'preliminary-spatial-evidence',
+      sourceCandidates: { zoning: 2, etodOverlay: 1 },
+      observations: [
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'SF-3-NP' },
+          intersectsParcel: false, parcelPercent: 0 },
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'SF-3-NP' },
+          intersectsParcel: true, parcelPercent: 100 },
+        { sourceName: 'etodOverlay', attributes: { ZONING_OVERLAY_NAME: 'ETOD Overlay Eligibility',
+          ZONING_OVERLAY_SUB_NAME: 'Subdistrict 2', ZONING_STATUS: 'Eligible' },
+          intersectsParcel: true, parcelPercent: 100 },
+      ],
+      legalZoningVerified: false, jurisdictionExactOverlapVerified: false,
+      etodAdoptionVerified: false, acquisitionRecommendation: null,
+    };
+    card = createBdpPropertyCard({ screeningLoader: async () => screened });
+    card.show(travis);
+    await tick();
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const value = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.match(card.root.textContent, /AUSTIN GIS \/ PRELIMINARY ZONING/);
+    assert.match(value('GIS evidence'), /NOT LEGAL ZONING/);
+    assert.equal(value('Zoning GIS candidates'), '2');
+    assert.match(value('Zoning intersections'), /SF-3-NP · 100% of mapped parcel/);
+    assert.doesNotMatch(value('Zoning intersections'), /· 0% of mapped parcel/);
+    assert.match(value('ETOD mapped overlap'), /Subdistrict 2/);
+    assert.match(value('ETOD entitlement'), /UNVERIFIED/);
+    assert.match(value('Jurisdiction'), /UNVERIFIED/);
+    assert.match(value('Zoning determination'), /UNVERIFIED/);
+    assert.notEqual(value('Acquisition recommendation'), 'BUY');
+  } finally {
+    card?.destroy();
+    globalThis.document = previous;
+  }
+});
+
+test('mixed Austin GIS zones flag mapped boundary ambiguity and zero ETOD candidates remain unknown', async () => {
+  const old = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const travis = {
+      ...parcel,
+      id: '48453:703', county: 'Travis', countyFips: '48453', parcelId: '703',
+      property: { ...parcel.property, situsAddress: '703 PRESSLER ST AUSTIN 78703' },
+    };
+    const screened = response(travis);
+    screened.evidence.entitlement = {
+      regional_scope_status: 'not-screened-outside-pilot',
+      regional_scope_note: 'Only the Bexar / San Antonio pilot has official zoning metrics.',
+    };
+    screened.evidence.austinZoning = {
+      status: 'preliminary-spatial-evidence',
+      sourceCandidates: { zoning: 3, etodOverlay: 0 },
+      observations: [
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'MF-4-NP' },
+          intersectsParcel: true, parcelPercent: 0.1 },
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'SF-2-HD-NP' },
+          intersectsParcel: true, parcelPercent: 99.9 },
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'SF-3-NP' },
+          intersectsParcel: true, parcelPercent: 0.009 },
+      ],
+    };
+    card = createBdpPropertyCard({ screeningLoader: async () => screened });
+    card.show(travis);
+    await tick();
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const value = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.equal(value('San Antonio / Bexar pilot'), 'NOT RUN · out of regional scope');
+    assert.match(value('Austin GIS'), /PRELIMINARY/);
+    assert.match(value('Legal entitlement'), /UNKNOWN/);
+    assert.equal(value('Zoning GIS candidates'), '3');
+    assert.match(value('Zoning intersections'), /MF-4-NP · 0.1%/);
+    assert.match(value('Zoning intersections'), /SF-2-HD-NP · 99.9%/);
+    assert.match(value('Zoning intersections'), /SF-3-NP · <0.1% of mapped parcel/);
+    assert.doesNotMatch(value('Zoning intersections'), /SF-3-NP · 0%/);
+    assert.match(value('Zoning boundary review'), /REQUIRED.*multiple mapped zoning polygons/);
+    assert.match(value('Small GIS zoning overlaps'), /MF-4-NP · 0.1%.*SF-3-NP · <0.1%.*verify/);
+    assert.equal(value('ETOD GIS candidates'), '0');
+    assert.match(value('ETOD mapped overlap'), /UNKNOWN.*not ETOD clearance/);
+    assert.match(value('ETOD entitlement'), /UNVERIFIED/);
+    assert.match(value('Zoning determination'), /UNVERIFIED/);
+    assert.notEqual(value('Acquisition recommendation'), 'BUY');
+  } finally {
+    card?.destroy();
+    globalThis.document = old;
+  }
+});
+
+test('Austin jurisdiction GIS preview shows mapped full-purpose envelope without legal clearance', async () => {
+  const old = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const travis = {
+      ...parcel, id: '48453:302959', countyFips: '48453', county: 'Travis',
+      parcelId: '302959',
+      property: { ...parcel.property, situsAddress: '611 W ANNIE ST' },
+    };
+    const screened = response(travis);
+    screened.evidence.austinJurisdiction = {
+      status: 'single-gis-feature-contains-parcel-envelope',
+      intersectsCandidateCount: 1,
+      envelopeContainingCandidateCount: 1,
+      candidateJurisdictions: [
+        { id: 1326, cityName: 'CITY OF AUSTIN', type: 'FULL', specifics: 'FULL PURPOSE' },
+      ],
+      envelopeContainingJurisdictions: [
+        { id: 1326, cityName: 'CITY OF AUSTIN', type: 'FULL', specifics: 'FULL PURPOSE' },
+      ],
+      legalJurisdictionVerified: false,
+      parcelWideControllingJurisdiction: null,
+      acquisitionRecommendation: null,
+    };
+    card = createBdpPropertyCard({ screeningLoader: async () => screened });
+    card.show(travis);
+    await tick();
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const value = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.match(card.root.textContent, /AUSTIN GIS \/ JURISDICTION SCREEN/);
+    assert.match(value('Mapped jurisdiction'), /PRELIMINARY.*CITY OF AUSTIN.*FULL PURPOSE/);
+    assert.equal(value('GIS candidate count'), '1');
+    assert.match(value('Envelope containment'), /ONE mapped jurisdiction feature/);
+    assert.match(value('Legal jurisdiction'), /UNVERIFIED/);
+    assert.match(value('Jurisdiction source date'), /UNVERIFIED/);
+    assert.notEqual(value('Acquisition recommendation'), 'BUY');
+  } finally {
+    card?.destroy();
+    globalThis.document = old;
+  }
+});
+
+test('Austin jurisdiction outage leaves explicit UNKNOWN rather than full-purpose clearance', async () => {
+  const old = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const travis = {
+      ...parcel, id: '48453:302959', countyFips: '48453', county: 'Travis',
+    };
+    const screened = response(travis);
+    screened.evidence.austinJurisdiction = null;
+    screened.errors.austinJurisdiction = { message: 'upstream failed', status: 502 };
+    card = createBdpPropertyCard({ screeningLoader: async () => screened });
+    card.show(travis);
+    await tick();
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const value = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.match(value('Mapped jurisdiction'), /UNAVAILABLE.*UNKNOWN/);
+    assert.match(value('Legal jurisdiction'), /UNVERIFIED/);
+  } finally {
+    card?.destroy();
+    globalThis.document = old;
+  }
+});
+
+test('Austin regulatory review links official references but cannot infer development rights', async () => {
+  const old = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const travis = {
+      ...parcel, id: '48453:702', countyFips: '48453', county: 'Travis',
+      parcelId: '702', property: { ...parcel.property, situsAddress: '701 PRESSLER ST' },
+    };
+    const screened = response(travis);
+    screened.evidence.austinZoning = {
+      status: 'preliminary-spatial-evidence',
+      observations: [
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'SF-2-HD-NP' },
+          intersectsParcel: true, parcelPercent: 99.8 },
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'MF-4-NP' },
+          intersectsParcel: true, parcelPercent: 0.05 },
+        { sourceName: 'zoning', attributes: { ZONING_ZTYPE: 'SF-3-NP' },
+          intersectsParcel: true, parcelPercent: 0.007 },
+      ],
+    };
+    card = createBdpPropertyCard({ screeningLoader: async () => screened });
+    card.show(travis);
+    await tick();
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const value = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.match(card.root.textContent, /AUSTIN \/ REGULATORY REVIEW/);
+    assert.match(value('Regulatory status'), /no verified zoning rights/);
+    const openReview = find(card.root, (el) => el.tagName === 'summary'
+      && el.textContent.startsWith('Next evidence requests'))[0];
+    assert.match(openReview.textContent, /10 outstanding/);
+    const verificationRows = rows.filter((el) => el.dataset.bdpVerificationState);
+    assert.equal(verificationRows.length, 10);
+    assert.ok(verificationRows.every((el) =>
+      el.dataset.bdpVerificationState === 'verification-required'
+      && el.children[1].textContent.includes('UNVERIFIED')));
+    assert.ok(verificationRows.some((el) =>
+      el.dataset.bdpVerificationId === 'resolve-zoning-boundary'));
+    assert.ok(verificationRows.some((el) =>
+      el.dataset.bdpVerificationId === 'check-historic-restrictions'));
+    assert.match(value('GIS zoning candidates'), /SF-2-HD-NP/);
+    assert.match(value('GIS zoning candidates'), /MF-4-NP/);
+    assert.match(value('Multiple GIS classes'), /REVIEW REQUIRED/);
+    assert.match(value('Neighborhood plan indicator'), /GIS CODE INCLUDES NP/);
+    assert.match(value('Historic review indicator'), /GIS CODE INCLUDES H\/HD/);
+    assert.match(value('Permitted uses'), /UNKNOWN/);
+    assert.match(value('Setbacks \/ height \/ density'), /UNKNOWN/);
+    assert.match(value('Buildability \/ feasibility'), /NOT DETERMINED/);
+    const links = find(card.root, (el) => el.tagName === 'a');
+    const zoningVerification = links.find((el) => el.textContent === 'Austin Planning verification process');
+    assert.equal(zoningVerification.href,
+      'https://www.austintexas.gov/development-services/zoning-verification');
+    assert.equal(zoningVerification.target, '_blank');
+    assert.equal(zoningVerification.rel, 'noopener noreferrer');
+    assert.ok(links.some((el) => el.textContent === 'Official historic preservation resources'));
+  } finally {
+    card?.destroy();
+    globalThis.document = old;
+  }
+});
+
+test('Austin regulatory review does not turn missing GIS evidence into no-zoning or buildable status', async () => {
+  const old = globalThis.document;
+  globalThis.document = { createElement: (tag) => new Element(tag), body: new Element('body') };
+  let card;
+  try {
+    const travis = {
+      ...parcel, id: '48453:1234', countyFips: '48453', county: 'Travis',
+    };
+    const screened = response(travis);
+    screened.evidence.austinZoning = null;
+    screened.evidence.austinJurisdiction = null;
+    screened.errors.austinZoning = { message: 'GIS offline', status: 502 };
+    card = createBdpPropertyCard({ screeningLoader: async () => screened });
+    card.show(travis);
+    await tick();
+    const rows = find(card.root, (el) => el.className === 'bdp-property-row');
+    const value = (key) => rows.find((el) => el.children[0].textContent === key)?.children[1].textContent;
+    assert.match(value('GIS zoning candidates'), /UNKNOWN/);
+    assert.match(value('Neighborhood plan indicator'), /UNKNOWN/);
+    assert.match(value('Historic review indicator'), /UNKNOWN/);
+    assert.match(value('Regulatory evidence coverage'), /UNKNOWN/);
+    const reviewItems = rows.filter((el) => el.dataset.bdpVerificationState);
+    assert.ok(reviewItems.length >= 7);
+    assert.ok(reviewItems.every((el) => el.dataset.bdpVerificationState === 'verification-required'));
+    assert.ok(reviewItems.some((el) => el.dataset.bdpVerificationId === 'verify-zoning-designation'));
+    assert.ok(reviewItems.some((el) => el.dataset.bdpVerificationId === 'verify-legal-jurisdiction'));
+    assert.match(value('Buildability \/ feasibility'), /NOT DETERMINED/);
+    assert.match(value('Applicable ordinances'), /UNKNOWN/);
+  } finally {
+    card?.destroy();
+    globalThis.document = old;
+  }
+});
