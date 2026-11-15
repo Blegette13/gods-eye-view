@@ -1,6 +1,6 @@
 # Step 40C-50 — Production identity-authority & response-release security design
 
-**Checkpoint: November 15, 2026. DESIGN + REVIEW-ONLY CANONICAL CONTRACT STAGED; NO real provider, privileges, migrations, UI or public geometry. Operator validation PENDING.**
+**Checkpoint: November 15, 2026. REVIEW-ONLY CONTRACT OPERATOR-VALIDATED: 1,088/1,088 land regression tests PASSED and Vite build PASSED (250 modules, 4.84 seconds). Still NO real provider, privileges, migrations, UI or public geometry.**
 
 ## Operator-confirmed prior milestone — 40C-49
 
@@ -20,7 +20,7 @@ The current `createTrustedParcelCountySessionVerifier` receives `findSessionByDi
 
 `server/providers/bdp-parcel-identity-authority-contract.js` is a **REVIEW-ONLY, UNROUTED** pure candidate response-shape inspector. It has **no network, session issuer, cookies, database connection or authorization output**. It checks exact candidate fields for a server HMAC session digest, Texas county FIPS, active account/session, verified MFA, an allowed county-grant state, four canonical positive PostgreSQL BIGINT revision strings (account, session, MFA, grant) and plausible 8-hour-bounded session timestamps. It rejects malformed, extra, unknown, inherited, symbol-bearing, accessor, untrusted-proxy and expired/future data. A revision-comparison helper marks A→B→A epoch changes and decreasing observation times as mismatches. **It deliberately always reports `releaseAuthorized:false` and `actualProviderConnected:false`**, even when `contractMatches:true`. A plausible shape is not a trusted origin; a forged response can pass any shape check.
 
-`src/bdp/ingestion/parcelIdentityAuthorityContract.test.mjs` stages **18 new contract tests**. A lightweight local code simulation of these 18 pure checks passed, but the repository's Node runner, land suite and production build have NOT yet been executed for this change. Expected land suite is **1,088/1,088** (1,070 last confirmed + 18 new).
+`src/bdp/ingestion/parcelIdentityAuthorityContract.test.mjs` stages **18 new contract tests**. An earlier lightweight simulation passed all 18 pure checks. **The operator has now confirmed 1,088/1,088 complete land tests PASSED with zero failures and a Vite production build PASSED (250 modules, 4.84 seconds).** The separate 18-case focused summary was not included in the screenshot, though the full land suite includes these new tests. This proves only the review-only code contract, not a real identity system.
 
 ## Required decisions / minimum system-of-record contract
 
