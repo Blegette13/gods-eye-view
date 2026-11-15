@@ -6,7 +6,7 @@ import {createPrivateSessionCountyEpochReader} from
   './bdp-parcel-session-county-epoch.js';
 
 /**
- * Step 40C-48 — SIX independently attested SQL principals, PRIVATE ONLY.
+ * Step 40C-48 — SIX independently attested SQL principals, PRIVATE ONLY, UNROUTED.
  *
  * The sixth reader checks SYNTHETIC server-side session/county grant rows
  * and their immutable epoch, using one dedicated SQL login; the other
@@ -14,12 +14,12 @@ import {createPrivateSessionCountyEpochReader} from
  * and latest sealed-run epoch readers. Caller-injected session/run epochs
  * are prohibited, not silently preferred or used as fallback.
  *
- * This staged composition is NOT an account issuer, authenticated identity,
- * actual MFA, actual county entitlement, GIS redistribution license,
- * polygon delivery, HTTP endpoint, or linearizable network release gate.
+ * This staged composition is NOT an account issuer. It is NOT real authentication,
+ * actual MFA, actual county entitlement, GIS redistribution licensing,
+ * polygon delivery or an HTTP endpoint. This is not an atomic response release gate.
  * findSessionByDigest MUST later come from a real authoritative identity
  * source with account/MFA/logout/grant revocation. Until then the whole
- * six-principal factory is unrouted, synthetic and NOT production-ready.
+ * six-principal factory is unrouted, synthetic and not production-ready.
  */
 const REQUIRED=[
   'sessionHmacKey','cursorHmacKey','findSessionByDigest','consumeQuota',
