@@ -222,7 +222,7 @@ test('51 review probe is unrouted and creates no real authentication or transpor
     import.meta.url),'utf8');
   assert.match(src,/UNROUTED \/ REVIEW-ONLY \/ SYNTHETIC/);
   assert.match(src,/returns releaseAuthorized:false in ALL cases/);
-  assert.match(src,/not proof of source/);
+  assert.match(src,/NEVER proof of source/);
   assert.doesNotMatch(src,/new Pool\(|createServer\(|\.listen\(|app\.get\(/);
   assert.doesNotMatch(src,/signJwt|issueToken|setCookie|GRANT EXECUTE|ST_AsGeoJSON/);
 });
