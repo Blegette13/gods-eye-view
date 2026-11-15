@@ -1,6 +1,6 @@
 # Step 40C-47 — Current session/county revision RPC (SYNTHETIC, STAGED, UNROUTED)
 
-**Checkpoint: November 15, 2026. Operator validation for Step 40C-47 PENDING.**
+**Checkpoint: November 15, 2026. OPERATOR-VALIDATED synthetic milestone: 1,037/1,037 land regression tests PASSED, Vite production build PASSED, and disposable PostGIS session/county epoch smoke PASSED with clean exit. NOT DEPLOYED.**
 
 ## Step 40C-46 independently validated
 
@@ -17,7 +17,7 @@ The greatest outstanding security gap is **NOT** whether a read-only GIS query e
 5. `scripts/bdp/parcel-session-county-epoch-reader-disposable-smoke.mjs` — opt-in **real password-authenticated disposable PostGIS smoke** with randomized `--network none` Docker container, no ports/mounts, local PostGIS image preflight and name-scoped cleanup. Only synthetic `ldos_private_auth` tables are installed. It proves deny-by-default, approved current flags, revoke→reapprove increment, rollback, MFA revoke, delete/recreate version continuity, raw-table denial and actual role-attestation privilege drift. Returns a PASS string only if all checks finish, then removes the container.
 6. `src/bdp/ingestion/parcelSessionCountyEpochDisposableSmoke.test.mjs` — **9 additional Node guard tests** for opt-in, Docker isolation, approval denial, revision/rollback behavior, distinct password LOGIN, and safe cleanup.
 
-**Total NEW tests: 27**; expected full regression suite **1,037** (previous 1,010 + 27). JavaScript smoke syntax parsed during staging, but **actual Node, real Docker/PostGIS, and build results are NOT yet operator-confirmed for this step**.
+**Operator screenshot confirms 1,037/1,037 full land tests PASSED** (zero failures), **Vite production build PASSED** (250 transformed modules, 4.13 seconds), and the **real disposable PostGIS session/county epoch-only SQL smoke printed PASS and returned to PowerShell normally**. The focused 27-case summary was not shown in the supplied images, though the complete suite includes the new tests. The isolated synthetic test is verified; it is **not real sign-in, MFA, county authorization or legal parcel-distribution approval**.
 
 ## What remains NOT implemented
 
