@@ -1,6 +1,6 @@
 # Step 40C-49 — Six real SQL principal isolation smoke (STAGED)
 
-**Checkpoint: November 15, 2026. 13/13 focused and 1,070/1,070 land tests PASSED, Vite build PASSED; REAL six-role PostGIS smoke hit a test assertion error (count(*) zero vs empty), corrected in source; clean SQL rerun PENDING. NO live database or browser changes.**
+**Checkpoint: November 15, 2026. VERIFIED SYNTHETIC MILESTONE: 13/13 focused, 1,070/1,070 land tests, Vite build, and real isolated six-LOGIN PostGIS SQL smoke PASSED with clean exit. NO live database or browser changes.**
 
 ## Confirmed prerequisite — Step 40C-48
 
@@ -28,6 +28,14 @@ The operator's screenshot confirms **13/13 focused safety guards passed**, **1,0
 Cause: the source-authority probe intentionally runs `SELECT count(*) FROM ...`; a successful query with **no matching rows returns the text '0'**, whereas `SELECT ...` without aggregation can return no rows (empty text with `psql -t -A`). The scripted expectations had incorrectly treated these as equivalent. We updated both the initial no-seal assertion and the later no-fallback-after-failed-run assertion to expect `'0'`, without loosening any deny conditions. The source-contract regression now explicitly checks the distinction. An internal JavaScript parsing/source-contract simulation returned **13/13**, but this is **NOT** a rerun of Docker or the actual SQL. The observed Postgres `permission denied` lines in the failed trial are expected denial probes; they do not themselves indicate a security failure.
 
 **Next:** pull `bdp-development`, execute `node --test src/bdp/ingestion/parcelSixPrincipalDisposableSmoke.test.mjs`, then rerun ONLY `node scripts/bdp/parcel-six-principal-disposable-smoke.mjs --disposable-only`. The 1,070 regression suite and Vite build were already observed green on this code path, so no unnecessary repeat is needed for the source-assertion-only patch. Keep the milestone pending until the actual SQL smoke prints PASS and exits normally.
+
+## Final operator validation — November 15
+
+The operator reran the corrected script after fetching `bdp-development`. Screenshot shows **13/13 focused tests PASSED** and the **actual Docker/PostGIS six-password-LOGIN smoke printed**:
+
+`PASS: disposable PostGIS six independent SQL LOGINS, sealed source, publication, geometry, policy/run/session epochs and revocation isolation.`
+
+The process returned to the ordinary PowerShell prompt without errors. Previous operator screenshots in this milestone separately confirm **1,070/1,070 full land regressions PASSED** (zero failed) and **Vite production build PASSED** (250 modules, 4.20 seconds). The COUNT(*) '0' vs empty-result assertion is corrected. **Step 40C-49's isolated synthetic SQL integration smoke is operator-verified.** It does NOT create any live roles, account identities, GIS redistribution approval, HTTP response gate or production delivery authorization.
 
 ## Scope limitations — DO NOT overclaim
 
