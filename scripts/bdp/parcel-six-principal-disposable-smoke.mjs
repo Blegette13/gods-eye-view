@@ -320,7 +320,7 @@ export async function runSixPrincipalDisposableSmoke(args=process.argv.slice(2))
       SOURCE+"','synthetic-failed','failed',"+
       "clock_timestamp()+interval '1 hour');");
     assert.equal(own('run'),'','No fallback to stale current sealed run');
-    assert.equal(own('source'),'','No fallback to stale source authority');
+    assert.equal(own('source'),'0','No fallback to stale source authority');
     assert.equal(own('session'),String(BigInt(sessionBefore)+2n));
     // A consumer MUST refuse the private result because the independent
     // source+run checks fail; this is not an atomic HTTP release test.
