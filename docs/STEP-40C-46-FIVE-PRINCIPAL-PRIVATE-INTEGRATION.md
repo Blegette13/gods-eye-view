@@ -1,6 +1,6 @@
 # Step 40C-46 — Fifth-principal current sealed-run proof inside the PRIVATE geometry boundary
 
-**Status: STAGED / UNROUTED / NOT OPERATOR-VALIDATED. Checkpoint: November 15, 2026.**
+**Status: SYNTHETIC STAGE OPERATOR-VALIDATED / UNROUTED / NOT DEPLOYED. Checkpoint: November 15, 2026.**
 
 ## Step 40C-45 confirmed
 
@@ -19,7 +19,7 @@ Operator screenshots show **30/30 focused tests**, **996/996 land-development re
 2. The existing `createPrivateVerifiedGeometryDependencies` v2 runtime receives this newly derived `readSealedRunEpoch` collaborator. It independently checks current session/county authorization, fresh sealed source, redistribution review, source and review epochs, and **current latest sealed-run epoch** before the fixed geometry query and again afterward. The existing HMAC cursor revision incorporates exact run epochs; a changed latest finished run, a missing seal, an unknown version or an A→B→A source/run change must invalidate the private page and any previously signed private keyset continuation. The exposed method is still **`readPrivatePage`**, returning counts and an opaque signed cursor, **NOT parcel polygons or an authorization-to-publish decision**.
 3. `src/bdp/ingestion/parcelFivePrincipalGeometry.test.mjs` adds **14 new synthetic integration/contract cases** for missing/untrusted injected dependencies, all five distinct SQL connections and logins, five role attestations, valid bounded private paging, missing/duplicate/incorrect latest-run proof, independent run epoch ABA, failed revocation, privilege drift, pre/post run changes, stale signed cursor denial, stable cursor continuation, cancelled requests and the absence of HTTP/pool/browser geometry pathways.
 
-**Expected suite total: 1010 land tests** (996 last confirmed + 14 new). These new tests and their combined SQL wiring have **NOT yet been run by the operator or verified with an actual five-LOGIN PostgreSQL environment**. Only source syntax inspection of the new JavaScript files is available in this staging checkpoint. The 40C-45 dedicated run-epoch SQL role was already tested in an independent real disposable PostGIS smoke; connecting it to the five-role private runtime is new and only has synthetic fixture tests so far.
+**Operator screenshot confirms 50/50 focused tests PASSED**, **1010/1010 full land regression tests PASSED**, and **Vite production build PASSED** (250 modules; 6.34 seconds) with zero failures. This confirms the synthetic five-reader composition, **NOT a real five-LOGIN PostgreSQL deployment**. The new composition has not been verified against five concurrently provisioned real DB logins in one environment. The 40C-45 dedicated run-epoch SQL role was already tested in an independent real disposable PostGIS smoke; connecting it to the five-role private runtime is new and only has synthetic fixture tests so far.
 
 ## Mandatory remaining production blockers
 
