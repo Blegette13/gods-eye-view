@@ -26,9 +26,13 @@ const REVISION=Object.freeze([
 function exact(obj,keys){
   if(!obj||typeof obj!=='object'||Array.isArray(obj))return false;
   const proto=Object.getPrototypeOf(obj);
-  return (proto===Object.prototype||proto===null)
-    &&Object.keys(obj).length===keys.length
-    &&keys.every(key=>Object.hasOwn(obj,key));
+  if(proto!==Object.prototype&&proto!==null)return false;
+  const own=Reflect.ownKeys(obj);
+  if(own.length!==keys.length)return false;
+  const descriptors=Object.getOwnPropertyDescriptors(obj);
+  return keys.every(key=>Object.hasOwn(descriptors,key)
+    &&Object.hasOwn(descriptors[key],'value')
+    &&descriptors[key].enumerable===true);
 }
 function pgEpoch(value){
   if(typeof value!=='string'||!EPOCH.test(value))return false;
@@ -46,6 +50,7 @@ function contextValid(ctx){
  * No positive release/authorization decision is returned.
  */
 export function isCanonicalCandidateIdentitySnapshot(snapshot,ctx){
+  try {
   if(!contextValid(ctx)||!exact(snapshot,KEYS))return false;
   if(snapshot.sessionDigest!==ctx.sessionDigest
     ||snapshot.countyFips!==ctx.countyFips
@@ -63,6 +68,7 @@ export function isCanonicalCandidateIdentitySnapshot(snapshot,ctx){
     ||snapshot.expiresAtMs<=snapshot.issuedAtMs
     ||snapshot.expiresAtMs-snapshot.issuedAtMs>MAX_SESSION_MS)return false;
   return true;
+  } catch { return false; }
 }
 /**
  * Compare candidate revision evidence for review/test scenarios only.
@@ -70,12 +76,14 @@ export function isCanonicalCandidateIdentitySnapshot(snapshot,ctx){
  * equality is INSUFFICIENT for authority or any on-wire release decision.
  */
 export function sameCandidateIdentityRevision(before,after,ctx){
+  try {
   return isCanonicalCandidateIdentitySnapshot(before,ctx)
     &&isCanonicalCandidateIdentitySnapshot(after,ctx)
     &&REVISION.every(k=>before[k]===after[k])
     &&before.issuedAtMs===after.issuedAtMs
     &&before.expiresAtMs===after.expiresAtMs
     &&after.observedAtMs>=before.observedAtMs;
+  } catch { return false; }
 }
 /**
  * A fixed generic review verdict; deliberately NEVER returns "allowed".
