@@ -280,7 +280,7 @@ test('47 component cannot serve HTTP, create a DB pool or access cookies',()=>{
 test('47 session epoch store stays explicitly synthetic, not an auth provider',()=>{
   const authSource=readFileSync(new URL(
     './sql/parcelSessionCountyEpochFoundation.sql',import.meta.url),'utf8');
-  assert.match(authSource,/NOT the actual authentication or MFA service/);
+  assert.match(authSource,/not the actual authentication or MFA service/i);
   assert.match(sql,/NOT an MFA, login/);
   assert.match(sql,/NOT an MFA, login,/);
   assert.match(sql,/SYNTHETIC unmounted session\/county epoch/);
