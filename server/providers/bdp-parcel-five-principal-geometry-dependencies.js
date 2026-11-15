@@ -15,7 +15,7 @@ import {createPrivateCurrentSealedRunEpochReader} from
  *
  * The account/session/county epoch reader remains a trusted injected
  * *synthetic* collaborator: this is NOT real authentication, a real grant
- * store, licensing, geometry delivery or an atomic response release gate.
+ * store, licensing or geometry delivery. This is not an atomic response release gate.
  * Nothing creates credentials, DB roles, pools, migrations or HTTP routes.
  */
 const REQUIRED=[
