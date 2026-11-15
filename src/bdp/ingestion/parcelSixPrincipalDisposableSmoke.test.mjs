@@ -80,9 +80,9 @@ test('49 each role rejects cross-RPC calls and raw source/auth table access',()=
 });
 test('49 private run seal plus independent synthetic review required for geometry count',()=>{
   // count(*) always returns a row containing '0', NOT an empty string.
-  assert.match(src,/assert\\.equal\\(own\\('source'\\),'0'\\)/);
-  assert.doesNotMatch(src,/assert\\.equal\\(own\\('source'\\),''\\)/);
-  assert.match(src,/assert\\.equal\\(own\\('source'\\),'1'\\)/);
+  assert.match(src,/assert\.equal\(own\('source'\),'0'\)/);
+  assert.doesNotMatch(src,/assert\.equal\(own\('source'\),''\)/);
+  assert.match(src,/assert\.equal\(own\('source'\),'1'\)/);
   assert.match(src,/assert\.equal\(own\('review'\),'0'\)/);
   assert.match(src,/assert\.equal\(own\('geometry'\),'0'\)/);
   assert.match(src,/parcel_run_seals/);
