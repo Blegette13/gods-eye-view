@@ -1,6 +1,6 @@
 # Step 40C-45 — Exact latest FINISHED sealed-run epoch (STAGED / UNDEPLOYED)
 
-**Checkpoint: November 15, 2026 — 30/30 focused and 996/996 full regression tests PASSED; isolated PostGIS test BLOCKED by Docker daemon/image diagnostics, not yet SQL-verified.**
+**Checkpoint: November 15, 2026 — operator-verified: 30/30 focused tests, 996/996 land tests, and clean disposable PostGIS sealed-run SQL smoke PASS. NOT DEPLOYED.**
 
 ## Verified Step 40C-44
 
@@ -30,6 +30,14 @@ Before retrying, verify that Docker Desktop shows its engine running. In PowerSh
 New PowerShell screenshots show **30/30 focused Step 40C-45 tests PASSED** and **996/996 land-development regression tests PASSED** (zero failures). The repeated disposable PostGIS smoke returns `Disposable PostGIS image unavailable or Docker unresponsive. Verify Docker Desktop, then check: docker image inspect postgis/postgis:17-3.5`. An earlier `docker version` printed **Client** metadata but no visible **Server** response before the terminal froze. **No successful live PostGIS RPC execution is demonstrated by these screenshots**; the diagnostic deliberately combines image-missing and daemon-unavailable cases, so do not assume which is true without checking the server. No new Vite build result is included in this screenshot batch; a previous 993-test checkpoint had a successful build.
 
 **Next operator checks (Docker-diagnostic PowerShell window):** open Docker Desktop and verify engine status, run `docker version` and `docker info --format '{{.ServerVersion}}'`; only after the Server responds, run `docker image inspect postgis/postgis:17-3.5 --format '{{.Id}}'`. If the daemon responds but the image is missing, download exactly that named PostGIS image with `docker pull postgis/postgis:17-3.5`. After the image is available, rerun *only* the isolated PostGIS smoke in the separate repository window. If the daemon is unresponsive, restart Docker Desktop; do not repeatedly run SQL smoke while Docker is frozen. **Do not mark Step 40C-45 fully validated until the smoke prints PASS and exits cleanly.**
+
+## November 15 final validation — complete
+
+New operator screenshots confirm that **Docker Desktop Server version 29.9.3 responded**, the previously missing `postgis/postgis:17-3.5` image was downloaded successfully, and the existing, opt-in `node scripts/bdp/parcel-current-run-epoch-disposable-smoke.mjs --disposable-only` printed:
+
+`PASS: disposable PostGIS current sealed-run epoch LOGIN, exact latest run, stale-run denial and privilege isolation.`
+
+The PowerShell prompt returned without a process error. The same screenshot series confirms **30/30 focused Step 40C-45 tests** and **996/996 full land-development tests** (zero failed). The successful Vite production build shown earlier was prior to the final Docker-only image restoration; no new build transcript was provided in the latest screenshot set. **This completes the isolated synthetic 40C-45 validation, not production licensing, real authentication, or public parcel delivery.**
 
 ## Remaining blockers
 
