@@ -457,6 +457,6 @@ test('48 six SQL principal integration remains synthetic and unrouted',()=>{
   assert.match(source,/not production-ready/);
   assert.match(source,/createPinnedPrivateSessionCountyEpochRpcExecutor/);
   assert.match(source,/createPrivateFivePrincipalGeometryDependencies/);
-  assert.doesNotMatch(source,/new Pool\\(|createServer\\(|app\\.get\\(|\\.listen\\(/);
+  assert.doesNotMatch(source,/new Pool\(|createServer\(|app\.get\(|\.listen\(/);
   assert.doesNotMatch(source,/GRANT EXECUTE|CREATE ROLE|ST_AsGeoJSON/);
 });
