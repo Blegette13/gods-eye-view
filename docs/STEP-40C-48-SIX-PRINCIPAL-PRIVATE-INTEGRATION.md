@@ -1,6 +1,6 @@
 # Step 40C-48 — Six-principal private synthetic session/county revision integration
 
-**Checkpoint: November 15, 2026. STAGED / UNROUTED / NOT DEPLOYED / OPERATOR VALIDATION PENDING.**
+**Checkpoint: November 15, 2026. OPERATOR-VALIDATED SYNTHETIC STAGE / UNROUTED / NOT DEPLOYED.**
 
 ## Step 40C-47 verified
 
@@ -13,7 +13,7 @@ Operator screenshots confirm **1,037/1,037 land-development regression tests PAS
 3. The new factory binds the separately derived current-session epoch reader into the existing five-principal private runtime. The latter checks source, publication, session/county grant revision and current sealed run before a bounded geometry SQL query, then rechecks them before returning a PRIVATE count + opaque HMAC cursor. Missing, conflicting, revoked, changed or malformed session epoch rows deny output. A session grant A→B→A version change invalidates a just-read page and a previously signed cursor even if current flags look identical. The returned API remains **`readPrivatePage` only**; no rows, coordinates or public HTTP transport.
 4. `src/bdp/ingestion/parcelSixPrincipalGeometry.test.mjs` adds **20 new synthetic integration tests** by extending the established five-principal harness with a sixth independent fixed SQL-login/role attestation, exact digest and county RPC arguments, duplicate/missing/malformed session epochs, privilege drift, pre/post synthetic ABA and stale signed cursor handling, and fail-closed cancellation and invalid dependencies.
 
-**Expected full land regression tests: 1,057/1,057** (1,037 confirmed in Step 40C-47 + 20 new tests). The new JavaScript modules passed **source syntax inspection**, but the 20 new tests, 1,057-test suite and Vite build have **NOT yet been run by the operator**. This stage does NOT provision any of the six actual database identities; each previous PostGIS disposable login was tested separately, not together in a real shared deployment.
+**Operator screenshot confirms 1,057/1,057 full land regression tests PASSED**, zero failures, and **Vite production build PASSED** (250 modules, 5.01 seconds). The 20 new focused tests' standalone summary was not shown, but the total suite includes them. No full six-LOGIN live PostgreSQL validation has yet been performed. This stage does NOT provision any of the six actual database identities; each previous PostGIS disposable login was tested separately, not together in a real shared deployment.
 
 ## Critical limitations
 
