@@ -1,6 +1,6 @@
 # Step 40C-45 — Exact latest FINISHED sealed-run epoch (STAGED / UNDEPLOYED)
 
-**Checkpoint: November 7, 2026 — 993/993 full regression and production build PASSED; disposable Docker integration TIMEOUT, pending rerun.**
+**Checkpoint: November 15, 2026 — 30/30 focused and 996/996 full regression tests PASSED; isolated PostGIS test BLOCKED by Docker daemon/image diagnostics, not yet SQL-verified.**
 
 ## Verified Step 40C-44
 
@@ -24,6 +24,12 @@ The operator's screenshot confirms **993/993 full land tests PASSED** and a **su
 A narrow follow-up patch adds: a preflight `docker info` responsiveness check, explicit verification that the previously used `postgis/postgis:17-3.5` image exists locally, a `--pull=never` guard to avoid unexpectedly downloading while running the isolated synthetic test, safe allowlisted Docker operation labels on CLI timeout errors (never command args/passwords), and **cleanup attempted by the fresh random test-container name even if `docker run` timed out after the daemon created it**. **Three additional source-contract regressions** cover these conditions, increasing the expected full land suite to **996** and the opt-in guard file to **11 cases**. Local JavaScript syntax inspection and 11 source-contract simulations succeeded; this is **not** an operator Node/PostgreSQL test.
 
 Before retrying, verify that Docker Desktop shows its engine running. In PowerShell, run `docker version`, `docker info --format '{{.ServerVersion}}'`, then `docker image inspect postgis/postgis:17-3.5`. If the last command shows a missing image, use `docker pull postgis/postgis:17-3.5` once while the engine is healthy. Do not run or modify any existing land-development database.
+
+## November 15 operator checkpoint — Windows Docker diagnostics
+
+New PowerShell screenshots show **30/30 focused Step 40C-45 tests PASSED** and **996/996 land-development regression tests PASSED** (zero failures). The repeated disposable PostGIS smoke returns `Disposable PostGIS image unavailable or Docker unresponsive. Verify Docker Desktop, then check: docker image inspect postgis/postgis:17-3.5`. An earlier `docker version` printed **Client** metadata but no visible **Server** response before the terminal froze. **No successful live PostGIS RPC execution is demonstrated by these screenshots**; the diagnostic deliberately combines image-missing and daemon-unavailable cases, so do not assume which is true without checking the server. No new Vite build result is included in this screenshot batch; a previous 993-test checkpoint had a successful build.
+
+**Next operator checks (Docker-diagnostic PowerShell window):** open Docker Desktop and verify engine status, run `docker version` and `docker info --format '{{.ServerVersion}}'`; only after the Server responds, run `docker image inspect postgis/postgis:17-3.5 --format '{{.Id}}'`. If the daemon responds but the image is missing, download exactly that named PostGIS image with `docker pull postgis/postgis:17-3.5`. After the image is available, rerun *only* the isolated PostGIS smoke in the separate repository window. If the daemon is unresponsive, restart Docker Desktop; do not repeatedly run SQL smoke while Docker is frozen. **Do not mark Step 40C-45 fully validated until the smoke prints PASS and exits cleanly.**
 
 ## Remaining blockers
 
