@@ -79,7 +79,10 @@ test('49 each role rejects cross-RPC calls and raw source/auth table access',()=
   assert.match(src,/Object\.values\(proof\(principal\)\)\.every\(Boolean\)/);
 });
 test('49 private run seal plus independent synthetic review required for geometry count',()=>{
-  assert.match(src,/assert\.equal\(own\('source'\),'1'\)/);
+  // count(*) always returns a row containing '0', NOT an empty string.
+  assert.match(src,/assert\\.equal\\(own\\('source'\\),'0'\\)/);
+  assert.doesNotMatch(src,/assert\\.equal\\(own\\('source'\\),''\\)/);
+  assert.match(src,/assert\\.equal\\(own\\('source'\\),'1'\\)/);
   assert.match(src,/assert\.equal\(own\('review'\),'0'\)/);
   assert.match(src,/assert\.equal\(own\('geometry'\),'0'\)/);
   assert.match(src,/parcel_run_seals/);
@@ -100,7 +103,7 @@ test('49 failed newer finished ingest denies fallback to older sealed run',()=>{
   assert.match(src,/synthetic-failed/);
   assert.match(src,/clock_timestamp\(\)\+interval '1 hour'/);
   assert.match(src,/assert\.equal\(own\('run'\),'',/);
-  assert.match(src,/assert\.equal\(own\('source'\),'',/);
+  assert.match(src,/assert\.equal\(own\('source'\),'0',/);
   assert.doesNotMatch(src,/ALTER ROLE .*SUPERUSER/);
 });
 test('49 real role privilege drift causes two separate catalog proof failures',()=>{
