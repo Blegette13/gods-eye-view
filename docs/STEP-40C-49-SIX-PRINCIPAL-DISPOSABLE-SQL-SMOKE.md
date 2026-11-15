@@ -1,6 +1,6 @@
 # Step 40C-49 — Six real SQL principal isolation smoke (STAGED)
 
-**Checkpoint: November 15, 2026. NOT operator validated. NO live database or browser changes.**
+**Checkpoint: November 15, 2026. 13/13 focused and 1,070/1,070 land tests PASSED, Vite build PASSED; REAL six-role PostGIS smoke hit a test assertion error (count(*) zero vs empty), corrected in source; clean SQL rerun PENDING. NO live database or browser changes.**
 
 ## Confirmed prerequisite — Step 40C-48
 
@@ -20,6 +20,14 @@ Operator screenshot confirms **1,057/1,057 complete land-development tests PASSE
 `src/bdp/ingestion/parcelSixPrincipalDisposableSmoke.test.mjs` introduces **13 additional Node source/opt-in safety guards**, covering Docker isolation, six distinct password LOGINS, exact function grants, no shared raw-table access, immutable synthetic data, publication and session ABA, failed newer run denial, role proof and cleanup.
 
 During staging, the JavaScript file parsed successfully and **13/13 lightweight simulated source-guard checks** passed. This **does not** mean the real Docker/PostgreSQL smoke has run: its 13 focused tests and the actual six-password-login SQL trial still require operator verification.
+
+## Operator smoke failure and narrow correction — November 15
+
+The operator's screenshot confirms **13/13 focused safety guards passed**, **1,070/1,070 full land regressions passed**, and a **Vite build succeeded** (250 transformed modules; 4.20 seconds). The actual isolated six-LOGIN PostGIS trial **DID NOT PASS**: after the negative privilege tests it failed `Expected values to be strictly equal: '0' !== ''`.
+
+Cause: the source-authority probe intentionally runs `SELECT count(*) FROM ...`; a successful query with **no matching rows returns the text '0'**, whereas `SELECT ...` without aggregation can return no rows (empty text with `psql -t -A`). The scripted expectations had incorrectly treated these as equivalent. We updated both the initial no-seal assertion and the later no-fallback-after-failed-run assertion to expect `'0'`, without loosening any deny conditions. The source-contract regression now explicitly checks the distinction. An internal JavaScript parsing/source-contract simulation returned **13/13**, but this is **NOT** a rerun of Docker or the actual SQL. The observed Postgres `permission denied` lines in the failed trial are expected denial probes; they do not themselves indicate a security failure.
+
+**Next:** pull `bdp-development`, execute `node --test src/bdp/ingestion/parcelSixPrincipalDisposableSmoke.test.mjs`, then rerun ONLY `node scripts/bdp/parcel-six-principal-disposable-smoke.mjs --disposable-only`. The 1,070 regression suite and Vite build were already observed green on this code path, so no unnecessary repeat is needed for the source-assertion-only patch. Keep the milestone pending until the actual SQL smoke prints PASS and exits normally.
 
 ## Scope limitations — DO NOT overclaim
 
