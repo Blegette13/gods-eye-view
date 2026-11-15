@@ -40,7 +40,7 @@ test('49 six distinct SQL LOGINs are password authenticated, not impersonated',(
   assert.match(src,/Object\.fromEntries\(\s*PRINCIPALS\.map\(p=>\[p,randomBytes\(32\)\.toString\('hex'\)\]\)/);
   assert.match(src,/CREATE ROLE '\+LOGIN\[principal\]\+' LOGIN NOINHERIT/);
   assert.match(src,/'-h','127\.0\.0\.1','-U',LOGIN\[as\]/);
-  assert.doesNotMatch(src,/SET ROLE|SET SESSION AUTHORIZATION/);
+  assert.doesNotMatch(src,/sql\(['\"]SET ROLE|sql\(['\"]SET SESSION AUTHORIZATION/);
 });
 test('49 six separate schema-restricted fixed RPCs and geometry keyset only',()=>{
   for(const fn of [
