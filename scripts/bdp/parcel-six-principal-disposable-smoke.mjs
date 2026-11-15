@@ -246,7 +246,7 @@ export async function runSixPrincipalDisposableSmoke(args=process.argv.slice(2))
     }
 
     const own=p=>sql(query[p],p);
-    assert.equal(own('source'),'');
+    assert.equal(own('source'),'0');
     assert.equal(own('review'),'0');
     assert.equal(own('geometry'),'0');
     assert.match(own('policy'),/^[1-9][0-9]*\|[1-9][0-9]*$/);
