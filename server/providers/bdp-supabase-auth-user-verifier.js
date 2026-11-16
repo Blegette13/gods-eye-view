@@ -102,6 +102,7 @@ export function createUnroutedSupabaseAuthVerifier(config) {
     || !PUBLISHABLE.test(config.publishableKey)
     || (Object.hasOwn(config,'fetchImpl') && typeof config.fetchImpl !== 'function'))
     throw new TypeError('Valid Supabase project and publishable key required');
+  const publishableKey = config.publishableKey;
   const fetchImpl = config.fetchImpl ?? globalThis.fetch;
   if (typeof fetchImpl !== 'function') throw new TypeError('Server fetch is required');
   return Object.freeze({
@@ -116,7 +117,7 @@ export function createUnroutedSupabaseAuthVerifier(config) {
         const response = await fetchImpl(baseUrl + '/auth/v1/user',{
           method:'GET',
           headers:{
-            apikey:config.publishableKey,
+            apikey:publishableKey,
             Authorization:'Bearer ' + input.accessToken,
             Accept:'application/json',
             'Cache-Control':'no-store',
