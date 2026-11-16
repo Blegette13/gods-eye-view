@@ -1,6 +1,6 @@
 # Step 40C-53 — Real Supabase Auth identity verification foundation
 
-**Status: CODE COMMITTED / UNROUTED / NOT LIVE CONFIGURED.**
+**Status: OPERATOR-VALIDATED CODE CONTRACT (1,133/1,133 LAND TESTS, VITE BUILD PASSED) / UNROUTED / NOT LIVE CONFIGURED.**
 **Decision:** Operator approved Supabase Auth for user identity and separate app-owned PostgreSQL for current account/session/county entitlements. Date: November 15, 2026.
 
 ## What is real, what is not
@@ -26,7 +26,7 @@ Primary vendor documentation:
 1. `server/providers/bdp-supabase-auth-user-verifier.js` — dependency-free, **server-only**, explicit project URL and **publishable** key, calls actual Supabase Auth user-validation endpoint with the caller's token via `fetch` (or a test-injected fetch); returns only frozen identity evidence without PII, MFA, grants, app session or release permission. Restricts arbitrary hosts, redirects, non-GET methods, extra arguments, extra config, oversized bodies and tokens, network failure, HTTP errors, anonymous users, wrong roles and bad IDs. No admin/service keys, secret APIs, migrations or route mount.
 2. `src/bdp/ingestion/parcelSupabaseAuthUserVerifier.test.mjs` — **19 new Node tests** with mocked HTTP responses to verify valid/invalid identities, exact request headers, token/session isolation, key pinning, invalid config/token/host, cancellations, network outages, oversized responses, no role/MFA inference and no HTTP/browser/geometry route.
 
-Previous confirmed baseline: **1,114/1,114 land tests and Vite build passed** (250 modules, 4.35 seconds). Predicted new full suite: **1,133/1,133** (1,114 + 19); new tests/build require operator verification. A separate lightweight in-context simulation of the 19 test assertions passed; this is not an actual Node or Supabase live test.
+Previous confirmed baseline: **1,114/1,114 land tests and Vite build passed** (250 modules, 4.35 seconds). **Operator screenshot now confirms 1,133/1,133 full land regression tests PASSED** (zero failures, 24.56 seconds) and **Vite production build PASSED** (250 transformed modules, 5.15 seconds). The standalone 19-case focused summary is not visible in the submitted screenshot, but these tests are included in the full suite. The previous in-context simulation is supplemental. No real Supabase Auth service, user session or provider project was contacted by these mocked tests.
 
 ## What an authorized project owner will need to do later
 
