@@ -1,6 +1,6 @@
 # Step 40C-59 — Private current county-candidate RPC and isolated SQL-role boundary
 
-**Status: CODE STAGED; OPERATOR NODE / DOCKER / BUILD VALIDATION PENDING.**
+**Status: OPERATOR-VERIFIED (November 16, 2026): 1,210/1,210 LAND TESTS, VITE BUILD AND REAL DISPOSABLE RPC SQL SMOKE PASSED. NO PRODUCTION AUTH OR GIS RELEASE.**
 **Date: November 16, 2026. No production Supabase/Auth, existing PostGIS, live app-owned database or public UI was changed.**
 
 ## Operator-verified Step 40C-58
@@ -57,6 +57,14 @@ Expected:
 `PASS: disposable app-owned current-candidate RPC: restricted SQL LOGINs, no raw tables, deny defaults, independent epochs and revoked/expired denial; no geometry authorized.`
 
 A clean prompt return is required. **Stop at the first failure** and report only the sanitized error or test summary. No Supabase keys or user tokens are needed for any of these commands; never apply the draft SQL by hand to Supabase or existing PostGIS.
+
+## Operator final validation — November 16, 2026
+
+The operator screenshot confirms **1,210/1,210 complete land regressions PASSED** (zero failures), **Vite production build PASSED** (250 transformed modules in **4.95 seconds**), and the **actual disposable PostgreSQL current-candidate RPC test PASSED**, returning normally to PowerShell:
+
+`PASS: disposable app-owned current-candidate RPC: restricted SQL LOGINs, no raw tables, deny defaults, independent epochs and revoked/expired denial; no geometry authorized.`
+
+This establishes the isolated SQL ACL and candidate-read properties against *synthetic* data. It does not prove live Supabase sign-in, independently verified MFA, production database deployment, application session issuance, county grant provenance or source redistribution permission. **Step 40C-59 is verified as a disposable proof only.**
 
 ## Security limitations and next milestone
 
