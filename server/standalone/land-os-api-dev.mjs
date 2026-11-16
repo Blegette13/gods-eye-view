@@ -40,7 +40,7 @@ export function createDevApiHandler(getPort) {
     res.setHeader('Referrer-Policy','no-referrer');
     res.setHeader('X-Frame-Options','DENY');
     res.setHeader('Content-Security-Policy',"default-src 'none'");
-    res.setHeader('Access-Control-Allow-Origin','null');
+    // Intentionally omit Access-Control-Allow-Origin for every route.
     // No request may impersonate a public hostname or enter from LAN.
     const port=getPort();
     const allowed=Number.isInteger(port)&&port>0&&port<=MAX_PORT
