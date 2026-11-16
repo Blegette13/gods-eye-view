@@ -1,6 +1,6 @@
 # Step 40C-51 — Identity candidate two-read consistency and release-race counterexample
 
-**Checkpoint: November 15, 2026. STAGED / UNROUTED / REVIEW-ONLY. Operator test validation PENDING.**
+**Checkpoint: November 15, 2026. OPERATOR-VALIDATED REVIEW-ONLY MILESTONE: 26/26 focused tests, 1,114/1,114 full land tests, and Vite production build PASSED; still UNROUTED and NOT real authentication.**
 
 ## Confirmed 40C-50 baseline
 
@@ -17,7 +17,7 @@ The latest operator screenshot confirms **1,088/1,088 complete land regressions 
 
 `src/bdp/ingestion/parcelIdentityCandidateProbe.test.mjs` adds **26 new synthetic review regressions** for strict dependency and input shapes, all four epoch ABA changes, suspension, logout/revocation, stale MFA and county grant, wrong county or digest, empty/malformed responses, unsafe clocks, mid-request AbortSignal cancellation, exceptions without secret disclosure, mutable provider object changes and frozen minimal request arguments. A deliberate **counterexample test** makes both earlier reads return matching candidates, then revokes access immediately afterward; `candidateConsistent:true` remains possible, but `releaseAuthorized:false` is permanent. This demonstrates why even two validated current reads do not create an atomic response-release gate.
 
-Lightweight in-context JavaScript source-contract simulation for **26/26 cases succeeded**; this is **not a Node test run on the operator's machine or a database/identity integration test**. Expected full land suite is **1,114/1,114** (1,088 previously confirmed + 26), pending the operator.
+**Operator screenshot confirms 26/26 focused Node tests PASSED, 1,114/1,114 complete land regression tests PASSED (zero failures), and a Vite production build PASSED** (250 modules, 4.35 seconds). The previous 26/26 in-context source-level check was supplemental. This verifies only synthetic/unrouted identity consistency behavior: there is still no real identity provider, account grant store, final response-release gate, or legal GIS redistribution approval.
 
 ## Production identity integration decision (NOT made yet)
 
