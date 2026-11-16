@@ -182,7 +182,7 @@ test('55 script contains no login, browser router, geometry, database or token e
     import.meta.url,
   ),'utf8');
   assert.match(src,/DEV-ONLY authenticated gateway reachability check/);
-  assert.match(src,/NO HTTP server mounted/);
+  assert.match(src,/No HTTP server mounted/);
   assert.match(src,/LDOS_SUPABASE_DEV_URL/);
   assert.match(src,/LDOS_SUPABASE_DEV_PUBLISHABLE_KEY/);
   assert.match(src,/MAX_BYTES = 2048/);
