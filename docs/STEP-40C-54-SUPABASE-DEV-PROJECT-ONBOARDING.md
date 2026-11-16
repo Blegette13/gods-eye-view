@@ -1,6 +1,6 @@
 # Step 40C-54 — Authorized Supabase development project onboarding
 
-**Status: OPERATOR DASHBOARD ACTION PENDING / NO LIVE LOGIN OR API DEPLOYED.**
+**Status: OPERATOR-CONFIRMED DEVELOPMENT SUPABASE PROJECT CREATED / HEALTHY; PUBLISHABLE KEY PRESENT. NO LIVE LOGIN OR API DEPLOYED.**
 **Date: November 15, 2026.** Step 40C-53 is operator-validated: **1,133/1,133 land regression tests PASSED**, zero failures; **Vite build PASSED** (250 modules, 5.15 sec). These tests use fake Supabase network responses.
 
 ## Why this milestone is a setup step
@@ -21,6 +21,12 @@ Official UI docs checked:
 - https://supabase.com/docs/guides/getting-started/quickstarts/reactjs
 - https://supabase.com/docs/guides/getting-started/api-keys
 - https://supabase.com/docs/guides/auth/quickstarts/react
+
+## Operator project confirmation — November 15–16, 2026
+
+The operator's two Supabase dashboard screenshots confirm the development-named project **`land-os-auth-dev`** exists under the organization's Free plan, displays **Healthy** status, shows a **default `sb_publishable_...` key**, and has primary database region **East US (North Virginia), us-east-1**. No migrations or GitHub integration are shown. The dashboard displays **main / PRODUCTION** as the project's default branch label; this is **not** a live production deployment of the Land Development OS. Treat the entire Supabase project as a development-only resource with dummy users and no real GIS datasets. The secret key was masked in the screenshot; its value must never be copied into chat or the public repository.
+
+**Step 40C-54's setup condition is satisfied.** This is a dashboard-status observation, not a successful independent network reachability check, real user sign-in, app session or county grant. Step 40C-55 stages a narrowly scoped, opt-in local Auth health test using only the project's public publishable key. No production database or GIS migration was applied.
 
 ## Next engineering actions AFTER owner setup
 
