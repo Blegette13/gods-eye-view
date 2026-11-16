@@ -120,6 +120,7 @@ export async function runAppAuthLedgerDisposableSmoke(args=process.argv.slice(2)
     reader:randomBytes(32).toString('hex'),
   });
   let attempted=false;
+  let stage='Docker and image preflight';
   try {
     docker(['info','--format','{{.ServerVersion}}']);
     docker(['image','inspect',IMAGE]);
@@ -130,6 +131,7 @@ export async function runAppAuthLedgerDisposableSmoke(args=process.argv.slice(2)
       '-e','POSTGRES_HOST_AUTH_METHOD=scram-sha-256',IMAGE,
     ],240000);
     await waitUntilReady(container);
+    stage='draft schema installation';
 
     const sql=(statement,as)=>{
       const p=runSqlSync(container,statement,as,passwords);
@@ -152,6 +154,7 @@ export async function runAppAuthLedgerDisposableSmoke(args=process.argv.slice(2)
     // Fresh, independent container. Never use a PostgreSQL URL or live store.
     sql('SELECT version();');
     sql(read());
+    stage='role setup and restricted ACL checks';
     assert.equal(sql("SELECT count(*) FROM pg_namespace WHERE nspname='ldos_app_auth';"),'1');
     assert.equal(sql("SELECT count(*) FROM ldos_app_auth.accounts;"),'0');
 
@@ -187,6 +190,7 @@ export async function runAppAuthLedgerDisposableSmoke(args=process.argv.slice(2)
     denied('ALTER TABLE ldos_app_auth.accounts DISABLE TRIGGER ALL;',
       'writer',/must be owner|permission denied/i);
 
+    stage='deny-by-default synthetic records';
     assert.equal(sql("INSERT INTO ldos_app_auth.accounts(subject) VALUES ('"+
       SUBJECT+"') RETURNING account_state||'|'||revision;",'writer'),'suspended|1');
     assert.equal(sql("INSERT INTO ldos_app_auth.sessions "+
@@ -199,6 +203,7 @@ export async function runAppAuthLedgerDisposableSmoke(args=process.argv.slice(2)
       SUBJECT+"','"+COUNTY+"') RETURNING grant_state||'|'||revision;",'writer'),
       'denied|1');
 
+    stage='account session and county ABA revisions';
     // Every permitted UPDATE advances revision, even an unchanged value.
     const updateAccount=(value)=>sql('UPDATE ldos_app_auth.accounts SET account_state='+
       "'"+value+"' WHERE subject='"+SUBJECT+
@@ -221,6 +226,7 @@ export async function runAppAuthLedgerDisposableSmoke(args=process.argv.slice(2)
     assert.equal(updateGrant('denied'),'denied|3');
     assert.equal(updateGrant('allowed'),'allowed|4');
 
+    stage='immutable binding constraints and deletion denial';
     denied("UPDATE ldos_app_auth.county_grants SET revision=1 WHERE subject='"+
       SUBJECT+"';",'writer',/authority revision is database-managed/i);
     denied("UPDATE ldos_app_auth.accounts SET subject='"+
@@ -246,6 +252,7 @@ export async function runAppAuthLedgerDisposableSmoke(args=process.argv.slice(2)
       denied('TRUNCATE ldos_app_auth.'+table+' CASCADE;',
         'writer',/authority rows must be retained/i);
 
+    stage='transaction rollback and concurrent revisions';
     const grantRev=()=>sql("SELECT revision FROM ldos_app_auth.county_grants "+
       "WHERE subject='"+SUBJECT+"' AND county_fips='"+COUNTY+"';",'writer');
     assert.equal(grantRev(),'4');
@@ -271,6 +278,7 @@ export async function runAppAuthLedgerDisposableSmoke(args=process.argv.slice(2)
     assert.equal(sql("SELECT grant_state FROM ldos_app_auth.county_grants WHERE subject='"+
       SUBJECT+"';",'writer'),'denied');
 
+    stage='final role and row isolation';
     // A granted synthetic writer is still NOT table owner, cannot bypass
     // authority guards or grant rights to unauthenticated readers.
     assert.equal(sql("SELECT has_table_privilege('"+LOGIN.reader+
@@ -282,7 +290,8 @@ export async function runAppAuthLedgerDisposableSmoke(args=process.argv.slice(2)
   }catch{
     // Deliberately never print Docker/psql command arguments, output,
     // synthetic credentials, account identifiers or schema data.
-    throw Error('Disposable app-owned ledger SQL proof failed; no live database changed');
+    throw Error('Disposable app-owned ledger SQL proof failed at '+stage+
+      '; no live database changed');
   }finally{
     if(attempted){
       try{docker(['rm','--force','--volumes',container],30000);}
