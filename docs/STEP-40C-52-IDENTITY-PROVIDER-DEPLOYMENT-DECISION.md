@@ -1,6 +1,6 @@
 # Step 40C-52 — Identity provider and server deployment decision record
 
-**Status: PROVISIONAL RECOMMENDATION / OPERATOR DECISION REQUIRED.**
+**Status: USER APPROVED PROVIDER DIRECTION — Supabase Auth + separate app-owned PostgreSQL authorization. Backend hosting, account model, and live project setup still UNDECIDED.**
 **Date: November 15, 2026. No provider was connected, no credentials requested, and no database or UI was modified.**
 
 ## Why this is a decision gate, not another synthetic test milestone
@@ -29,7 +29,7 @@ We must not build more purported 'production authentication' code without decidi
 
 - A self-managed OIDC provider could avoid hosted vendor dependence but adds significantly more operator responsibility for patching, credentials, MFA, backup, recovery, availability, audit and incident response. Not recommended for the first MVP without a dedicated security operator.
 
-**Provisional preference: Supabase Auth for MVP authentication, app-owned PostgreSQL for county-grants and current sessions**, because the existing Vite/JavaScript front end and Postgres investment can be preserved with separate interfaces, and basic MFA is available for an inexpensive pilot. This is **not** a chosen production deployment until the operator agrees and hosting/security decisions are documented.
+**Operator-approved direction: Supabase Auth for identity, app-owned PostgreSQL for current county grants and sessions**, preserving the existing Vite/JavaScript front end and PostGIS investment. This is **not** a configured Supabase tenant or approved production deployment: backend hosting, provider project setup, MFA enforcement, account authorization and release security are still required. Step 40C-53 stages an unrouted real Auth-server user validation adapter.
 
 Sources checked:
 - https://supabase.com/docs/guides/auth
@@ -68,9 +68,9 @@ Future buffered, audited release gate -> only approved output
 
 We must first choose a real Node backend deployment pattern: single origin for authenticated cookies and API is preferred where possible, no trusted client-side roles, HTTPS, CSRF defense, Origin checks, secure HttpOnly cookies, session rotation, rate limits, safe audit logs, minimum secret privileges, test/prod isolation, primary DB connectivity and clearly defined timeout/rollback semantics. An SPA-only static Vite deployment is insufficient for server-held credentials and strong revocation.
 
-## Blocking operator decisions BEFORE real identity wiring
+## Remaining operator decisions BEFORE live identity wiring
 
-1. **Provider:** Supabase Auth (recommended MVP), Clerk (if paid managed B2B UI is more valuable), or another vetted OIDC issuer.
+1. **Provider:** RESOLVED — Supabase Auth selected for MVP; revisit only if requirements change.
 2. **Backend hosting:** where the trusted Node API and durable PostgreSQL authorization store will run; the existing desktop Docker environment is for development only.
 3. **Launch permissions:** will anonymous users only explore the 3D map/publicly licensed layers, while signed-in verified organizations receive gated parcel intelligence? Are exports an independently reviewable privileged action?
 4. **Account model:** individual users only to begin, or organization/workspace accounts with multiple members, paid tiers and per-county roles from day one?
