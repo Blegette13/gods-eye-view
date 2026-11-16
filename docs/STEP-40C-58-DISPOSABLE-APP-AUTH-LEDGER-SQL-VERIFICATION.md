@@ -1,6 +1,6 @@
 # Step 40C-58 — Disposable PostgreSQL app-account ledger integration proof
 
-**Checkpoint: November 16, 2026 — STAGED / NOT YET OPERATOR-VERIFIED. No live Supabase/PostGIS database or public API changed.**
+**Checkpoint: November 16, 2026 — OPERATOR-VERIFIED: 1,192/1,192 complete land tests, Vite production build and real isolated app-owned PostgreSQL ledger SQL smoke PASSED. No live Supabase/PostGIS database or public API changed.**
 
 ## Step 40C-57 completed source/build checks
 
@@ -48,6 +48,14 @@ Expected final PASS:
 `PASS: disposable app-owned PostgreSQL ledger: deny-default rows, independent LOGINs, monotonic ABA revisions, immutable bindings, rollback, concurrent updates and delete/truncate denial.`
 
 It must also return normally to PowerShell. At the first failure, **stop and share only the sanitized error message**. Do not manually run draft SQL against Supabase or `bdp-postgis`. The Docker test creates and removes its **own isolated test container**; no local Supabase variables or API keys are required.
+
+## Final operator verification — November 16, 2026
+
+Operator screenshot confirms **1,192/1,192 land regression tests passed**, with zero failures/skips, and **Vite production build succeeded** (250 transformed modules, 4.97 seconds). The actual `node scripts/bdp/app-auth-ledger-disposable-smoke.mjs --disposable-only` script printed:
+
+`PASS: disposable app-owned PostgreSQL ledger: deny-default rows, independent LOGINs, monotonic ABA revisions, immutable bindings, rollback, concurrent updates and delete/truncate denial.`
+
+It returned cleanly to PowerShell. This upgrades Step 40C-58 to **verified for the isolated synthetic PostgreSQL environment only**. No real users, Supabase Auth integration, production roles, app-owned DB deployment, GIS licenses or network release are proven by this test. The 15-case standalone summary is not visible in the screenshot, but the complete land suite includes this staged test file.
 
 ## Hard limitations
 
