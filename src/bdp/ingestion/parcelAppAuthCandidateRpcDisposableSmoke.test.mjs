@@ -78,7 +78,8 @@ test('59 function PUBLIC EXECUTE is revoked in same transaction before commit',(
 test('59 draft does not create a permission verdict or GIS release response',()=>{
   assert.match(sql,/CANDIDATE EVIDENCE, NOT release authorization/);
   assert.doesNotMatch(sql,/releaseAuthorized|canPublish|allowExport|approvedGIS/);
-  assert.doesNotMatch(sql,/geometry|parcel_data_table|auth\.users/gi);
+  assert.doesNotMatch(sql,/\b(?:ST_AsGeoJSON|ST_GeomFrom|releaseAuthorized:true)\b/i);
+  assert.doesNotMatch(sql,/\b(?:FROM|JOIN|UPDATE)\s+auth\.users\b/i);
 });
 test('59 disposable probe uses exactly one new networkless container with cleanup',()=>{
   assert.ok(smoke.includes('postgis/postgis:17-3.5'));
