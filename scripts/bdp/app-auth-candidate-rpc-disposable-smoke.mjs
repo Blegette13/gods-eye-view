@@ -129,8 +129,13 @@ export async function runAppAuthCandidateRpcDisposableSmoke(
       "','"+RPC+"','EXECUTE');"),'t');
     assert.equal(sql("SELECT has_function_privilege('"+ROLE.blocked+
       "','"+RPC+"','EXECUTE');"),'f');
-    assert.equal(sql("SELECT has_function_privilege('public','"+
-      RPC+"','EXECUTE');"),'f');
+    // A separate login with only schema USAGE must not inherit PUBLIC EXECUTE.
+    // PostgreSQL's PUBLIC is a pseudo-role, not a name accepted by
+    // has_function_privilege('public',...), so inspect the actual ACL.
+    assert.equal(sql("SELECT count(*) FROM pg_proc AS p CROSS JOIN LATERAL "+
+      "aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) AS acl "+
+      "WHERE p.oid='"+RPC+"'::regprocedure AND acl.grantee=0 "+
+      "AND acl.privilege_type='EXECUTE';"),'0');
 
     const candidate=(digest=DIGEST,county=COUNTY)=>
       'SELECT account_epoch||\'|\'||session_epoch||\'|\'||county_grant_epoch '+
