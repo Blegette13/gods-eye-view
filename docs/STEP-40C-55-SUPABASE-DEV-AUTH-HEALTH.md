@@ -1,6 +1,6 @@
 # Step 40C-55 — Real development Supabase Auth health check
 
-**Status: COMMITTED / OPERATOR VALIDATION PENDING / NO USER AUTHENTICATION OR PUBLIC GIS.**
+**Status: OPERATOR-CONFIRMED LIVE SUPABASE AUTH HEALTH PASS / NEW LOCAL REGRESSION AND BUILD SUMMARIES NOT SHOWN / NO USER AUTHENTICATION OR PUBLIC GIS.**
 **Date: November 15–16, 2026.**
 
 ## Confirmed external setup: Step 40C-54
@@ -54,6 +54,18 @@ Remove-Item Env:LDOS_SUPABASE_DEV_URL -ErrorAction SilentlyContinue
 Expected success text:
 
 `PASS: development Supabase Auth health endpoint reachable using publishable key; no user or land permissions tested.`
+
+## Operator live connectivity confirmation — November 16, 2026
+
+The operator provided a PowerShell screenshot of the actual local script completing with:
+
+`PASS: development Supabase Auth health endpoint reachable using publishable key; no user or land permissions tested.`
+
+The process returned normally to the PowerShell prompt. This confirms **the developer machine successfully reached a live Supabase Auth GoTrue health endpoint with the development project's publishable key**, beyond the previously mocked responses. The screenshot shows no access token, secret, database connection or real user authentication. **The standalone 14-test summary, 1,147-test full land suite, and new build result are not shown here** and should not be represented as separately operator-confirmed.
+
+After the health proof, remove both ephemeral PowerShell environment variables with `Remove-Item Env:LDOS_SUPABASE_DEV_PUBLISHABLE_KEY -ErrorAction SilentlyContinue` and `Remove-Item Env:LDOS_SUPABASE_DEV_URL -ErrorAction SilentlyContinue`. Do not preserve them in GitHub or the browser bundle.
+
+**Step 40C-55's real health-connectivity gate is met.** It is NOT a login/MFA/grant or GIS authorization test.
 
 ## What's next
 
