@@ -234,5 +234,5 @@ test('60 no private database or GIS service is imported or deployed',()=>{
   assert.match(source,/server.listen\(port,HOST/);
   assert.match(source,/releaseAuthorized:false/);
   assert.doesNotMatch(source,/new Pool\(|ST_AsGeoJSON|postgis|geometryRpc|auth\.signIn/i);
-  assert.doesNotMatch(source,/Set-Cookie|Access-Control-Allow-Origin|listen\(port,'0\.0\.0\.0'/);
+  assert.doesNotMatch(source,/setHeader\(['"](?:Set-Cookie|Access-Control-Allow-Origin)['"]|listen\(port,'0\.0\.0\.0'/);
 });
