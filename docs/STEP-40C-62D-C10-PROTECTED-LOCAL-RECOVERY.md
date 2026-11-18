@@ -53,3 +53,18 @@ Screenshots confirm **17/17 C10 focused source tests** passed, **1,432/1,432 ful
 ## Subsequent operator plan result — November 18, 2026
 
 The operator subsequently reported that the non-mutating Windows PowerShell `-PlanOnly` invocation passed after the earlier Windows execution-policy block. This confirms the plan entry can run on their Windows setup; it **does not** validate DPAPI encryption, global-role export, filesystem ACLs, or either protected recovery file. A later separately operator-initiated `-SealLocalOnly` pass and `-CheckSealsOnly` pass are required before declaring protected recovery ready. Never print/decrypt secret material into shared screenshots or paste it into chat.
+
+## Windows PowerShell 5.1 DPAPI type-loader fix — November 18, 2026
+
+The operator's first **`-SealLocalOnly`** attempt failed with `Unable to find type [Security.Cryptography.ProtectedData]` at the first in-memory encryption call. On Windows PowerShell 5.1 (.NET Framework), the type resides in `System.Security.dll` and may not be loaded until explicitly requested. The script reached this call after its C8 database preflight and password-free globals export, but **before** creation of its local directory and two DPAPI files. No database mutation was attempted by this workflow. Confirm that the two expected encrypted files are absent before retrying.
+
+The source has been updated to load `System.Security` in Windows PowerShell Desktop and to introduce **`-ProbeDpapiOnly`**, a no-filesystem, no-PostgreSQL, public-canary encrypt/decrypt round-trip gate. Four additional offline security-contract tests were added (focused count **21**, complete land suite predicted **1,436**). The updated Node source contracts have been evaluated under an isolated JS assertion harness **21/21**, but the Windows PowerShell runtime and operator checkout remain **UNVERIFIED**. No secrets should be sent to chat.
+
+Safe verification sequence (after `git pull --ff-only origin bdp-development`):
+
+```powershell
+node --test src/bdp/ingestion/parcelAuthDevProtectedRecovery.test.mjs
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File .\scripts\bdp\app-auth-dev-protected-recovery.ps1 -ProbeDpapiOnly
+```
+
+Expected probe: `PASS: C10 Windows DPAPI in-memory round-trip verified; no files or database accessed.` Confirm both `$HOME\ldos-local-secrets\auth-gateway-v1.dpapi` and `auth-globals-no-passwords-v1.dpapi` are absent before a separately operator-directed seal retry. The new probe never accesses the database or recovery directory. If it fails, stop; do not weaken the execution policy or continue to `-SealLocalOnly`.
