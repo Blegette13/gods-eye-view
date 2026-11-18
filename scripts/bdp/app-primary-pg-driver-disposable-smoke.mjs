@@ -148,7 +148,7 @@ export async function runPrimaryPgDriverDisposableSmoke(
   let created=false,db;
   let stage='Docker/image preflight';
   const psql=sql=>docker([
-    'exec','-i',name,'psql','-X','-v','ON_ERROR_STOP=1',
+    'exec','-i',name,'psql','-X','-q','-t','-A','-v','ON_ERROR_STOP=1',
     '-U','postgres','-d','postgres',
   ],{input:sql,timeout:30000});
   try{
