@@ -68,3 +68,7 @@ powershell.exe -NoProfile -NonInteractive -ExecutionPolicy RemoteSigned -File .\
 ```
 
 Expected probe: `PASS: C10 Windows DPAPI in-memory round-trip verified; no files or database accessed.` Confirm both `$HOME\ldos-local-secrets\auth-gateway-v1.dpapi` and `auth-globals-no-passwords-v1.dpapi` are absent before a separately operator-directed seal retry. The new probe never accesses the database or recovery directory. If it fails, stop; do not weaken the execution policy or continue to `-SealLocalOnly`.
+
+## Operator DPAPI canary result — November 18, 2026
+
+The operator reports that the revised **21 focused source tests** and the Windows PowerShell **`-ProbeDpapiOnly` in-memory encryption/decryption canary** passed after the `System.Security` assembly fix. This validates the local DPAPI API canary, not the persistent protected file creation. **`-SealLocalOnly` and `-CheckSealsOnly` remain pending**. Check explicitly that neither of the two target `.dpapi` files already exists before the separately opted-in seal. The prior type-loading failure happened before file creation but it is safer to verify filesystem state rather than assume absence.
