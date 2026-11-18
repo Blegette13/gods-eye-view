@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {setTimeout as sleep} from 'node:timers/promises';
-import {createUnroutedPrimaryAccountReader} from '../../server/providers/bdp-primary-account-reader.js';
+import {createUnroutedPrimaryAccountReader,PRIMARY_ACCOUNT_SQL} from '../../server/providers/bdp-primary-account-reader.js';
 
 /**
  * Step 40C-62C — ACTUAL pg driver + RESTRICTED LOGIN + CURRENT PRIMARY
@@ -74,7 +74,7 @@ export function createRestrictedPrimaryPgQuery({Pool,settings}={}){
   let closed=false;
   return Object.freeze({
     async query({text,values,rowMode,signal}={}){
-      if(closed||typeof text!=='string'
+      if(closed||text!==PRIMARY_ACCOUNT_SQL
         || typeof rowMode!=='string'||rowMode!=='array'
         || !Array.isArray(values)||values.length!==1
         || !(signal instanceof AbortSignal)||signal.aborted)
