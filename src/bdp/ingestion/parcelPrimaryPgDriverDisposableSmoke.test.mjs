@@ -225,8 +225,8 @@ test('62C role denial, suspension, revision ABA and revoked account are tested',
   ),'utf8');
   for(const part of [
     "account_state='suspended'", "account_state='active'",
-    "'SELECT * FROM ldos_app_auth.sessions;'",
-    "'SELECT * FROM ldos_app_auth.county_grants;'",
+    'SELECT * FROM ldos_app_auth.sessions;',
+    'SELECT * FROM ldos_app_auth.county_grants;',
     "SET ROLE postgres;",
     "(await get())?.revision,'4'",
   ])assert.ok(script.includes(part),part);
