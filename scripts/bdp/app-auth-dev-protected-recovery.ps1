@@ -46,7 +46,7 @@ function Assert-PrivateDirectory {
   $acl.SetAccessRuleProtection($true, $false)
   $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
   $acl.SetOwner($sid)
-  $system = New-Object Security.Principal.SecurityIdentifier('S-1-5-18')
+  $system = [Security.Principal.SecurityIdentifier]::new('S-1-5-18')
   $inheritance = [Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [Security.AccessControl.InheritanceFlags]::ObjectInherit
   foreach ($owner in @($sid, $system)) {
     $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
