@@ -1,6 +1,6 @@
 # Step 40C-62D-C10 — Windows DPAPI local gateway-secret and global-role recovery preparation
 
-**Status November 18, 2026: operator verified 17/17 focused Node source contracts and 1,432/1,432 full land tests (0 failures/skips); Vite production build PASS with 2,048-MB old-space heap. The Windows PowerShell `-PlanOnly` runtime check remains UNVERIFIED after a prior script execution-policy block. No local DPAPI sealing or database mutation performed.**
+**Status November 18, 2026: operator verified 17/17 focused Node source contracts, 1,432/1,432 land tests (0 failures/skips), Vite build PASS with 2,048-MB old-space heap, and subsequently confirmed Windows PowerShell `-PlanOnly` PASS. DPAPI `-SealLocalOnly` / `-CheckSealsOnly` have NOT been run or verified; no local secret file or database mutation confirmed.**
 
 ## Starting evidence (Nov 18, 2026)
 
@@ -49,3 +49,7 @@ Afterward, separately stage/prove a privileged SQL LOGIN migration, real indepen
 ## Operator C10 source/test/build result — November 18, 2026
 
 Screenshots confirm **17/17 C10 focused source tests** passed, **1,432/1,432 full land tests** passed with zero failures/skips/cancellations, and **Vite v6.4.5 build PASS** (250 transformed modules, 4.18 seconds) with a one-command Node heap limit increase. An earlier `powershell.exe -File ... -PlanOnly` attempt was blocked by the Windows execution policy; the newest screenshot shows only test/build output, not a successful `-PlanOnly` run. **Do not claim that DPAPI runtime or the script plan has been validated until a separate non-mutating PowerShell execution succeeds.** No secret files should be generated until runtime review.
+
+## Subsequent operator plan result — November 18, 2026
+
+The operator subsequently reported that the non-mutating Windows PowerShell `-PlanOnly` invocation passed after the earlier Windows execution-policy block. This confirms the plan entry can run on their Windows setup; it **does not** validate DPAPI encryption, global-role export, filesystem ACLs, or either protected recovery file. A later separately operator-initiated `-SealLocalOnly` pass and `-CheckSealsOnly` pass are required before declaring protected recovery ready. Never print/decrypt secret material into shared screenshots or paste it into chat.
