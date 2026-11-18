@@ -99,9 +99,12 @@ function Invoke-ScopedSql([string]$query) {
   } catch {
     throw 'C11 scoped SQL operation failed; STOP and inspect before retrying.'
   } finally {
-    if (-not $proc.HasExited) {
-      try { $proc.Kill() } catch {}
-    }
+    # HasExited throws if Start itself failed. Never mask the sanitized error.
+    try {
+      if ($proc.Id -gt 0 -and -not $proc.HasExited) {
+        $proc.Kill()
+      }
+    } catch {}
     $proc.Dispose()
   }
 }
