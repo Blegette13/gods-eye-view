@@ -1,6 +1,6 @@
 # Step 40C-62D-B — Operator-controlled LOCAL persistent app PostgreSQL startup
 
-**Status: OPERATOR STARTUP INSTRUCTIONS STAGED; NOT EXECUTED BY CHATGPT. November 17, 2026.**
+**Status: OPERATOR VERIFIED — persistent local PostgreSQL 17 started November 18, 2026; healthy, localhost-only 127.0.0.1:54338, ldos_auth_dev|f primary SQL probe PASSED; password variable cleared. No app-auth schema migration, app-account SQL role, user account or county grants created.**
 **Prerequisite:** Step 40C-62D-A source checks are verified: 1,322/1,322 land regressions, Vite build 250 modules in 8.73 seconds. No persistent database yet.
 
 ## Scope
@@ -63,6 +63,19 @@ Remove-Item Env:LDOS_AUTH_DEV_POSTGRES_PASSWORD -ErrorAction SilentlyContinue
 ```
 
 The initialized database is persistent. **Do not run `docker compose down -v`, `docker volume rm`, `docker system prune --volumes`, or broad cleanup scripts**; these can permanently destroy local data. A plain `docker compose -f docker-compose.auth-dev.yml stop` stops this service without deleting the volume. Future `docker compose ... up` or `start` may require re-setting the owner password variable to satisfy Compose interpolation, even though this variable alone does not change the existing database password.
+
+## November 18, 2026 — REAL OPERATOR STARTUP CONFIRMED
+
+The operator's fresh PowerShell screenshot confirms all Step 40C-62D-B acceptance criteria:
+
+- `docker compose -f docker-compose.auth-dev.yml config --quiet` exited successfully after `LDOS_AUTH_DEV_POSTGRES_PASSWORD` was supplied using a hidden PowerShell prompt.
+- `docker compose ... ps --all` displayed no existing service before first initialization; `docker compose ... up -d` pulled `postgres:17`, created `ldos-auth-dev_default`, created the **persistent named volume** `ldos-auth-dev_ldos_auth_dev_pgdata`, and started `ldos-auth-dev-auth-postgres-1`.
+- `docker compose ... ps` displayed **Up (healthy)** and **127.0.0.1:54338->5432/tcp**; `docker compose ... port auth-postgres 5432` returned **127.0.0.1:54338**.
+- `docker compose ... exec -T auth-postgres psql -X -U postgres -d ldos_auth_dev -v ON_ERROR_STOP=1 -tAc "SELECT current_database(), pg_is_in_recovery();"` returned **`ldos_auth_dev|f`**; an ordinary PostgreSQL primary, not a standby.
+- The shell's `LDOS_AUTH_DEV_POSTGRES_PASSWORD` variable was removed after checks. The operator is responsible for retaining the initial owner password in a private password manager. This removal does not rotate the password already installed in the database and does not remove Docker's environment metadata.
+- No screenshot confirms any `ldos_app_auth` schema, restricted login roles, sessions, permissions, user records, migrations, or GIS rights. **No migration was requested or performed.** Container/volume durability across restart is not yet separately demonstrated.
+
+**40C-62D-B is complete as local database startup/health validation.** Subsequent inspection can use read-only `docker exec` with the **specific container name** `ldos-auth-dev-auth-postgres-1` to avoid requiring the removed Compose interpolation password. Do not create or alter tables/roles until Step 40C-62D-C preflight and controlled migration have been reviewed.
 
 ## Exit criteria and next phase
 
