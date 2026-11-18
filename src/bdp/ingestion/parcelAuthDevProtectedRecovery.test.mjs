@@ -93,3 +93,35 @@ test('62D-C10 code is unmounted, no HTTP, auth login or GIS permissions',()=>{
   assert.doesNotMatch(source,/createServer\(|new Pool\(|Set-LocalRole|ST_AsGeoJSON|SUPABASE|sb_secret_|localhost:5432/);
   assert.match(source,/auth database unchanged/);
 });
+
+test('62D-C10 Windows PowerShell Desktop explicitly loads ProtectedData assembly',()=>{
+  assert.match(source,/if \(\$PSVersionTable.PSEdition -eq 'Desktop'\)/);
+  const load='Add-Type -AssemblyName System.Security -ErrorAction Stop';
+  assert.ok(source.includes(load));
+  assert.ok(source.indexOf(load)<source.indexOf('if ($ProbeDpapiOnly)'));
+  assert.ok(source.indexOf(load)<source.indexOf('$sealedSecret = Protect-Text'));
+  assert.match(source,/DPAPI assembly unavailable; no recovery files were created/);
+});
+test('62D-C10 DPAPI probe uses only synthetic in-memory canary',()=>{
+  assert.match(source,/\[switch\]\$ProbeDpapiOnly/);
+  assert.match(source,/GetBytes\('ldos-dpapi-v1-probe'\)/);
+  assert.match(source,/ProtectedData\]::Protect\(/);
+  assert.match(source,/ProtectedData\]::Unprotect\(/);
+  assert.match(source,/in-memory round-trip verified; no files or database accessed/);
+});
+test('62D-C10 DPAPI probe returns before recovery folder or Docker work',()=>{
+  const start=source.indexOf('if ($ProbeDpapiOnly) {');
+  const end=source.indexOf('\n$Root =');
+  assert.ok(start>0 && end>start);
+  const body=source.slice(start,end);
+  assert.match(body,/Write-Output \$ProbeMessage\s+return/);
+  assert.doesNotMatch(body,/docker|GetFolderPath|Join-Path|New-Item|Write-NewProtectedFile|pg_dumpall/);
+});
+test('62D-C10 DPAPI probe clears synthetic plaintext and ciphertext byte arrays',()=>{
+  const start=source.indexOf('if ($ProbeDpapiOnly) {');
+  const end=source.indexOf('\n$Root =');
+  const body=source.slice(start,end);
+  for(const x of ['canary','cipher','plain'])
+    assert.ok(body.includes('[Array]::Clear($'+x),x);
+  assert.doesNotMatch(body,/Write-Output \$canary|Write-Output \$cipher|Write-Output \$plain/);
+});
