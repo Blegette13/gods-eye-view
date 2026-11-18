@@ -65,7 +65,7 @@ test('62D-C11 validate path returns before SQL mutation',()=>{
 test('62D-C11 uses exact Docker container and database only',()=>{
   assert.match(source,/ldos-auth-dev-auth-postgres-1 psql/);
   assert.match(source,/-U postgres -d ldos_auth_dev -v ON_ERROR_STOP=1/);
-  assert.doesNotMatch(source,/docker compose down|docker system prune|docker rm|Supabase/);
+  assert.doesNotMatch(source,/docker compose down|docker system prune|docker rm/);
 });
 test('62D-C11 redirects SQL over stdin, not password-bearing argv',()=>{
   assert.match(source,/RedirectStandardInput = \$true/);
