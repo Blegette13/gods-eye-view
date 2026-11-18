@@ -81,7 +81,7 @@ test('62D-C11 Docker errors are sanitized without leaking SQL',()=>{
 });
 test('62D-C11 migration has a single transaction with lock and statement timeout',()=>{
   assert.match(source,/BEGIN;\nSET LOCAL lock_timeout = '5s';\nSET LOCAL statement_timeout = '30s';/);
-  assert.match(source,/\$ldos_c11_guard\$;/);
+  assert.match(source,/END;\n\$ldos_c11_guard\$;/);
   assert.match(source,/COMMIT;\n'@/);
 });
 test('62D-C11 DB-side guard requires exact primary and role state',()=>{
