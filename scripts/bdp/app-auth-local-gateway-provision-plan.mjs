@@ -57,8 +57,8 @@ export function makeFutureGatewayMigration(password) {
     '    OR EXISTS (SELECT 1 FROM ldos_app_auth.county_grants) THEN',
     "   RAISE EXCEPTION 'Unapproved local auth gateway target';",
     ' END IF;',
-    'END',
-    '$ldos_gateway_guard$;',
+    'END;',
+    '$ldos_gateway_guard$;'
     'CREATE ROLE ldos_auth_gateway_login LOGIN NOINHERIT NOSUPERUSER',
     '  NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS',
     "  PASSWORD '"+password+"';",
