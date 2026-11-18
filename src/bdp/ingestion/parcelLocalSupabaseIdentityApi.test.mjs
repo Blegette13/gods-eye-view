@@ -10,7 +10,7 @@ import {
   startLocalIdentityDevApi,
 } from '../../../server/standalone/land-os-identity-verification-dev.mjs';
 
-const URL='https://abcdefghijabcdefghij.supabase.co';
+const PROJECT_URL='https://abcdefghijabcdefghij.supabase.co';
 const KEY='sb_publishable_'+ 'p'.repeat(24);
 const TOKEN=['a'.repeat(50),'b'.repeat(50),'c'.repeat(50)].join('.');
 const USER_ID='123e4567-e89b-42d3-a456-426614174000';
@@ -20,7 +20,7 @@ const healthy=()=>new Response(JSON.stringify({
   app_metadata:{role:'admin',countyGrants:['48453']},
 }),{status:200,headers:{'Content-Type':'application/json'}});
 const verifier=(fetchImpl)=>createUnroutedSupabaseAuthVerifier({
-  projectUrl:URL,publishableKey:KEY,fetchImpl,
+  projectUrl:PROJECT_URL,publishableKey:KEY,fetchImpl,
 });
 async function start(t,fetchImpl=async()=>healthy()) {
   const server=await startLocalIdentityDevApi({
@@ -76,7 +76,7 @@ test('60 a fresh Supabase /user response confirms only identity and no rights',a
   assert.equal(result.status,200);
   assert.deepEqual(JSON.parse(result.body),verified);
   assert.equal(calls.length,1);
-  assert.equal(calls[0][0],URL+'/auth/v1/user');
+  assert.equal(calls[0][0],PROJECT_URL+'/auth/v1/user');
   assert.equal(calls[0][1].method,'GET');
   assert.equal(calls[0][1].headers.Authorization,'Bearer '+TOKEN);
   assert.equal(calls[0][1].headers.apikey,KEY);
