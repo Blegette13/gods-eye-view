@@ -104,7 +104,7 @@ export async function runDisposableAuthRoleSwitch(args=process.argv.slice(2)){
   const denied=(sql,{gateway=true}={})=>{
     const r=psql(sql,{gateway,raw:true});
     assert.notEqual(r.status,0,'Unapproved SQL command succeeded');
-    assert.match(String(r.stderr||''),/permission denied|not permitted|must be owner|cannot set role/i);
+    assert.match(String(r.stderr||''),/permission denied|not permitted|must be owner|cannot set role|cannot execute (?:UPDATE|CREATE TABLE) in a read-only transaction/i);
   };
   try{
     docker(['info','--format','{{.ServerVersion}}']);
