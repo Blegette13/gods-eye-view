@@ -1,6 +1,6 @@
 # Step 40C-62D-C8 — Read-only persistent gateway readiness attestation
 
-**Status November 18, 2026: source and 12 offline security-contract tests staged on `bdp-development`. Operator verification PENDING; no database writes performed by this stage.**
+**Status November 18, 2026: OPERATOR VERIFIED. 12/12 focused Node tests passed; the read-only persistent gateway preflight returned its exact expected PASS message. No database writes performed by this stage.**
 
 ## Verified operator evidence preceding this step
 
@@ -40,3 +40,13 @@ Stop if a step fails. **Do not attempt to rerun earlier migrations or create a g
 Only if this preflight passes, separately design and test: randomized gateway password generation, secret retention outside source control and process arguments, a PostgreSQL 17 `LOGIN NOINHERIT` with no direct table rights, one exact `SET TRUE, INHERIT FALSE, ADMIN FALSE` reader-role membership, runtime client privilege attestation, role/password rotation and revocation, and verified transport bounds. Apply to the persistent `ldos_auth_dev` only after **explicit operator review and approval**, with a backup/restore plan for role/global objects (ordinary `pg_dump` of a database does not by itself capture cluster-wide roles).
 
 The persistent auth database remains separate from Supabase Auth, parcel PostGIS and the public Cesium 2.4-km Free Explorer. Application account enrollment, real MFA, county privileges, licensing and GIS data release are still unimplemented.
+
+## Verified operator result — November 18, 2026
+
+PowerShell screenshot shows **12/12 focused C8 tests passed, 0 failures or skips**, followed by the exact expected fixed result:
+
+```text
+PASS: local persistent auth-dev primary and NOLOGIN account-reader privileges verified; gateway LOGIN absent, ledger empty, candidate RPC absent; no database writes.
+```
+
+The persistent database therefore still has no `ldos_auth_gateway_login`, no account/session/county-grant rows, and no installed candidate RPC. The canonical restricted reader remains a `NOLOGIN` role with only the reviewed account-column rights. This is not evidence of a running production authentication service.
