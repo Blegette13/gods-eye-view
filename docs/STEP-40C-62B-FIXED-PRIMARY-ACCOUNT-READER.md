@@ -1,6 +1,6 @@
 # Step 40C-62B — Fixed current-primary app-account SQL reader contract
 
-**Status: STAGED in GitHub; operator focused/full-suite/build verification PENDING. November 17, 2026.**
+**Status: OPERATOR-VERIFIED November 17, 2026 — 1,287/1,287 full land tests, 0 failures/skips and Vite production build PASSED; no real DB connection, MFA or GIS delivery.**
 
 ## Operator-confirmed Step 40C-62A
 
@@ -32,6 +32,10 @@ npm.cmd run build
 ```
 
 Predicted **20/20 focused** and **1,287/1,287 complete land tests** (verified 1,267 + 20 new), and successful Vite build. Predictions are not confirmations. **No Supabase keys, real users, PostGIS Docker containers or passwords are necessary**. If a test fails, stop and report the sanitized failure.
+
+## Operator validation after UUID fix — November 17, 2026
+
+The operator's newest PowerShell screenshot confirms **1,287/1,287 full land regression tests passed**, **0 failed, skipped, or cancelled**, and **Vite production build succeeded** (250 transformed modules, **8.26 seconds**). The screenshot does not show the focused 20/20 summary separately; its tests are included in the full discovered land suite. The known UUID validation defect was corrected before this successful full suite. Large Vite chunks still trigger a nonfatal warning. **Step 40C-62B is verified as a source/adapter contract, not as an actual PostgreSQL connection.**
 
 ## Step 40C-62C — Real development database decision and integration
 
