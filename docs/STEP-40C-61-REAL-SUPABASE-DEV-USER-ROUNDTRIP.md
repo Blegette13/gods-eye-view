@@ -1,6 +1,6 @@
 # Step 40C-61 — Real Supabase development user round-trip (LOCAL ONLY)
 
-**Status: PHASE A OPERATOR VERIFIED — 20/20 FOCUSED TESTS, 1,247/1,247 LAND REGRESSIONS, VITE BUILD PASSED. REAL SUPABASE TEST-USER SIGN-IN STILL PENDING. November 17, 2026.**
+**Status: OPERATOR VERIFIED — 20/20 focused tests, 1,247/1,247 land regressions, Vite build and REAL Supabase development user password sign-in /auth/v1/user loopback verification PASS (November 17, 2026). MFA, application accounts/sessions, county grants and GIS delivery remain DISABLED.**
 
 ## Completed 40C-60 baseline
 
@@ -73,6 +73,16 @@ Finally erase the PowerShell variables:
     Remove-Item Env:LDOS_SUPABASE_DEV_URL -ErrorAction SilentlyContinue
 
 **Security:** The PowerShell-to-Node pipe and short-lived Node process temporarily contain the test user's plaintext password; the CLI neither prints nor persists it, and the public publishable key cannot act as a service-role key. Use a disposable development account, never a real organization administrator or personal password. Never paste the email/password, verification codes, bearer/refresh JWTs, or secret keys into chat, GitHub, screenshots or browser-console logs. If the CLI fails, share only the generic one-line error. The script does not use Supabase Admin APIs, does not sign out globally, and cannot guarantee JWT revocation by exiting.
+
+## Phase C — Operator real provider identity verification PASSED
+
+The latest operator PowerShell screenshot (November 17, 2026 local date) confirms the actual `scripts/bdp/supabase-dev-user-identity-roundtrip.mjs --dev-only --stdin-credentials` executable returned:
+
+`PASS: development test user authenticated with Supabase and reverified by local Node API; MFA, app sessions, county grants and geometry remain disabled.`
+
+This **confirms a successful real password sign-in to the chosen development Supabase Auth project and an independent server-side /auth/v1/user verification via a temporary 127.0.0.1 Node HTTP route**. The earlier configuration error was resolved: the operator's boolean format checks returned `True` for the actual development project URL and publishable key; the script returned cleanly to the prompt. The operator then removed the temporary PowerShell credential variable and both development project environment variables.
+
+The screenshot does not expose user tokens or passwords in the terminal output. **This is developer-only identity verification, not a production application login, app account authorization, verified MFA, active county grant, or licensed GIS data release.** The earlier 20/20 focused and 1,247/1,247 land tests plus the Vite build remain the confirmed test baseline for this source state.
 
 ## What remains for production
 
