@@ -5,7 +5,7 @@
  * issue sessions, modify data, grant counties, authenticate users or ship GIS.
  * Query is fixed, parameterized and limited to an account's current state.
  */
-const SUBJECT=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const SUBJECT=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const REVISION=/^[1-9][0-9]{0,18}$/;
 const MAX_BIGINT=9223372036854775807n;
 
