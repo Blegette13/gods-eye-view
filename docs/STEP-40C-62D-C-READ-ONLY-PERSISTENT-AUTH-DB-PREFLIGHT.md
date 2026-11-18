@@ -1,6 +1,6 @@
 # Step 40C-62D-C — Persistent local app authorization DB: READ-ONLY target preflight (NO schema change)
 
-**Status: operator action pending, November 18, 2026.** 40C-62D-B persistent PostgreSQL startup verified. This phase does **not** approve or perform migrations.
+**Status: operator read-only target verification PASSED, November 18, 2026: `ldos_auth_dev|f|t|t`. The correct primary database exists, but `ldos_app_auth` schema and `ldos_auth_account_reader` SQL role do not. No migration or account creation has occurred.**
 
 ## Confirmed from the operator's November 18 PowerShell screenshot
 
@@ -31,6 +31,12 @@ Read the four columns as:
 If either of the last two checks is `f`, **stop**. A pre-existing account schema or role may belong to an earlier migration and must not be overwritten. If `docker exec` fails or returns another DB name, stop. This check neither creates nor modifies roles, tables, accounts or GIS content. It does not prove the ability to connect via the external password-authenticated Node driver; that proof came from an *earlier disposable database only*.
 
 Because the Compose file requires the initial owner password variable even for `docker compose ps`, this step uses the exact verified container name with `docker exec` and deliberately does **not** reintroduce any password or call Compose.
+
+## Step C-1 operator results — VERIFIED November 18, 2026
+
+The operator ran the exact read-only Docker `exec` SQL probe above against `ldos-auth-dev-auth-postgres-1` and obtained **`ldos_auth_dev|f|t|t`**. This establishes the intended empty persistent target, confirms the SQL session is on a primary and establishes that the proposed new account schema and reader principal do not currently exist. This is **not** an installed app schema or a role permission proof.
+
+The operator also cleared `LDOS_AUTH_DEV_POSTGRES_PASSWORD` from the PowerShell environment after initial startup. No database password, Supabase access token or user credentials are needed for the read-only preflight. Stop and re-check the exact target immediately before any future mutation.
 
 ## Step C-2 — Migration review (pending, not authorized)
 
