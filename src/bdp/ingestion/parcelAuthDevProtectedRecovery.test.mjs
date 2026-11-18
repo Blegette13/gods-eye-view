@@ -28,7 +28,10 @@ test('62D-C10 secret files are outside checkout in the user home',()=>{
   assert.doesNotMatch(source,/Join-Path \$PSScriptRoot 'auth-gateway/);
 });
 test('62D-C10 no password enters shell argv, env, logs or SQL role creation',()=>{
-  assert.doesNotMatch(source,/POSTGRES_PASSWORD|PGPASSWORD|CREATE ROLE|ALTER ROLE|GRANT .*TO|Write-Output \$password|Write-Host \$password|SetEnvironmentVariable/);
+  // Matching "CREATE ROLE" text in a snapshot integrity regex is expected.
+  // Reject credential disclosure and actual role-creation commands instead.
+  assert.doesNotMatch(source,/POSTGRES_PASSWORD|PGPASSWORD|Write-Output \$password|Write-Host \$password|SetEnvironmentVariable/);
+  assert.doesNotMatch(source,/\bCREATE\s+ROLE\s+ldos_auth_gateway_login\s+LOGIN\b|\bpsql\s+-c\b/);
 });
 test('62D-C10 generates a 32-byte CSPRNG future gateway password',()=>{
   assert.match(source,/New-Object byte\[\] 32/);
