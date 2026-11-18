@@ -1,6 +1,6 @@
 # Step 40C-62D-C9 — Local restricted gateway credential/SQL role design (NO APPLY)
 
-**Status: proposed source-only SQL design and 15 offline Node security-contract tests staged on `bdp-development`; operator tests pending. Nothing has been provisioned or written to a persistent PostgreSQL database.**
+**Status: OPERATOR VERIFIED November 18, 2026 — 1,415/1,415 complete land tests passed with 0 failures/skips; Vite production build passed with 2,048-MB Node heap; C9 remains source-only, with no SQL LOGIN provisioned.**
 
 ## Prior operator evidence
 
@@ -38,3 +38,7 @@ These counts are predictions, not operator-verified results. Do **not** run hand
 ## Unchanged
 
 No real app accounts, sessions, county grants, Supabase-to-app enrollment, verified MFA, HTTP authentication, private parcel releases or licensed GIS publication. The separate parcel PostGIS and original God’s Eye View Cesium Free Explorer remain untouched.
+
+## Operator result — November 18, 2026
+
+PowerShell screenshot shows **1,415/1,415 land tests passed**, zero failures and zero skipped tests, and a green Vite build (250 modules, ~4.31 seconds) using the 2-GB old-space setting. The screenshot does not independently display the focused 15-test or C9 CLI plan output; those source tests are part of the complete land suite. **No persistent SQL gateway login or password was created by C9.**
