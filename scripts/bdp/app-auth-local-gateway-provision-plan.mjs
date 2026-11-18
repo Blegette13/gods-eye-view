@@ -1,3 +1,6 @@
+import {resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
+
 /**
  * Step 40C-62D-C9 — SOURCE-ONLY persistent gateway principal proposal.
  * No connection to Docker, no password creation/storage and NO apply CLI.
@@ -86,7 +89,7 @@ export function planSummary(){
 }
 
 if (process.argv[1] &&
-  import.meta.url===new URL('file://'+process.argv[1].replace(/\\/g,'/')).href) {
+  import.meta.url===pathToFileURL(resolve(process.argv[1])).href) {
   try {
     requirePlanOnly(process.argv.slice(2));
     process.stdout.write(PLAN_PASS+'\n');
