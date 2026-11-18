@@ -52,7 +52,10 @@ test('62D-C7 gateway SQL atomic and time bounded',()=>{
 test('62D-C7 fixed SQL uses only a read-only transaction and SET LOCAL ROLE',()=>{
   assert.ok(readSql.startsWith('BEGIN READ ONLY;\nSET LOCAL ROLE ldos_auth_account_reader;'));
   assert.ok(readSql.endsWith('\nROLLBACK;'));
-  assert.doesNotMatch(readSql,/COMMIT|INSERT INTO|UPDATE ldos_app_auth|DELETE FROM|TRUNCATE/);
+  // The attestation SQL legitimately lists INSERT/UPDATE/DELETE/TRUNCATE
+  // as privilege names. Reject executable write statements instead.
+  assert.doesNotMatch(readSql,
+    /^\s*(?:COMMIT|INSERT\s+INTO|UPDATE\s+ldos_app_auth|DELETE\s+FROM|TRUNCATE)\b/im);
 });
 test('62D-C7 role-switch read uses exact attestation and fixed SQL',()=>{
   assert.ok(readSql.includes(AUTH_DEV_ROLE_SWITCH_ATTEST_SQL+';'));
