@@ -1,6 +1,6 @@
 # Step 40C-62D-C10 — Windows DPAPI local gateway-secret and global-role recovery preparation
 
-**Status: source and 17 source-contract tests staged on `bdp-development`; operator Node/PowerShell runtime verification PENDING. NO database, SQL role, permanent credential or session writes have occurred.**
+**Status November 18, 2026: operator verified 17/17 focused Node source contracts and 1,432/1,432 full land tests (0 failures/skips); Vite production build PASS with 2,048-MB old-space heap. The Windows PowerShell `-PlanOnly` runtime check remains UNVERIFIED after a prior script execution-policy block. No local DPAPI sealing or database mutation performed.**
 
 ## Starting evidence (Nov 18, 2026)
 
@@ -45,3 +45,7 @@ The test suite is source-only; it does NOT exercise the Windows DPAPI operation.
 Do **not** run `-SealLocalOnly` or `-CheckSealsOnly` until Phase A results are inspected. If a later separately approved seal runs, verify the two protected files exist, then run the local DPAPI decrypt check in the same user context. Preserve existing `pg_dump` backup outside the repository. Never run `pg_dumpall` without the `--no-role-passwords` option as part of this workflow and never publish role dumps, password hashes, or credentials.
 
 Afterward, separately stage/prove a privileged SQL LOGIN migration, real independent `pg` driver connection, credential rotation and revocation, controlled account enrollment, MFA, county authority and licensed GIS response gating. Nothing in C10 enables private parcel delivery or changes our original Cesium UI.
+
+## Operator C10 source/test/build result — November 18, 2026
+
+Screenshots confirm **17/17 C10 focused source tests** passed, **1,432/1,432 full land tests** passed with zero failures/skips/cancellations, and **Vite v6.4.5 build PASS** (250 transformed modules, 4.18 seconds) with a one-command Node heap limit increase. An earlier `powershell.exe -File ... -PlanOnly` attempt was blocked by the Windows execution policy; the newest screenshot shows only test/build output, not a successful `-PlanOnly` run. **Do not claim that DPAPI runtime or the script plan has been validated until a separate non-mutating PowerShell execution succeeds.** No secret files should be generated until runtime review.
