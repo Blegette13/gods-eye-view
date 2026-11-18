@@ -1,6 +1,6 @@
 # Step 40C-62A — Verified Supabase identity → application account candidate boundary
 
-**Checkpoint: November 17, 2026. COMMITTED / independent Node tests verified in an isolated Node 22 harness; operator repository test and full build PENDING. No deployed account database, login session, MFA proof, county grant, private GIS endpoint, or production deployment.**
+**Checkpoint: November 17, 2026. OPERATOR VERIFIED — 20/20 focused Node tests, 1,267/1,267 complete land regressions, and Vite production build PASS. No deployed account database, login session, MFA proof, county grant, private GIS endpoint, or production deployment.**
 
 ## Step 40C-61 real provider round-trip: OPERATOR PASS
 
@@ -40,6 +40,10 @@ npm.cmd run build
 ```
 
 Expected: **20 focused passes**, **1,267 full land passes** (prediction), and a green Vite build. **No credentials, test-user password, Supabase API key, Docker or new test account is needed.** Stop at any failure and share sanitized test output. Existing Vite large-chunk warnings may continue but do not indicate a failed build.
+
+## Operator verification — November 17, 2026
+
+The operator's latest PowerShell screenshots confirm **20/20 Step 40C-62A focused Node tests PASSED**, **1,267/1,267 complete land tests PASSED**, **0 failed, cancelled or skipped**, and **Vite production build PASSED** (250 modules, **8.78 seconds**). Existing large-chunk warnings are nonfatal. These tests validate the server-only *contract* but still use an injected account reader and prove neither a real database deployment nor county permissions.
 
 ## Critical Step 40C-62B decision — before real account or cookie sessions
 
