@@ -1,6 +1,6 @@
 # Step 40C-60 — First local HTTP route to real Supabase identity verifier
 
-**Status: NEW SERVER MODULE + 17 NODE HTTP TESTS STAGED / OPERATOR VALIDATION PENDING.**
+**Status: OPERATOR VERIFIED — 17/17 focused, 1,227/1,227 full land regressions, Vite production build PASSED (November 17, 2026). Local HTTP Supabase user route only; NO live test-user login or GIS release.**
 **Date: November 16, 2026.** No production login, cookies, app-owned database connection, MFA authority, GIS route or public deployment.
 
 ## Step 40C-59 verified
@@ -39,6 +39,12 @@ npm.cmd run build
 **Expected focused: 17/17** and **predicted full land suite: 1,227/1,227** (operator-confirmed baseline 1,210 + 17 new tests), plus a green Vite production build. **Do not report these as passed until the operator sends the results.**
 
 For this step, all tests use **mocked Supabase user responses** and **actual local Node HTTP sockets**. They need **no actual user JWT**, no Docker, no Supabase admin key or DB access. Do **not** enter or screenshot real user tokens yet.
+
+## Operator verification — November 17, 2026
+
+The operator's fresh PowerShell screenshots confirm the **17/17 focused Node tests PASSED**, **1,227/1,227 land regression tests PASSED** (zero failures) and a successful **Vite production build**, with 250 transformed modules in **9.57 seconds**. The previous `URL is not a constructor` test bug was corrected by renaming a constant to `PROJECT_URL`; the operator reran the focused suite and obtained 17/17. The existing oversized Vite chunk warning is nonfatal.
+
+**40C-60 is complete as a local HTTP contract**, not a live human-authentication integration. The 17 tests use an actual loopback Node server but mocked responses from Supabase's external Auth service. A real dedicated development test-user flow is now staged separately in Step 40C-61.
 
 ## Next: controlled dev-only real user proof & backend decision
 
