@@ -1,6 +1,6 @@
 # Step 40C-62D-C7 — Isolated real PostgreSQL 17 role-switch verification
 
-**Status: source and 16 source-contract tests STAGED on `bdp-development`; operator Node tests and real disposable PostgreSQL test PENDING.** The operator reports the C6 1,372-test gate with no failures and a Vite production build successful only after a one-command 2,048-MB Node old-space override. The original default-memory production build failed with V8 heap exhaustion; that was a resource failure, not verified evidence of a source defect.
+**Status: OPERATOR VERIFIED November 18, 2026 — 1,388/1,388 complete land tests passed, zero failed/skipped; Vite production build passed with per-command 2,048-MB Node heap; real disposable PostgreSQL 17 role-switch smoke PASSED.** The operator reports the C6 1,372-test gate with no failures and a Vite production build successful only after a one-command 2,048-MB Node old-space override. The original default-memory production build failed with V8 heap exhaustion; that was a resource failure, not verified evidence of a source defect.
 
 ## Scope
 
@@ -42,3 +42,7 @@ If an error appears, **stop**, share sanitized phase text and do not blindly rep
 ## Next security milestones
 
 Review staged results before any persistent SQL LOGIN/credential provisioning. Continue to require server-side Supabase identity verification, independently verified MFA, controlled enrollment, county licensing, GIS authority and stable migration/restore safeguards before enabling private parcel delivery. Original Cesium UI, 2.4-km Free Explorer and public Travis parcels are unchanged.
+
+## Operator verification — November 18, 2026
+
+The latest operator PowerShell screenshot confirms **1,388/1,388 land tests passed, no failures, no skipped cases**, and **Vite production build PASSED** (250 modules, using the 2-GB Node heap option). The real separate `--disposable-only` SQL integration command printed the exact expected `PASS: disposable PG17 restricted gateway LOGIN -> NOLOGIN account reader` message, including restricted-role switch, privilege checks, deny-first, ABA epochs and forbidden SQL. This establishes actual PostgreSQL role behavior only for a synthetic disposable instance; it is not evidence that a persistent gateway LOGIN exists or that app account enrollment/MFA/authorized geometry works.
