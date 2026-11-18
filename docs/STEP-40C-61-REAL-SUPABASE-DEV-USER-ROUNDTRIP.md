@@ -1,6 +1,6 @@
 # Step 40C-61 — Real Supabase development user round-trip (LOCAL ONLY)
 
-**Status: IMPLEMENTATION AND 20 TESTS COMMITTED; OPERATOR VALIDATION AND LIVE TEST-USER PROOF PENDING. Date: November 17, 2026.**
+**Status: PHASE A OPERATOR VERIFIED — 20/20 FOCUSED TESTS, 1,247/1,247 LAND REGRESSIONS, VITE BUILD PASSED. REAL SUPABASE TEST-USER SIGN-IN STILL PENDING. November 17, 2026.**
 
 ## Completed 40C-60 baseline
 
@@ -27,6 +27,10 @@ From the existing PowerShell repository directory, one command at a time:
     npm.cmd run build
 
 Predicted: **20/20 focused**, **1,247/1,247 land regressions** (previous verified 1,227 + 20), and a green Vite build. Predictions are not verified operator results. If any check fails, stop and share only sanitized output.
+
+## Phase A — Verified operator results
+
+Latest operator screenshots confirm **20/20 new focused tests PASSED**, **1,247/1,247 complete land regression tests PASSED** with zero failures/skips, and the **Vite build PASSED** with 250 modules in **9.37 seconds**. The preexisting large-chunk warning is nonfatal. These test results use **mocked outbound Supabase responses** and a genuine local Node HTTP socket. No actual test user's Supabase Auth password login has occurred yet; do not call Step 40C-61 fully complete until the separately authorized live test-user proof succeeds.
 
 ## Phase B — Prepare a dedicated development test account
 
