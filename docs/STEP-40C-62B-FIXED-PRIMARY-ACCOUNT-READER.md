@@ -16,6 +16,10 @@ There is **NO database client, host, pool, SQL LOGIN provisioning, connection st
 
 **`src/bdp/ingestion/parcelPrimaryAccountReader.test.mjs`** introduces **20 Node unit tests** covering the fixed SQL text, login and primary constraints, injection-resistant parameter passing, input validation, missing/suspended/closed accounts, exact row counts/columns, revision preservation, cancellation and lack of GIS/API side effects. The source and tests were run in a standalone local Node 22 environment with **20/20 passed**, but the operator's own repository and all-regression/build results remain unconfirmed. This is not a real PostgreSQL runtime proof.
 
+## Focused operator test failure and correction — November 17, 2026
+
+The operator ran the first focused 40C-62B Node test and reported **17/20 PASS, three failures**, all in happy-path account lookups (parameterized adapter, frozen result, exact BIGINT revision). The cause was a missing fourth UUID segment in the primary reader's input pattern (`8-4-4-12` instead of the required `8-4-4-4-12`). This erroneously rejected valid verified subjects **before** executing the injected query. Fixed in `server/providers/bdp-primary-account-reader.js`, commit `db34fdd65e2e723be29b0dfbdc14536046c3ef18`. A small in-process verification now returns the expected active account evidence for a synthetic valid UUID while rejecting incomplete UUIDs and overflow revisions. **Operator re-run of focused 20 tests, complete 1,287 land tests and Vite build remains PENDING.** Do not mark 62B verified yet.
+
 ## Operator validation
 
 From PowerShell in `C:\Users\brand\gods-eye-view`, run each command individually:
