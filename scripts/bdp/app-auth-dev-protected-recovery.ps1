@@ -1,5 +1,6 @@
 param(
   [switch]$PlanOnly,
+  [switch]$ProbeDpapiOnly,
   [switch]$SealLocalOnly,
   [switch]$CheckSealsOnly
 )
@@ -11,15 +12,18 @@ $ErrorActionPreference = 'Stop'
 # -SealLocalOnly: C8 read-only attestation and password-free pg_dumpall
 #  globals, followed by creation of two user-DPAPI protected local files.
 # -CheckSealsOnly: local DPAPI decrypt/integrity check, no DB connection.
+# -ProbeDpapiOnly: in-memory DPAPI round-trip, no DB or filesystem access.
 # No SQL or role writes. No plaintext secret in stdout or process arguments.
 $ExpectedPreflight = 'PASS: local persistent auth-dev primary and NOLOGIN account-reader privileges verified; gateway LOGIN absent, ledger empty, candidate RPC absent; no database writes.'
 $PlanMessage = 'PLAN: C10 Windows DPAPI local gateway secret and password-free global-role recovery snapshot; no SQL writes; C8 preflight required before creating protected files.'
 $SealMessage = 'PASS: C10 local DPAPI gateway secret and no-password global-role recovery snapshot sealed outside repository; auth database unchanged.'
 $CheckMessage = 'PASS: C10 two local Windows DPAPI recovery files decrypt and validate under current account; no database access.'
+$ProbeMessage = 'PASS: C10 Windows DPAPI in-memory round-trip verified; no files or database accessed.'
 
-if (([int]$PlanOnly.IsPresent + [int]$SealLocalOnly.IsPresent +
+if (([int]$PlanOnly.IsPresent + [int]$ProbeDpapiOnly.IsPresent +
+    [int]$SealLocalOnly.IsPresent +
     [int]$CheckSealsOnly.IsPresent) -ne 1) {
-  throw 'Choose exactly one: -PlanOnly, -SealLocalOnly, or -CheckSealsOnly.'
+  throw 'Choose exactly one: -PlanOnly, -ProbeDpapiOnly, -SealLocalOnly, or -CheckSealsOnly.'
 }
 if ($PlanOnly) {
   Write-Output $PlanMessage
@@ -27,6 +31,49 @@ if ($PlanOnly) {
 }
 if ($env:OS -ne 'Windows_NT') {
   throw 'C10 DPAPI operation requires Windows under the intended local account.'
+}
+
+# Windows PowerShell 5.1 does not automatically load System.Security.dll,
+# which defines ProtectedData and DataProtectionScope on .NET Framework.
+# Perform the load before constructing any recovery files.
+try {
+  if ($PSVersionTable.PSEdition -eq 'Desktop') {
+    Add-Type -AssemblyName System.Security -ErrorAction Stop
+  }
+} catch {
+  throw 'Windows DPAPI assembly unavailable; no recovery files were created.'
+}
+
+# Exercise the same DPAPI APIs with public canary bytes only. This mode must
+# not inspect the recovery folder, connect to PostgreSQL or generate secrets.
+if ($ProbeDpapiOnly) {
+  $canary = [Text.Encoding]::UTF8.GetBytes('ldos-dpapi-v1-probe')
+  $cipher = $null
+  $plain = $null
+  try {
+    $cipher = [Security.Cryptography.ProtectedData]::Protect(
+      $canary, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser
+    )
+    $plain = [Security.Cryptography.ProtectedData]::Unprotect(
+      $cipher, $null, [Security.Cryptography.DataProtectionScope]::CurrentUser
+    )
+    if ($plain.Length -ne $canary.Length) {
+      throw 'DPAPI canary mismatch'
+    }
+    for ($i = 0; $i -lt $canary.Length; $i++) {
+      if ($canary[$i] -ne $plain[$i]) {
+        throw 'DPAPI canary mismatch'
+      }
+    }
+  } catch {
+    throw 'Windows DPAPI in-memory round-trip failed; no files or database accessed.'
+  } finally {
+    [Array]::Clear($canary, 0, $canary.Length)
+    if ($null -ne $cipher) { [Array]::Clear($cipher, 0, $cipher.Length) }
+    if ($null -ne $plain) { [Array]::Clear($plain, 0, $plain.Length) }
+  }
+  Write-Output $ProbeMessage
+  return
 }
 
 $Root = Join-Path ([Environment]::GetFolderPath('UserProfile')) 'ldos-local-secrets'
