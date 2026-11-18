@@ -1,6 +1,6 @@
 # Step 40C-62D-A — Source-controlled, OFF by default, separate persistent LOCAL app-account PostgreSQL
 
-**Status: COMPOSE DESIGN + 16 static regression contracts STAGED; operator tests PENDING. Container NOT started; no persistent DB created; no migration, account, password or new login provisioned. November 17, 2026.**
+**Status: SOURCE VALIDATED — operator screenshot confirms 1,322/1,322 land tests PASS, 0 failures/skips, and Vite production build PASS (250 modules, 8.73s). Dedicated PostgreSQL container NOT YET started; no persistent DB created, migration, app account, or new login provisioned. November 17, 2026.**
 
 ## Previous step verified in real operator environment
 
@@ -38,6 +38,10 @@ npm.cmd run build
 ```
 
 Predicted **16/16 focused**, **1,322/1,322 land regressions** (previous operator-confirmed 1,306 + 16), and green Vite build. Predictions are **not** operator verification. None of these commands starts Docker, writes a persistent database or needs keys. Share redacted failure logs on the first failed command.
+
+## Operator validation — November 17, 2026
+
+Latest PowerShell screenshot shows **1,322/1,322 complete land regression tests PASSED**, **0 failures, 0 cancelled, 0 skipped**, and **Vite production build PASSED** (250 modules, **8.73 seconds**). The focused 16/16 output is not independently visible, but the complete land suite includes these tests. Large Vite chunks produce only a nonfatal warning. **Step 40C-62D-A source staging is complete; this is not PostgreSQL startup or a persistence test.**
 
 ## Phase B — a separate operator decision BEFORE persistent startup
 
