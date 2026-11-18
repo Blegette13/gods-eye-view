@@ -30,7 +30,7 @@ test('62D-C7 synthetic role credential must be a 64-digit hex token',()=>{
 test('62D-C7 gateway is dedicated LOGIN with no elevation or role inheritance',()=>{
   assert.equal(GATEWAY,'ldos_auth_gateway_login');
   assert.match(roleSql,/CREATE ROLE ldos_auth_gateway_login LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS/);
-  assert.doesNotMatch(roleSql,/SUPERUSER\s|CREATEROLE\s|BYPASSRLS\s/);
+  assert.doesNotMatch(roleSql,/\b(?:SUPERUSER|CREATEROLE|BYPASSRLS)\b/);
 });
 test('62D-C7 SQL grants one SET-only role membership and no direct table grants',()=>{
   assert.match(roleSql,/GRANT ldos_auth_account_reader TO ldos_auth_gateway_login\s+WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;/);
