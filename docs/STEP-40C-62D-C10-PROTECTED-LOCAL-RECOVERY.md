@@ -72,3 +72,9 @@ Expected probe: `PASS: C10 Windows DPAPI in-memory round-trip verified; no files
 ## Operator DPAPI canary result — November 18, 2026
 
 The operator reports that the revised **21 focused source tests** and the Windows PowerShell **`-ProbeDpapiOnly` in-memory encryption/decryption canary** passed after the `System.Security` assembly fix. This validates the local DPAPI API canary, not the persistent protected file creation. **`-SealLocalOnly` and `-CheckSealsOnly` remain pending**. Check explicitly that neither of the two target `.dpapi` files already exists before the separately opted-in seal. The prior type-loading failure happened before file creation but it is safer to verify filesystem state rather than assume absence.
+
+## Operator sealed-files verification — November 18, 2026
+
+The operator reports **all three requested steps completed**: both prospective protected-file paths were checked absent, `-SealLocalOnly` produced its successful result, and `-CheckSealsOnly` validated decryption and data shape under the Windows account. Treat C10's local encrypted-file creation/validation as operator-verified. This does **not** prove recovery on another device/account, a full PostgreSQL global-role restoration, role/password rotation, or a connected production login. No PostgreSQL role changes occurred in this C10 sealing workflow.
+
+Next phase: separately review and validate provisioning of the restricted `ldos_auth_gateway_login` SQL LOGIN, which is still absent from the persistent auth-dev database. The two DPAPI files must never be uploaded, committed or printed.
