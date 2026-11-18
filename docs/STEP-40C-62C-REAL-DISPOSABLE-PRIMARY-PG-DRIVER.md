@@ -1,6 +1,6 @@
 # Step 40C-62C — Real restricted PostgreSQL driver to account-reader integration (disposable)
 
-**Checkpoint: November 17, 2026 — CODE + 19 LOCAL SECURITY TESTS STAGED; operator Node, Docker/PostgreSQL and build validation PENDING.** No permanent database, live Supabase migration, browser login, MFA authorization, county grants, GIS geometry release or public API deployed.
+**Checkpoint: November 17, 2026 — OPERATOR VERIFIED 1,306/1,306 full land regressions, Vite production build and ACTUAL disposable PostgreSQL driver smoke PASS. Focused 19-test summary not separately visible.** No permanent database, live Supabase migration, browser login, MFA authorization, county grants, GIS geometry release or public API deployed.
 
 ## Operator-confirmed 40C-62B
 
@@ -56,6 +56,14 @@ Expected:
 `PASS: disposable real pg driver and restricted primary account reader; deny-first, exact UUID/revision, revocation, no sessions, no counties, no GIS.`
 
 It must return cleanly to the PowerShell prompt. If it fails, stop and share **only sanitized output** (no passwords, URLs, keys or user IDs). Docker cleanup warnings must be investigated before retrying. This script **does not** contact or modify `bdp-postgis` or Supabase.
+
+## Operator verification — November 17, 2026
+
+Operator PowerShell screenshot confirms **1,306/1,306 complete land tests PASS**, 0 failed, 0 skipped and 0 cancelled; **Vite production build PASS** (250 transformed modules, 16.72 seconds); and the actual `node scripts/bdp/app-primary-pg-driver-disposable-smoke.mjs --disposable-only` returned:
+
+`PASS: disposable real pg driver and restricted primary account reader; deny-first, exact UUID/revision, revocation, no sessions, no counties, no GIS.`
+
+This is verified **real node-postgres to a freshly created disposable Docker PostgreSQL instance using a restricted SQL LOGIN and synthetic account**, not a connection to a persistent application DB or Supabase Auth. The targeted 19/19 summary is **not independently shown** in this screenshot, but the full discovered suite passes all 1,306 tests. The screenshot shows the process returned to the PowerShell prompt. The tool should remove the disposable container in `finally`; the screenshot does not independently prove Docker container cleanup. No existing parcel PostGIS/Supabase project was intended to be changed.
 
 ## Real, persistent development app database — the next operator-controlled decision
 
