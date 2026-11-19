@@ -64,9 +64,9 @@ BEGIN
      OR pg_is_in_recovery()
      OR current_setting('transaction_isolation')<>'serializable'
      OR current_setting('transaction_read_only')<>'off'
-     OR p_phase NOT IN ('enroll_suspended','activate')
+     OR p_phase IS NULL OR p_phase NOT IN ('enroll_suspended','activate')
      OR p_subject IS NULL OR p_request_id IS NULL OR p_approval_id IS NULL
-     OR p_audit_id IS NULL
+     OR p_audit_id IS NULL OR p_issuer IS NULL
      OR p_issuer !~ '^https://[a-z0-9]{8,40}[.]supabase[.]co/auth/v1$'
      OR (p_phase='enroll_suspended' AND p_expected_account_revision IS NOT NULL)
      OR (p_phase='activate' AND (p_expected_account_revision IS NULL
@@ -191,7 +191,9 @@ BEGIN
   INSERT INTO ldos_app_auth.enrollment_audit_events (
     event_id,request_id,subject,reviewer_subject,event_type,account_revision
   ) VALUES (
-    p_audit_id,p_request_id,p_subject,v_reviewer_subject,p_phase,v_revision
+    p_audit_id,p_request_id,p_subject,v_reviewer_subject,
+    (CASE WHEN p_phase='enroll_suspended'
+      THEN 'enrolled_suspended' ELSE 'activated' END),v_revision
   );
   -- A separate audit record is required, not an optional post-commit log.
   -- The statement's insert failure aborts the transaction. The caller
