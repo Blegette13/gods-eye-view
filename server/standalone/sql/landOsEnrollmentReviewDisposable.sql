@@ -71,7 +71,8 @@ CREATE TABLE ldos_app_auth.enrollment_requests (
   CHECK (expires_at <= created_at + interval '24 hours'),
   FOREIGN KEY (invite_id, subject, issuer)
     REFERENCES ldos_app_auth.enrollment_invitations(invite_id, subject, issuer),
-  UNIQUE (request_id, subject, issuer)
+  UNIQUE (request_id, subject, issuer),
+  UNIQUE (request_id, subject)
 );
 
 CREATE TABLE ldos_app_auth.enrollment_approvals (
