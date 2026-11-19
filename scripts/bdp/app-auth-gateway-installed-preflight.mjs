@@ -21,17 +21,18 @@ export function requireC12CheckOnly(args){
 export function extractC11Postflight(source){
   if(typeof source!=='string')throw new TypeError('C11 reviewed SQL source required');
   const m=/^[ \t]*\$postflight = @'\r?\n([\s\S]*?)\r?\n'@/m.exec(source);
-  if(!m||!m[1].trimStart().startsWith('SELECT\n')
-    ||!m[1].trimEnd().endsWith(';')
-    ||!m[1].includes("rolname='ldos_auth_gateway_login'")
-    ||!m[1].includes('NOT has_schema_privilege')
-    ||!m[1].includes('NOT has_table_privilege')
-    ||!m[1].includes("m.set_option")
-    ||!m[1].includes('FROM ldos_app_auth.county_grants')
+  const sql=m?.[1]?.replace(/\r\n/g,'\n');
+  if(!sql||!sql.trimStart().startsWith('SELECT\n')
+    ||!sql.trimEnd().endsWith(';')
+    ||!sql.includes("rolname='ldos_auth_gateway_login'")
+    ||!sql.includes('NOT has_schema_privilege')
+    ||!sql.includes('NOT has_table_privilege')
+    ||!sql.includes("m.set_option")
+    ||!sql.includes('FROM ldos_app_auth.county_grants')
     ||/\b(INSERT|UPDATE|DELETE|TRUNCATE|CREATE|DROP|ALTER|GRANT|REVOKE)\b/i.test(
-      m[1].replace(/'[^']*'/g,"''")
+      sql.replace(/'[^']*'/g,"''")
     ))throw new Error('C11 fixed read-only postflight changed; STOP');
-  return m[1];
+  return sql;
 }
 export function verifyC12Postflight(output){
   if(typeof output!=='string'||output.trim()!==C12_POSTFLIGHT_EXPECTED)
