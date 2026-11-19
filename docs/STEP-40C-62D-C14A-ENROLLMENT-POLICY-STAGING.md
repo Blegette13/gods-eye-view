@@ -1,6 +1,6 @@
 # Step 40C-62D-C14A — Invitation-only enrollment policy (source-only)
 
-**Status November 18, 2026: C14A SOURCE IMPLEMENTATION STAGED on `bdp-development`. Local static V8 assertion replay: 31/31 contracts passed; operator Node and full regression/build verification PENDING. No database mutation, account creation, approval, SQL role or HTTP endpoint.**
+**Status November 18, 2026: OPERATOR VERIFIED C14A — 31/31 focused Node tests, 1,552/1,552 full land tests (0 failures/skips), Vite v6.4.5 production build PASSED (250 modules, ~4.68s) using 2-GiB Node heap. C14A remains source-only, unrouted and NON-AUTHORIZING.**
 
 ## Previously verified baseline
 
@@ -35,3 +35,7 @@ node --max-old-space-size=2048 .\node_modules\vite\bin\vite.js build
 ## Next: C14B
 
 After the C14A tests and build are confirmed, stage a separate, isolated PostgreSQL 17 synthetic enrollment/activation contract. It must exercise duplicate/replayed approvals, issuer/subject binding, independent reviewer authority, durable audit, account suspension and activation, monotonic revision under race, and rollback on failure, with no host network/ports/volumes and no exposure of the actual `ldos_auth_dev` database. Do not apply the proposed enrollment schema to the persistent database. The original God’s Eye View/Cesium interface, 2.4-km Free Explorer, Travis public boundaries and PostGIS remain untouched.
+
+## Operator final verification — November 18, 2026
+
+The two operator PowerShell screenshots confirm **31/31 C14A focused policy/security contracts passed**, **1,552/1,552 land regressions passed with zero failures, cancellations or skips**, and **Vite v6.4.5 build PASS** (250 transformed modules, ~4.68 s) using the previously successful 2,048-MB Node old-space override. The existing chunk-size warning remains nonfatal. These checks validate source and a non-executable schema design only; no enrollment tables, writer roles, requests, approvals, real account subjects, sessions or county grants have been created in persistent PostgreSQL. C14B now begins with new isolated synthetic PG-only evidence.
