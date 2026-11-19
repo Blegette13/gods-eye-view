@@ -87,12 +87,18 @@ try {
   $proc = [Diagnostics.Process]::new()
   $proc.StartInfo = $start
   if (-not $proc.Start()) { throw 'Node process unavailable.' }
+  # Drain both streams asynchronously so a stalled Node process cannot
+  # block a synchronous ReadToEnd before the bounded WaitForExit.
+  $stdoutTask = $proc.StandardOutput.ReadToEndAsync()
+  $stderrTask = $proc.StandardError.ReadToEndAsync()
   $proc.StandardInput.Write($password)
   $proc.StandardInput.Close()
-  $output = $proc.StandardOutput.ReadToEnd()
-  $null = $proc.StandardError.ReadToEnd()
-  if (-not $proc.WaitForExit(60000) -or
-      $proc.ExitCode -ne 0 -or $output.Trim() -cne $ExpectedDriver) {
+  if (-not $proc.WaitForExit(60000)) {
+    throw 'Bounded restricted Node driver timeout.'
+  }
+  $output = $stdoutTask.GetAwaiter().GetResult()
+  $null = $stderrTask.GetAwaiter().GetResult()
+  if ($proc.ExitCode -ne 0 -or $output.Trim() -cne $ExpectedDriver) {
     throw 'Restricted driver did not confirm full SQL proof.'
   }
   Write-Output $ExpectedDriver
