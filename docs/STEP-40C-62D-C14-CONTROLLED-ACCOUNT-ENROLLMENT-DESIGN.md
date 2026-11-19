@@ -1,0 +1,51 @@
+# Step 40C-62D-C14 — Controlled application-account enrollment / activation: security architecture
+
+**Status November 19, 2026: DESIGN STAGED for review. No account data, SQL role, migration, application-session route, GIS grant, Supabase profile or production deployment created by this document.**
+
+## Verified baseline
+
+Operator screenshots confirm **22/22 C13 focused integration contract tests**, **1,521/1,521 total land tests** (zero failures/skips) and a green Vite v6.4.5 production build (250 modules, ~4.35 seconds, 2 GiB Node old-space). C13 composes a real restricted account reader architecture with a trusted Supabase identity verifier, but remains **server-only/unrouted**. Previously, C12's real persistent restricted node-postgres connection passed independently. As of C12, local `ldos_auth_dev` had **no accounts, sessions or county grants**; C13 only ran mocks and did not change database rows.
+
+## Objective: add the first real app-owned account *safely*, not automatically
+
+Identity verification by Supabase `/auth/v1/user` says who holds the provider token. It **does not mean** that person has a Land Development Operating System account, active status, county access, MFA assurance, a session, or GIS redistribution rights.
+
+The next substantive implementation must separate **intake**, **operator review**, **denied-first enrollment**, and **activation**. An account created in `ldos_app_auth.accounts` must default to `suspended` at revision 1 until a separately authenticated and auditable operator action approves activation.
+
+## Proposed trust boundaries
+
+1. **Provider identity:** server verifies the Supabase access token through the exact trusted /user boundary and pins the expected issuer. Never trust browser-supplied UUID, role, county, metadata or asserted MFA.
+2. **Review intake:** record only a request intent, with a server-generated random request ID and verified `subject`/issuer. Intake creates **no app account** and requires an anti-replay, time-limited operator workflow.
+3. **Operator authority:** a different server-held verifier must establish an authorized approver, independent of the requesting identity; reviewer cannot self-approve. Authorization must be tied to a revocable organization/role policy defined on the app-owned primary, not to untrusted Supabase user metadata. An independent approval receipt must have explicit purpose, subject, nonce, expiry, reviewer identity and state.
+4. **Durable audit before rights:** use append-only, server-owned audit events recording request, review, denial, enrollment and activation transitions. Store only necessary pseudonymous identifiers; never raw bearer tokens, password, DPAPI secret, access claims or GIS data.
+5. **Dedicated writer:** prepare a different, restricted role with only specifically reviewed `INSERT`/controlled `UPDATE` capability for app-owned accounts, not the existing `ldos_auth_gateway_login`. Avoid granting table ownership, session/county table rights, schema DDL or generic `SECURITY DEFINER` rights. Design a transactionally enforced writer procedure that validates approval evidence under server control, not a client-supplied Boolean.
+6. **Persist suspended first:** enrollment of an approved, previously absent verified subject creates `ldos_app_auth.accounts(subject)` with DB-default `account_state='suspended'` and `revision=1`. Concurrent duplicate/replayed attempts must be safe and cannot reset revision or overwrite existing status.
+7. **Activation separately:** an approved, current primary transaction changes only an enrolled suspended row to active. The existing revision trigger bumps revision monotonically. Closed, already-active, missing, stale/replica, restored or corrupt state fail closed; no physical delete or row recreation. Reviewer authorization and audit event must be enforced in the same logical workflow as the state change.
+8. **Freshness/revocation:** a valid provider identity plus active app account gives only an **unrouted candidate**. A production auth session requires separate recent MFA assurance and session integrity; every parcel release requires current county entitlement and separate documented source licensing/GIS distribution authorization.
+
+## Proposed implementation order — no persistent database writes in initial stages
+
+**C14-A: source contracts and schema review.** Define exact enrollment-request/approval/audit schema, trusted admin authority, replay prevention, account writer privilege matrix and rejection cases. Review cross-database identity binding, transaction isolation and rollback/restore epoch fencing. No HTTP handler or actual database write.
+
+**C14-B: disposable real PostgreSQL 17 proof.** In a brand-new isolated synthetic Docker database, exercise duplicate requests, default suspended enrollment, independent approval, controlled activation, account ABA revisions, audit consistency, denial under restricted reader, race/replay cases and rollback. No real Supabase UUID/account subject in this stage.
+
+**C14-C: explicit operator gate.** Before a local persistent dev migration, independently prove a new backup/restore and cluster-role snapshot; review the exact DDL, writer credentials/rotation, scope, rollback and real operator approval control. Never run new privileged SQL on Supabase Auth, parcel PostGIS, or a production database.
+
+**C14-D: controlled local development account only after approval.** Link an explicitly approved real development Supabase subject to the private app ledger; enroll suspended, verify denied C13 candidate, and only separately approve active state. No automatic registration, default active account, cookie session, MFA bypass, county entitlement or private geometry.
+
+## Open product/security decisions (to be resolved before implementation is activated)
+
+- Who can approve new application accounts (single administrator vs. independent second reviewer, organization scope and break-glass policy)?
+- Will enrollment be invitation-only initially? **Recommended: yes**, since self-signup should not imply land intelligence entitlements.
+- Which audit retention, privileged access review and recovery requirements apply before production launch?
+- Which hosted backend and private primary PostgreSQL deployment will replace the local Windows-DPAPI/Docker development environment?
+
+**Safe interim defaults:** invitation-only, no auto-activation, no self-approval, short-lived one-use approvals, primary-only writes, no county grants, no GIS release, fail closed on unknown evidence.
+
+## Deliberately unchanged
+
+Existing God’s Eye View/Cesium 2.4 km Explorer, Travis County public browsing, property panels, boundary quality and explicit unknown-data behavior remain untouched. C14 planning must not repurpose `ldos_auth_gateway_login` into a writable account role or route the C13 candidate to the browser.
+
+## Acceptance criteria to start the next code phase
+
+C14-A is ready for implementation when the exact review schema, separate admin writer threat model, table-grant matrix, trusted approval authority and restore-safety tests are specified. All source code should first be tested offline/disposably and separately run through `npm.cmd run test:land` and the 2-GiB Vite build. There is no reason to run an SQL migration or provide any secret as part of this design checkpoint.
