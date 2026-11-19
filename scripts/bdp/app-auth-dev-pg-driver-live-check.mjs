@@ -60,13 +60,13 @@ export function validC12LoginProof(result){
   return result?.command==='SELECT'&&result?.rowCount===1
     &&result.rows.length===1&&r&&typeof r==='object'
     &&!Array.isArray(r)&&Object.keys(r).sort().join('|')===
-      'db|login|primary|session'
-    &&r.db==='ldos_auth_dev'&&r.login===AUTH_DEV_GATEWAY_LOGIN
-    &&r.session===AUTH_DEV_GATEWAY_LOGIN&&r.primary===true;
+      'db_name|is_primary|login_name|session_name'
+    &&r.db_name==='ldos_auth_dev'&&r.login_name===AUTH_DEV_GATEWAY_LOGIN
+    &&r.session_name===AUTH_DEV_GATEWAY_LOGIN&&r.is_primary===true;
 }
 const LOGIN_PROOF_SQL=
-  "SELECT current_database() AS db, current_user AS login, "+
-  "session_user AS session, NOT pg_is_in_recovery() AS primary";
+  "SELECT current_database() AS db_name, current_user AS login_name, "+
+  "session_user AS session_name, NOT pg_is_in_recovery() AS is_primary";
 export const C12_DENIED_SQL=Object.freeze([
   'SELECT subject FROM ldos_app_auth.accounts;',
   'SELECT * FROM ldos_app_auth.sessions;',
