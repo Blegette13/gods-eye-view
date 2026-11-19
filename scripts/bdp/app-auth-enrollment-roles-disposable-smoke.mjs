@@ -122,8 +122,8 @@ export async function runC14B2C1RoleMatrix(args=process.argv.slice(2)){
     for(const row of rows){
       const [who,canLogin,...flags]=row.split('|');
       assert.ok(C14B2C1_NAMES.includes(who));
-      assert.equal(canLogin, C14B2C1_NAMES.slice(0,2).includes(who)?'true':'false');
-      assert.deepEqual(flags,Array(6).fill('true'));
+      assert.equal(canLogin, C14B2C1_NAMES.slice(0,2).includes(who)?'t':'f');
+      assert.deepEqual(flags,Array(6).fill('t'));
     }
     assert.equal(sql("SELECT count(*) FROM pg_catalog.pg_auth_members m "+
       "JOIN pg_catalog.pg_roles r ON r.oid=m.roleid OR r.oid=m.member "+
