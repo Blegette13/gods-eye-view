@@ -1,6 +1,6 @@
 # Step 40C-62D-C13 — Server-only verified identity → restricted primary-account candidate
 
-**Status November 18, 2026: C13 source and 22 focused mocked security-contract tests STAGED on `bdp-development`, operator validation PENDING.** This is deliberately **unrouted composition**—not real app-account enrollment, not a user login/session API, not MFA, not county entitlement and not GIS access.
+**Status November 18, 2026: C13 OPERATOR VERIFIED — 22/22 focused Node tests, 1,521/1,521 full land regression tests, and successful Vite production build (250 modules; ~4.35 seconds). Still source-only and unrouted; no app enrollment or private GIS release.** This is deliberately **unrouted composition**—not real app-account enrollment, not a user login/session API, not MFA, not county entitlement and not GIS access.
 
 ## Starting point: C12 operator PASS
 
@@ -40,3 +40,7 @@ The next stage should design account enrollment/activation with explicit approve
 ## First operator test failure and correction — November 18, 2026
 
 Operator ran the newly staged focused C13 test suite. Screenshot confirms **21/22 passed, one failed**: `candidate uses only provider-verified UUID as query parameter`. The failing assertion incorrectly expected `input.signal` to be a property of the low-level `pg.Client.query({text,values,rowMode})` configuration. The reviewed restricted PostgreSQL adapter deliberately **consumes and checks the AbortSignal itself** before/after database operations and only passes `text`, `values` and `rowMode` to node-postgres. The source implementation was working as designed; the test conflated adapter-level cancellation with driver-query arguments. This correction changes **only the test**, now checking the exact three SQL query configuration keys and that the signal reaches the verified identity boundary. It does **not** modify PostgreSQL permissions, the driver, or live credentials. The focused re-run and full 1,521 suite/build are **pending**. Important limitation: an abort rejects the candidate after a read, but this check is not a claim of interrupting a PostgreSQL query already in flight.
+
+## Operator final C13 verification — November 18, 2026
+
+Two screenshots confirm **22/22 focused C13 tests passed (zero failures)**, **1,521/1,521 complete land tests passed (zero failures/skips/cancellations)**, and successful **Vite v6.4.5 build** (250 modules; ~4.35s) with the established 2,048-MB old-space option. The large-chunk Vite warning remains nonfatal. The previous assertion mismatch was corrected; no code adapter or database changes were required. C13's combined verified Supabase identity / restricted PostgreSQL reader bridge is a **mock-verified server-only source composition**, not a live linked real user, session or entitlement. A trusted writer/enrollment process remains to be designed separately.
