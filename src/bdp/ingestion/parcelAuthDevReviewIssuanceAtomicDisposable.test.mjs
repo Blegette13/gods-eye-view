@@ -167,7 +167,7 @@ test('62D-C14B2C2B logged-in synthetic principals cannot execute issuance',()=>{
 });
 test('62D-C14B2C2B proves separate reviewer/inviter and denial cases',()=>{
   assert.match(runner,/for\(const who of \[INVITER,REVIEWER\]\)/);
-  assert.match(runner,/rejected.*nonserializable/);
+  assert.match(runner,/denied\(syntheticIssue\(enroll\),'42501'\); \/\/ nonserializable/);
   assert.match(runner,/reviewer:INVITER/);
   assert.match(runner,/reviewer:S1/);
 });
