@@ -113,9 +113,9 @@ export async function runC14B2C1RoleMatrix(args=process.argv.slice(2)){
 
     stage='verify SQL role flags, disjoint identities and no membership';
     const names=C14B2C1_NAMES.map(r=>"'"+r+"'").join(',');
-    const roleRows=sql("SELECT rolname||'|'||rolcanlogin||'|'||NOT rolinherit||'|'"+
-      "||NOT rolsuper||'|'||NOT rolcreatedb||'|'||NOT rolcreaterole||'|'"+
-      "||NOT rolreplication||'|'||NOT rolbypassrls FROM pg_catalog.pg_roles "+
+    const roleRows=sql("SELECT rolname||'|'||rolcanlogin||'|'||(NOT rolinherit)||'|'"+
+      "||(NOT rolsuper)||'|'||(NOT rolcreatedb)||'|'||(NOT rolcreaterole)||'|'"+
+      "||(NOT rolreplication)||'|'||(NOT rolbypassrls) FROM pg_catalog.pg_roles "+
       "WHERE rolname IN ("+names+") ORDER BY rolname;");
     const rows=roleRows.split('\n');
     assert.equal(rows.length,4);
