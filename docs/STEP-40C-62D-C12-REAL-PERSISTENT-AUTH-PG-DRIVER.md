@@ -68,3 +68,7 @@ This step is a **real local SQL connection test**, not an app-user sign-in endpo
 ## Operator build evidence — November 18, 2026
 
 The latest provided PowerShell screenshot confirms that the C12 checkout's **Vite v6.4.5 production build passed** (250 modules, `built in 4.26s`) using `node --max-old-space-size=2048 ... vite.js build`. Vite's large-chunk warning is nonfatal. **The screenshot only shows the build**, not the 24 C12 focused tests, full 1,499-regression result, installed-role preflight, or actual protected node-postgres `-VerifyLocalAuthOnly` success. Until independently reported, **C12 real persistent PG-driver verification remains pending**. Do not enable any authentication API or real-user access on the basis of this build alone.
+
+## Operator full regression evidence — November 18, 2026
+
+The latest PowerShell screenshot confirms **1,499/1,499 complete land tests passed**, **0 failures, 0 skipped, 0 cancelled**, duration ~25.997 seconds. The immediately preceding operator screenshot confirms Vite v6.4.5 built successfully (250 modules, ~4.26 seconds). The provided screenshots do **not** independently establish that the dedicated C12 persistent installed-role preflight and protected real `node-postgres` `-VerifyLocalAuthOnly` driver verification returned PASS. Verify those exact runtime checks before recording C12 integrated PostgreSQL access as complete; no role re-apply or database writes are necessary.
