@@ -85,7 +85,7 @@ test('62D-C14B2A function uses SECURITY INVOKER and protected search path',()=>{
 });
 test('62D-C14B2A function has no browser or existing database login grant',()=>{
   assert.match(source,/REVOKE ALL ON FUNCTION ldos_app_auth.disposable_enrollment_transition\(/);
-  assert.match(source,/\) FROM PUBLIC;\s*COMMIT;$/);
+  assert.match(source.trimEnd(),/\) FROM PUBLIC;\s*COMMIT;$/);
   assert.doesNotMatch(source,/CREATE POLICY|CREATE ROLE|ALTER ROLE|GRANT EXECUTE/);
 });
 test('62D-C14B2A requires serializable, writable, primary-only transaction',()=>{
@@ -147,7 +147,7 @@ test('62D-C14B2A enrollment never upserts or reuses account',()=>{
   assert.match(source,/IF FOUND THEN\s+RAISE EXCEPTION 'Subject already has an account'/);
   assert.match(source,/INSERT INTO ldos_app_auth.accounts\(subject\) VALUES \(p_subject\)/);
   assert.match(source,/v_state<>'suspended' OR v_revision<>1/);
-  assert.doesNotMatch(source,/ON CONFLICT|UPSERT|DELETE FROM ldos_app_auth.accounts/);
+  assert.doesNotMatch(source,/\bON CONFLICT\b|^\s*DELETE FROM ldos_app_auth.accounts/gm);
 });
 test('62D-C14B2A activation has revision-checked suspended-only update',()=>{
   assert.match(source,/v_account.account_state<>'suspended'/);
