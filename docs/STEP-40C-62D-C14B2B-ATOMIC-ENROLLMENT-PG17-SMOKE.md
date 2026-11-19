@@ -1,6 +1,6 @@
 # Step 40C-62D-C14B2B — Disposable PostgreSQL atomic transition smoke
 
-**Status November 19, 2026: OPERATOR VERIFIED real isolated PostgreSQL 17 C14B2B atomic enrollment/activation smoke PASS and Vite v6.4.5 production build PASS (250 modules, ~4.30s). The 22 focused Node-test count and full 1,632-test suite are not visible in the supplied screenshot and remain unconfirmed here. No persistent auth-dev database write, real account enrollment, or app activation occurred.**
+**Status November 19, 2026: OPERATOR VERIFIED real isolated PostgreSQL 17 C14B2B atomic enrollment/activation smoke PASS and Vite v6.4.5 production build PASS (250 modules, ~4.30s). The operator subsequently confirmed that both the focused 22-test suite and full 1,632-test land regression passed (reported in chat; screenshots not provided for those two commands). No persistent auth-dev database write, real account enrollment, or app activation occurred.**
 
 ## Starting evidence and scope
 
@@ -52,3 +52,7 @@ After operator-verified real C14B2B PG17 PASS, design a **distinct least-privile
 ## Operator observed C14B2B proof — November 19, 2026
 
 The provided screenshot explicitly shows the command `node scripts/bdp/app-auth-enrollment-atomic-disposable-smoke.mjs --disposable-only` returning the **exact expected PASS** for PostgreSQL 17 serializable synthetic enrollment, activation, separate approval, audit-in-transaction, replay denial, and rollback, with no persistent databases touched. It also shows Vite v6.4.5 production build completed successfully (250 transformed modules, ~4.30s). Chunk-size warnings are advisory. **It does not show the focused 22/22 tests or complete 1,632/1,632 land regression summary**; do not mark those separately complete without evidence. C14B2B's disposable transactional proof is now operator-verified, but a deployable restricted writer and independently authenticated administrator approval remain unimplemented.
+
+## Operator confirmation — November 19, 2026
+
+The operator explicitly reports that the two outstanding checks — `node --test src/bdp/ingestion/parcelAuthDevAtomicEnrollmentDisposableSmoke.test.mjs` and `npm.cmd run test:land` — **both passed**. Record **22 focused tests and 1,632 complete land tests as operator-reported PASS**, alongside the earlier screenshot-supported isolated PostgreSQL smoke and Vite build PASS. Neither suite is being rerun remotely by GitHub. C14B2B is now complete as a synthetic/owner-gated disposable atomicity demonstration; this does **not** establish a trusted reviewer, deployable restricted writer, or persistent account workflow.
