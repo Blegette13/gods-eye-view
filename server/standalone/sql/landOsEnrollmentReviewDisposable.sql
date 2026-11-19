@@ -130,6 +130,9 @@ BEGIN
   IF TG_OP='INSERT' THEN
     IF NEW.revision IS DISTINCT FROM 1
        OR (TG_TABLE_NAME='enrollment_approvals' AND NEW.consumed_at IS NOT NULL)
+       OR (TG_TABLE_NAME='enrollment_invitations' AND NEW.invitation_state='redeemed')
+       OR (TG_TABLE_NAME='enrollment_requests' AND NEW.request_state<>'pending')
+       OR (TG_TABLE_NAME='enrollment_approvals' AND NEW.approval_state='consumed')
     THEN RAISE EXCEPTION 'invalid initial enrollment revision'
       USING ERRCODE='22023';
     END IF;
@@ -147,6 +150,7 @@ BEGIN
        OR NEW.created_at IS DISTINCT FROM OLD.created_at
        OR (NEW.authority_state IS NOT DISTINCT FROM OLD.authority_state
            AND NEW.authority_scope IS NOT DISTINCT FROM OLD.authority_scope)
+       OR (OLD.authority_state='revoked' AND NEW.authority_state='active')
     THEN RAISE EXCEPTION 'reviewer binding cannot change' USING ERRCODE='42501';
     END IF;
 
