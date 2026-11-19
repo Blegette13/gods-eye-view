@@ -129,13 +129,29 @@ BEGIN
       USING ERRCODE='42501';
   END IF;
   IF TG_OP='INSERT' THEN
-    IF NEW.revision IS DISTINCT FROM 1
-       OR (TG_TABLE_NAME='enrollment_approvals' AND NEW.consumed_at IS NOT NULL)
-       OR (TG_TABLE_NAME='enrollment_invitations' AND NEW.invitation_state='redeemed')
-       OR (TG_TABLE_NAME='enrollment_requests' AND NEW.request_state<>'pending')
-       OR (TG_TABLE_NAME='enrollment_approvals' AND NEW.approval_state='consumed')
-    THEN RAISE EXCEPTION 'invalid initial enrollment revision'
-      USING ERRCODE='22023';
+    IF NEW.revision IS DISTINCT FROM 1 THEN
+      RAISE EXCEPTION 'invalid initial enrollment revision'
+        USING ERRCODE='22023';
+    END IF;
+    -- Each NEW record has only its own table's columns. Never access
+    -- NEW.consumed_at, NEW.invitation_state or NEW.request_state from a
+    -- shared boolean OR: SQL does not guarantee short-circuit evaluation,
+    -- and a different TG_TABLE_NAME does not make a missing field valid.
+    IF TG_TABLE_NAME='enrollment_approvals' THEN
+      IF NEW.consumed_at IS NOT NULL OR NEW.approval_state='consumed' THEN
+        RAISE EXCEPTION 'invalid initial approval state'
+          USING ERRCODE='22023';
+      END IF;
+    ELSIF TG_TABLE_NAME='enrollment_invitations' THEN
+      IF NEW.invitation_state='redeemed' THEN
+        RAISE EXCEPTION 'invalid initial invitation state'
+          USING ERRCODE='22023';
+      END IF;
+    ELSIF TG_TABLE_NAME='enrollment_requests' THEN
+      IF NEW.request_state<>'pending' THEN
+        RAISE EXCEPTION 'invalid initial request state'
+          USING ERRCODE='22023';
+      END IF;
     END IF;
     RETURN NEW;
   END IF;
