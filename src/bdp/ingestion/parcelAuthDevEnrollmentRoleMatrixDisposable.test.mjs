@@ -77,7 +77,7 @@ test('62D-C14B2C1 all roles are non-privileged and non-inheriting',()=>{
 });
 test('62D-C14B2C1 SQL has no grants, memberships or helper privileges',()=>{
   assert.doesNotMatch(sql,/^\s*GRANT |^\s*ALTER ROLE|^\s*CREATE FUNCTION |^\s*CREATE TABLE /gm);
-  assert.doesNotMatch(sql,/SECURITY DEFINER|BYPASSRLS PASSWORD/);
+  assert.doesNotMatch(sql,/SECURITY DEFINER|\bBYPASSRLS PASSWORD/);
 });
 test('62D-C14B2C1 SQL executes in a bounded transaction',()=>{
   assert.match(sql,/^BEGIN;$/m);
