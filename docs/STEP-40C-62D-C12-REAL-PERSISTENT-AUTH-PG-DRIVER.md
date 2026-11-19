@@ -1,6 +1,6 @@
 # Step 40C-62D-C12 — Real restricted node-postgres connection to persistent local auth-dev (read-only)
 
-**Status November 18, 2026: C12 SOURCE STAGED on `bdp-development`, operator tests and actual persistent node-postgres SQL connection NOT YET VERIFIED.** The operator reports that the prior C11 **one-time** `-ApplyLocalAuthOnly` operation returned its exact expected PASS, installing `ldos_auth_gateway_login` into persistent local `ldos_auth_dev`. **Never rerun C11 Apply.**
+**Status November 18, 2026: C12 OPERATOR VERIFIED — 1,499/1,499 land tests and successful Vite build; real restricted node-postgres connection to persistent local auth-dev and exact installed-role read-only preflight both returned PASS.** The operator reports that the prior C11 **one-time** `-ApplyLocalAuthOnly` operation returned its exact expected PASS, installing `ldos_auth_gateway_login` into persistent local `ldos_auth_dev`. **Never rerun C11 Apply.**
 
 ## C12 changes
 
