@@ -1,6 +1,6 @@
 # Step 40C-62D-C14B2B — Disposable PostgreSQL atomic transition smoke
 
-**Status November 18–19, 2026: implementation STAGED on `bdp-development`; offline source assertions 22/22 in an isolated JS evaluator, but actual operator Node and PostgreSQL 17 proof still PENDING. No persistent auth database write, account provisioning, or application activation has occurred.**
+**Status November 19, 2026: OPERATOR VERIFIED real isolated PostgreSQL 17 C14B2B atomic enrollment/activation smoke PASS and Vite v6.4.5 production build PASS (250 modules, ~4.30s). The 22 focused Node-test count and full 1,632-test suite are not visible in the supplied screenshot and remain unconfirmed here. No persistent auth-dev database write, real account enrollment, or app activation occurred.**
 
 ## Starting evidence and scope
 
@@ -48,3 +48,7 @@ The script attempts to remove only its own new container in `finally`. If it fai
 ## Next: C14B2C
 
 After operator-verified real C14B2B PG17 PASS, design a **distinct least-privilege writer with independently established reviewer/operator authority**, more rigorous concurrent race/replay/serialization proof, and a full restore/role-privilege drill—**still in disposable environments** before any persistent migration. The existing God’s Eye View/Cesium UI, 2.4-km Explorer, public parcel boundaries, separate PostGIS and restricted reader role stay unchanged.
+
+## Operator observed C14B2B proof — November 19, 2026
+
+The provided screenshot explicitly shows the command `node scripts/bdp/app-auth-enrollment-atomic-disposable-smoke.mjs --disposable-only` returning the **exact expected PASS** for PostgreSQL 17 serializable synthetic enrollment, activation, separate approval, audit-in-transaction, replay denial, and rollback, with no persistent databases touched. It also shows Vite v6.4.5 production build completed successfully (250 transformed modules, ~4.30s). Chunk-size warnings are advisory. **It does not show the focused 22/22 tests or complete 1,632/1,632 land regression summary**; do not mark those separately complete without evidence. C14B2B's disposable transactional proof is now operator-verified, but a deployable restricted writer and independently authenticated administrator approval remain unimplemented.
