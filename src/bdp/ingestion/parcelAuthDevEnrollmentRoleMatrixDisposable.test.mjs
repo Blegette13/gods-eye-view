@@ -117,7 +117,7 @@ test('62D-C14B2C1 detects no membership or high privilege',()=>{
   assert.match(smoke,/NOT rolinherit/);
   assert.match(smoke,/NOT rolsuper/);
   assert.match(smoke,/NOT rolbypassrls/);
-  assert.match(smoke,/Array\(6\)\.fill\('t'\)/);
+  assert.match(smoke,/Array\(6\)\.fill\('1'\)/);
 });
 test('62D-C14B2C1 both login hashes use SCRAM-SHA-256',()=>{
   assert.match(smoke,/pg_catalog\.pg_authid/);
@@ -151,4 +151,22 @@ test('62D-C14B2C1 refuses broad cleanup, removing only its own container',()=>{
   assert.match(smoke,/if\(created\)\{/);
   assert.match(smoke,/\['rm','--force','--volumes',name\]/);
   assert.doesNotMatch(smoke,/docker compose down|docker system prune/);
+});
+
+test('62D-C14B2C1 normalizes concatenated PostgreSQL booleans with explicit CASE digits',()=>{
+  assert.match(smoke,/const bit=expr=>"\(CASE WHEN "\+expr\+" THEN '1' ELSE '0' END\)"/);
+  assert.match(smoke,/\.map\(bit\)\.join\("\|\|'\|'\|\|"\)/);
+  assert.match(smoke,/assert\.equal\(canLogin, C14B2C1_NAMES\.slice\(0,2\)\.includes\(who\)\?'1':'0'\)/);
+  assert.match(smoke,/assert\.deepEqual\(flags,Array\(6\)\.fill\('1'\)\)/);
+  assert.match(smoke,/assert\.match\(line,\/\\\|0\\\|0\\\|0\$\/\)/);
+});
+test('62D-C14B2C1 identifies role flag, membership, reader, and SCRAM phases separately',()=>{
+  for(const stage of [
+    'verify SQL role flags, disjoint identities and no membership',
+    'verify zero SQL role memberships',
+    'verify no existing gateway/reader identities',
+    'verify distinct synthetic SCRAM password hashes',
+    'deny schema, function and all direct table grants',
+  ])assert.ok(smoke.includes("stage='"+stage+"'"),stage);
+  assert.doesNotMatch(smoke,/process\.stdout\.write\(roleRows|console\.log\(executor/);
 });
