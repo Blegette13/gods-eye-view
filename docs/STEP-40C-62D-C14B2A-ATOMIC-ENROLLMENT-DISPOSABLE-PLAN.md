@@ -1,6 +1,6 @@
 # Step 40C-62D-C14B2A — Atomic account transition prototype (disposable SQL only)
 
-**Status November 18, 2026: source staged on `bdp-development`. Operator Node tests and build NOT YET VERIFIED. The real PostgreSQL execution of the new atomic prototype is NOT YET VERIFIED. No persistent auth-dev database changes or app/user enrollment have been made.**
+**Status November 18–19, 2026: operator-verified 29/29 focused C14B2A source tests, exact `--plan-only` PASS, and successful Vite production build (250 modules, ~4.46 seconds). The screenshot does NOT show the separate full land-regression count. Real atomic SQL execution remains UNVERIFIED until C14B2B; persistent auth-dev untouched.**
 
 ## Confirmed starting point
 
@@ -40,3 +40,7 @@ PLAN: C14B2A guarded serializable enrollment/activation SQL reviewed for isolate
 **C14B2B: fresh isolated PostgreSQL 17 integration exercise.** Create a new `--network none`, no-port, no-volume randomly scoped container, load C14B1 reviewed schema and this pinned C14B2A SQL, seed only synthetic reviewer/invite/request/approval fixtures, and explicitly test two separate `BEGIN ISOLATION LEVEL SERIALIZABLE` transactions: suspended account + audit on enrollment, activation only with a fresh approval and expected revision. Prove rollback on duplicate audit, consumed/expired or mismatched approvals, stale reviewer, subject mismatch, duplicate account and replay; verify no session/county grants. Then separately design/test an independent restricted writer **with trusted reviewer authorization**. C14B2A approval is **not** authorization to publish API routes or activate real accounts.
 
 The existing God’s Eye View/Cesium 2.4-km Explorer, Travis County public parcels, separate PostGIS and local protected gateway reader are unchanged.
+
+## Operator C14B2A validation evidence
+
+Latest PowerShell screenshot independently verifies **29/29 focused C14B2A tests (0 failures)**, **`--plan-only` exact fixed PASS line**, and a **successful Vite 6.4.5 production build** (250 modules, ~4.46s). The screenshot does **not** show the `npm.cmd run test:land` result, so **1,610 full regressions remain unconfirmed** from the provided evidence. The focused result is only a source contract and plan check—not real PostgreSQL execution. A new isolated disposable PostgreSQL 17 runner is staged in C14B2B for that proof, without changing the persistent database.
