@@ -127,7 +127,12 @@ test('62D-C13 candidate uses only provider-verified UUID as query parameter',asy
   assert.equal(lookups.length,1);
   assert.deepEqual(lookups[0][2].values,[SUBJECT]);
   assert.equal(lookups[0][2].rowMode,'array');
-  assert.equal(lookups[0][2].signal,input.signal);
+  assert.equal(lookups[0][2].text,PRIMARY_ACCOUNT_SQL);
+  // The trusted PG adapter consumes AbortSignal before/after the SQL read;
+  // it deliberately passes only {text,values,rowMode} to node-postgres.
+  assert.deepEqual(Object.keys(lookups[0][2]).sort(),['rowMode','text','values']);
+  const verifyCall=v.calls.find(call=>call[0]==='verify');
+  assert.equal(verifyCall[1].signal,input.signal);
   await v.bridge.close();
 });
 test('62D-C13 valid active account returns immutable candidate, never authority',async()=>{
