@@ -170,3 +170,22 @@ test('62D-C14B1 audit FK references exact unique request and subject pair',()=>{
   assert.match(sql,/FOREIGN KEY \(request_id,subject\)/);
   assert.match(sql,/REFERENCES ldos_app_auth.enrollment_requests\(request_id,subject\)/);
 });
+
+test('62D-C14B1 INSERT guard uses table-specific NEW fields only in separate branches',()=>{
+  const guard=sql.slice(
+    sql.indexOf("IF TG_OP='INSERT' THEN"),
+    sql.indexOf("  IF TG_OP <> 'UPDATE'")
+  );
+  assert.match(guard,/IF NEW\.revision IS DISTINCT FROM 1 THEN/);
+  assert.match(guard,/IF TG_TABLE_NAME='enrollment_approvals' THEN\s+IF NEW\.consumed_at/);
+  assert.match(guard,/ELSIF TG_TABLE_NAME='enrollment_invitations' THEN\s+IF NEW\.invitation_state/);
+  assert.match(guard,/ELSIF TG_TABLE_NAME='enrollment_requests' THEN\s+IF NEW\.request_state/);
+  assert.doesNotMatch(guard,/TG_TABLE_NAME='[^']+' AND NEW\./);
+});
+test('62D-C14B1 smoke names exact failed reviewer substep without leaking SQL',()=>{
+  for(const stage of ['reviewer default-revoked INSERT',
+    'reviewer default-revoked SELECT','reviewer revoked-to-active denial',
+    'seed distinct synthetic reviewers'])
+    assert.ok(smoke.includes("stage='"+stage+"'"),stage);
+  assert.doesNotMatch(smoke,/process\.stdout\.write\(.*result\.stderr/);
+});
