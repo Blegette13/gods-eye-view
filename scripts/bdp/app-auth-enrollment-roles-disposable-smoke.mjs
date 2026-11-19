@@ -113,23 +113,32 @@ export async function runC14B2C1RoleMatrix(args=process.argv.slice(2)){
 
     stage='verify SQL role flags, disjoint identities and no membership';
     const names=C14B2C1_NAMES.map(r=>"'"+r+"'").join(',');
-    const roleRows=sql("SELECT rolname||'|'||rolcanlogin||'|'||(NOT rolinherit)||'|'"+
-      "||(NOT rolsuper)||'|'||(NOT rolcreatedb)||'|'||(NOT rolcreaterole)||'|'"+
-      "||(NOT rolreplication)||'|'||(NOT rolbypassrls) FROM pg_catalog.pg_roles "+
-      "WHERE rolname IN ("+names+") ORDER BY rolname;");
+    // PostgreSQL boolean-to-text coercion inside || produces 'true'/'false',
+    // unlike a standalone boolean column in psql, which prints 't'/'f'.
+    // Emit deterministic digits rather than guessing the conversion format.
+    const bit=expr=>"(CASE WHEN "+expr+" THEN '1' ELSE '0' END)";
+    const roleRows=sql("SELECT rolname||'|'||"+
+      [
+        'rolcanlogin','NOT rolinherit','NOT rolsuper','NOT rolcreatedb',
+        'NOT rolcreaterole','NOT rolreplication','NOT rolbypassrls',
+      ].map(bit).join("||'|'||")+
+      " FROM pg_catalog.pg_roles WHERE rolname IN ("+names+") ORDER BY rolname;");
     const rows=roleRows.split('\n');
     assert.equal(rows.length,4);
     for(const row of rows){
       const [who,canLogin,...flags]=row.split('|');
       assert.ok(C14B2C1_NAMES.includes(who));
-      assert.equal(canLogin, C14B2C1_NAMES.slice(0,2).includes(who)?'t':'f');
-      assert.deepEqual(flags,Array(6).fill('t'));
+      assert.equal(canLogin, C14B2C1_NAMES.slice(0,2).includes(who)?'1':'0');
+      assert.deepEqual(flags,Array(6).fill('1'));
     }
+    stage='verify zero SQL role memberships';
     assert.equal(sql("SELECT count(*) FROM pg_catalog.pg_auth_members m "+
       "JOIN pg_catalog.pg_roles r ON r.oid=m.roleid OR r.oid=m.member "+
       "WHERE r.rolname IN ("+names+");"),'0');
+    stage='verify no existing gateway/reader identities';
     assert.equal(sql("SELECT count(*) FROM pg_catalog.pg_roles "+
       "WHERE rolname IN ('ldos_auth_gateway_login','ldos_auth_account_reader');"),'0');
+    stage='verify distinct synthetic SCRAM password hashes';
     assert.equal(sql("SELECT count(*) FROM pg_catalog.pg_authid "+
       "WHERE rolname IN ('ldos_auth_enrollment_executor_login',"+
       "'ldos_auth_review_issuer_login') "+
@@ -137,11 +146,13 @@ export async function runC14B2C1RoleMatrix(args=process.argv.slice(2)){
 
     stage='deny schema, function and all direct table grants';
     const matrixRows=sql("SELECT rolname||'|'||"+
-      "has_schema_privilege(rolname,'ldos_app_auth','USAGE')||'|'||"+
-      "has_schema_privilege(rolname,'ldos_app_auth','CREATE')||'|'||"+
-      "has_function_privilege(rolname,'"+CALL+"','EXECUTE') "+
-      "FROM pg_catalog.pg_roles WHERE rolname IN ("+names+") ORDER BY rolname;");
-    for(const line of matrixRows.split('\n'))assert.match(line,/\|f\|f\|f$/);
+      [
+        "has_schema_privilege(rolname,'ldos_app_auth','USAGE')",
+        "has_schema_privilege(rolname,'ldos_app_auth','CREATE')",
+        "has_function_privilege(rolname,'"+CALL+"','EXECUTE')",
+      ].map(bit).join("||'|'||")+
+      " FROM pg_catalog.pg_roles WHERE rolname IN ("+names+") ORDER BY rolname;");
+    for(const line of matrixRows.split('\n'))assert.match(line,/\|0\|0\|0$/);
     for(const role of C14B2C1_NAMES){
       for(const table of TABLES){
         assert.equal(sql("SELECT has_table_privilege('"+role+"',"+
