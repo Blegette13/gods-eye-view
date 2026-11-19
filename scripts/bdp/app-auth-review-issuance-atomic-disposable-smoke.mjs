@@ -14,7 +14,7 @@ import {exactRoleSql} from './app-auth-enrollment-roles-disposable-smoke.mjs';
  * NEVER run against persistent auth-dev. A real reviewer is NOT authenticated
  * here; no function EXECUTE privilege is granted to either synthetic LOGIN.
  */
-export const C14B2C2B_SQL_BLOB='__PIN_SQL_GIT_BLOB__';
+export const C14B2C2B_SQL_BLOB='5d2fa6edc6bd530931ecbbdcc5c5c70e8311f0e8';
 export const C14B2C2B_PASS='PASS: C14B2C2B isolated PG17 synthetic reviewer issuance, purpose-specific approval, atomic reviewed audit, denied replay and audit rollback, suspended enrollment and separate activation; no real reviewer authentication or persistent auth-dev writes.';
 
 const P='ldos_app_auth.';
