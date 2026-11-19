@@ -1,6 +1,6 @@
 # Step 40C-62D-C14B2C1 — Disposable PostgreSQL 17 role-isolation matrix
 
-**Status November 19, 2026: SOURCE STAGED on `bdp-development`. 24/24 source assertions satisfied in a local static V8 replay; operator Node runner, full regression, Vite build and REAL PostgreSQL role smoke are NOT YET VERIFIED. No persistent database, actual SQL LOGIN, user account or app permission has been changed by this staging.**
+**Status November 19, 2026: C14B2C1 first operator land regression PASSED 1,656/1,656 and Vite build PASSED (~4.09s), but the REAL disposable PostgreSQL role proof FAILED at the combined role-flags/membership stage. A probable PostgreSQL boolean-to-text formatting assertion mismatch has been corrected; revised 26 test contracts passed an isolated V8 replay, and renewed operator tests/PG proof remain PENDING. Persistent auth-dev was not targeted.**
 
 ## Starting evidence
 
@@ -19,7 +19,7 @@ The operator explicitly confirms **both outstanding C14B2B suites passed**: 22 f
 
 **`scripts/bdp/app-auth-enrollment-roles-disposable-smoke.mjs`** — opt-in `--disposable-only` runner. It creates only a randomly named `--network none`, `--pull never`, no-port, no-mount disposable `postgres:17` container and loads the previously pinned C14B1 review schema/C14B2A atomic prototype. It generates random synthetic PostgreSQL secrets at runtime and substitutes the two role passwords in memory; no secret is committed. It then executes the reviewed role SQL and verifies actual password-authenticated login through TCP **inside the container**, SCRAM hashes, lack of role membership/elevated role attributes, lack of table/schema/function privileges and SQLSTATE `42501` denials for unauthorized reads, writes, prototype function calls and role escalation. It checks empty app-ledger tables and attempts to remove only its own new container in `finally`.
 
-**`src/bdp/ingestion/parcelAuthDevEnrollmentRoleMatrixDisposable.test.mjs`** — **24 offline** unit/source contracts. A static V8 assertion replay satisfied **24/24**, but real Node execution and Docker/PG17 behavior are **pending**.
+**`src/bdp/ingestion/parcelAuthDevEnrollmentRoleMatrixDisposable.test.mjs`** — **26 offline** unit/source contracts after the first operator PG issue. A static V8 assertion replay satisfied **26/26** after correction; the revised operator Node execution and Docker/PG17 proof are **pending**.
 
 ### Credential handling caveat
 
@@ -36,7 +36,7 @@ npm.cmd run test:land
 node --max-old-space-size=2048 .\node_modules\vite\bin\vite.js build
 ```
 
-Expected focused **24/24** and predicted full **1,656/1,656** (prior operator-confirmed 1,632 + 24). Successful Vite build should follow; the known large-chunk warning is nonfatal. Those are **predictions**, not yet observed operator results.
+Expected revised focused **26/26** and predicted full **1,658/1,658** (the operator already verified 1,656 green before two further tests were added). Successful Vite build should follow; the known large-chunk warning is nonfatal. These revised results are **predictions, not yet observed operator results**.
 
 **Only if all tests/build pass**, with Docker Desktop running, run:
 
@@ -57,3 +57,13 @@ Do **not** run the SQL manually, create roles on persistent `ldos_auth_dev`, rer
 After a real C14B2C1 PASS, implement **separately authorized approval issuance** with independent operator identity, proof of reviewer authority, and constrained privilege boundaries. That requires new disposable-only issuer procedure/owner and permissions, plus revoked/self-approval/duplicate/expiry tests. Only after that should a function owner and restricted executor be designed. The new principal separation alone cannot authorize a real user.
 
 Existing God’s Eye View/Cesium 2.4-km Explorer, Travis County parcel browsing, TCEQ, PostGIS, stored auth reader and private-geometry gating remain unchanged.
+
+## First operator PostgreSQL failure and scoped fix — November 19, 2026
+
+The supplied PowerShell screenshot explicitly verifies **1,656/1,656 complete land regressions PASSED** and **Vite 6.4.5 build PASSED** (250 transformed modules, ~4.09 seconds). A subsequent real `--disposable-only` C14B2C1 smoke did **not** pass, stopping at the sanitized stage `verify SQL role flags, disjoint identities and no membership`. The specific underlying assertion is not shown, so the explanation remains a **likely cause, not a confirmed raw SQL failure**.
+
+Review of `scripts/bdp/app-auth-enrollment-roles-disposable-smoke.mjs` revealed a format mismatch: PostgreSQL's standalone boolean `psql` output often renders `t`/`f`, but implicit boolean-to-text conversion under string concatenation (`||`) produces `true`/`false`. The script concatenated role flags and expected `t`/`f`, potentially failing before checking actual permissions. The matching combined schema/function privilege output later in the script had the same ambiguity. **Fix:** encode all role and schema/function Boolean attestation values with explicit SQL `CASE WHEN ... THEN '1' ELSE '0' END` and compare precise digits; keep standalone `has_table_privilege` boolean checks at `f`. Break the stage into role flags, membership, no-existing-reader, SCRAM, and direct privileges without exposing SQL, role secrets or raw PostgreSQL errors.
+
+Two offline regression tests now pin this normalization and sanitized stage separation (focused **26**, full **1,658** predicted). An isolated static assertion replay passed **26/26**, but **the actual corrected Node runner and disposable PostgreSQL test still require operator verification**. No changes to the reviewed disposable role SQL blob, persistent gateway/reader, PostgreSQL authentication database, account rows or GIS were needed.
+
+**Fast diagnostic route:** after pulling, run revised focused Node tests and then the single disposable PostgreSQL role smoke. If the role smoke passes, run the complete 1,658 land regression and Vite build. If it fails, stop and send only the sanitized failure stage. Do not rerun any persistent C11 migration or manually grant SQL privileges.
