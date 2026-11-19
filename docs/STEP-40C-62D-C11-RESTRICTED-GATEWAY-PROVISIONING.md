@@ -62,3 +62,7 @@ PASS: C11 exact gateway SQL verified in isolated PG17; synthetic LOGIN, SET-only
 Predicted full regression count if no other files change: **1,475** (prior 1,432 + four later C10 tests + 21 C11 tests + 18 disposable tests). Prediction is not operator confirmation. Retain Vite's nonfatal chunk warning as a separate optimization task.
 
 **Do not execute `-ApplyLocalAuthOnly` yet.** First review the actual Phase A and B evidence and the DPAPI/global-role recovery caveats. A persistent gateway SQL LOGIN still does **not** authenticate a real Supabase user, verify MFA, provision accounts, authorize county access or release private geometry; those remain separate workstreams. Existing God’s Eye View/Cesium UI, 2.4-km Free Explorer and Travis County public parcel screen remain unchanged.
+
+## Operator verification update — November 18, 2026
+
+Latest provided PowerShell screenshot confirms **1,475/1,475 complete land tests passed**, with **0 failures, 0 skips and 0 cancellations**, followed by a **successful Vite v6.4.5 production build** (250 transformed modules; approximately 4.24 seconds) using a 2,048-MB Node old-space limit. The large-chunk warning is nonfatal. The screenshot does **not** show the separate C11 `-PlanOnly`, `-ValidateLocalAuthOnly`, or `--disposable-only` actual PostgreSQL smoke-test results, so those gates must be confirmed separately before considering any persistent role migration. No gateway LOGIN installation is verified.
