@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {
-  C14B_DB,C14B_IMAGE,C14B_PASS,
+  C14B_DB,C14B_IMAGE,C14B_PASS,C14B_SQL_BLOB,c14bGitBlob,
   requireC14BDisposableOnly,validC14BSource,
 } from '../../../scripts/bdp/app-auth-enrollment-schema-disposable-smoke.mjs';
 
@@ -157,4 +157,16 @@ test('62D-C14B1 fixture checks duplicate/denied requests, replay and audit rollb
 test('62D-C14B1 has no privileged persistent writer or HTTP connectivity',()=>{
   assert.doesNotMatch(smoke,/createServer\(|fetch\(|SUPABASE|sb_secret_|process\.env|ldos_auth_dev/);
   assert.doesNotMatch(sql,/^\s*CREATE ROLE|^\s*GRANT |^\s*ALTER ROLE/gm);
+});
+
+test('62D-C14B1 exact SQL blob is pinned before any Docker operation',()=>{
+  assert.equal(c14bGitBlob(sql),C14B_SQL_BLOB);
+  assert.equal(C14B_SQL_BLOB.length,40);
+  assert.equal(validC14BSource(sql+' '),false);
+  assert.match(smoke,/c14bGitBlob\(s\)===C14B_SQL_BLOB/);
+});
+test('62D-C14B1 audit FK references exact unique request and subject pair',()=>{
+  assert.match(sql,/UNIQUE \(request_id, subject\)/);
+  assert.match(sql,/FOREIGN KEY \(request_id,subject\)/);
+  assert.match(sql,/REFERENCES ldos_app_auth.enrollment_requests\(request_id,subject\)/);
 });
