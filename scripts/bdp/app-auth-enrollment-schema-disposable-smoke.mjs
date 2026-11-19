@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {randomBytes} from 'node:crypto';
+import {randomBytes,createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
@@ -9,6 +9,7 @@ import {setTimeout as sleep} from 'node:timers/promises';
 /** C14B1. Synthetic, disposable-only PostgreSQL. NOT an enrollment writer. */
 export const C14B_DB='ldos_c14b_disposable';
 export const C14B_IMAGE='postgres:17';
+export const C14B_SQL_BLOB='a541899861e33fd521a9b3488fa2ca7dc9e0e109';
 export const C14B_PASS='PASS: C14B1 isolated PG17 enrollment schema, deny-first defaults, identity/FK bindings, immutable revisions, audit append-only, replay and rollback constraints; no persistent databases touched.';
 const S='11111111-1111-4111-8111-111111111111';
 const I='22222222-2222-4222-8222-222222222222';
@@ -24,6 +25,11 @@ export function requireC14BDisposableOnly(args){
   if(!Array.isArray(args)||args.length!==1||args[0]!=='--disposable-only')
     throw new TypeError('C14B1 requires exactly --disposable-only');
   return true;
+}
+export function c14bGitBlob(s){
+  if(typeof s!=='string')return null;
+  return createHash('sha1').update('blob '+Buffer.byteLength(s,'utf8')+'\0')
+    .update(s,'utf8').digest('hex');
 }
 export function validC14BSource(s){
   if(typeof s!=='string')return false;
@@ -44,6 +50,7 @@ export function validC14BSource(s){
     &&s.includes('DO $c14b_disposable_guard$')
     &&s.includes('END;\n$c14b_disposable_guard$;')
     &&s.trimEnd().endsWith('COMMIT;')&&must.every(x=>s.includes(x))
+    &&c14bGitBlob(s)===C14B_SQL_BLOB
     &&!/^\s*(?:GRANT|CREATE ROLE|ALTER ROLE|CREATE EXTENSION|COPY)\b/im.test(s);
 }
 function docker(args,{input,raw=false,timeout=30000}={}){
