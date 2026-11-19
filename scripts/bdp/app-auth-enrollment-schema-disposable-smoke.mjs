@@ -9,7 +9,7 @@ import {setTimeout as sleep} from 'node:timers/promises';
 /** C14B1. Synthetic, disposable-only PostgreSQL. NOT an enrollment writer. */
 export const C14B_DB='ldos_c14b_disposable';
 export const C14B_IMAGE='postgres:17';
-export const C14B_SQL_BLOB='a541899861e33fd521a9b3488fa2ca7dc9e0e109';
+export const C14B_SQL_BLOB='5f10c530c7c5e801e7ad0d9733fcb48a2abcf5f8';
 export const C14B_PASS='PASS: C14B1 isolated PG17 enrollment schema, deny-first defaults, identity/FK bindings, immutable revisions, audit append-only, replay and rollback constraints; no persistent databases touched.';
 const S='11111111-1111-4111-8111-111111111111';
 const I='22222222-2222-4222-8222-222222222222';
@@ -118,14 +118,17 @@ export async function runC14BDisposableSchemaProof(args=process.argv.slice(2)){
     assert.equal(psql('SELECT current_database();'),C14B_DB);
     assert.equal(psql("SELECT count(*) FROM information_schema.tables "+
       "WHERE table_schema='ldos_app_auth' AND table_name LIKE 'enrollment_%';"),'5');
-    stage='defaults and separate reviewers';
+    stage='reviewer default-revoked INSERT';
     psql("INSERT INTO "+P+"enrollment_reviewer_authorities(reviewer_subject) "+
       "VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');");
+    stage='reviewer default-revoked SELECT';
     assert.equal(psql("SELECT authority_state||'|'||authority_scope||'|'||revision "+
       "FROM "+P+"enrollment_reviewer_authorities WHERE reviewer_subject="+
       q('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')+";"),'revoked|none|1');
+    stage='reviewer revoked-to-active denial';
     denied("UPDATE "+P+"enrollment_reviewer_authorities SET authority_state='active' "+
       "WHERE reviewer_subject='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';",'42501');
+    stage='seed distinct synthetic reviewers';
     for(const who of [I,R,S])psql(reviewer(who));
     stage='invitation and request binds';
     psql("INSERT INTO "+P+"enrollment_invitations "+
