@@ -48,10 +48,12 @@ export function requireC14B2BDisposableOnly(args){
     throw new Error('C14B2B requires exactly --disposable-only');
   return true;
 }
-export function syntheticReviewFixture({subject,invite,request,approval,digest}){
+export function syntheticReviewFixture({subject,invite,request,approval,digest,approvalDigest}){
   if(![subject,invite,request,approval].every(x=>
     typeof x==='string'&&/^[0-9a-f-]{36}$/.test(x))
-    ||typeof digest!=='string'||!/^[0-9a-f]{64}$/.test(digest))
+    ||typeof digest!=='string'||!/^[0-9a-f]{64}$/.test(digest)
+    ||typeof approvalDigest!=='string'||!/^[0-9a-f]{64}$/.test(approvalDigest)
+    ||approvalDigest===digest)
     throw new TypeError('Only fixed synthetic review fixtures accepted');
   return [
     "INSERT INTO "+P+"enrollment_invitations "+
@@ -70,7 +72,7 @@ export function syntheticReviewFixture({subject,invite,request,approval,digest})
       "(approval_id,request_id,subject,issuer,reviewer_subject,purpose,"+
       "decision,approval_state,nonce_digest,expires_at) VALUES ("+
       [approval,request,subject,ISS,REVIEWER,'enroll_suspended'].map(quote).join(',')+
-      ",'approve','unconsumed',"+quote('f'.repeat(64))+
+      ",'approve','unconsumed',"+quote(approvalDigest)+
       ",clock_timestamp()+interval '10 minutes');",
   ].join('\n');
 }
@@ -168,7 +170,7 @@ export async function runC14B2BDisposableProof(args=process.argv.slice(2)){
     stage='seed synthetic first approval and validate transaction gate';
     psql(syntheticReviewFixture({
       subject:S1,invite:INV1,request:REQ1,approval:APPROVE_ENROLL,
-      digest:'a'.repeat(64),
+      digest:'a'.repeat(64),approvalDigest:'f'.repeat(64),
     }));
     const enroll={phase:'enroll_suspended',subject:S1,request:REQ1,
       approval:APPROVE_ENROLL,audit:AUDIT1};
@@ -220,7 +222,7 @@ export async function runC14B2BDisposableProof(args=process.argv.slice(2)){
     stage='test required audit insertion failure rolls entire enrollment back';
     psql(syntheticReviewFixture({
       subject:S2,invite:INV2,request:REQ2,approval:APPROVE_2,
-      digest:'c'.repeat(64),
+      digest:'c'.repeat(64),approvalDigest:'e'.repeat(64),
     }));
     const second={phase:'enroll_suspended',subject:S2,
       request:REQ2,approval:APPROVE_2,audit:AUDIT1};
