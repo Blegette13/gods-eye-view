@@ -1,6 +1,6 @@
 # Step 40C-62D-C14B2C1 — Disposable PostgreSQL 17 role-isolation matrix
 
-**Status November 19, 2026: C14B2C1 first operator land regression PASSED 1,656/1,656 and Vite build PASSED (~4.09s), but the REAL disposable PostgreSQL role proof FAILED at the combined role-flags/membership stage. A probable PostgreSQL boolean-to-text formatting assertion mismatch has been corrected; revised 26 test contracts passed an isolated V8 replay, and renewed operator tests/PG proof remain PENDING. Persistent auth-dev was not targeted.**
+**Status November 19, 2026: C14B2C1 OPERATOR VERIFIED — 26/26 focused tests, 1,658/1,658 land regressions (0 failures/skips), Vite v6.4.5 production build PASS (250 modules; ~4.17s), and REAL isolated PostgreSQL 17 disposable role-isolation smoke PASS. No roles, users, accounts, permissions, or migrations applied to persistent auth-dev.**
 
 ## Starting evidence
 
@@ -67,3 +67,7 @@ Review of `scripts/bdp/app-auth-enrollment-roles-disposable-smoke.mjs` revealed 
 Two offline regression tests now pin this normalization and sanitized stage separation (focused **26**, full **1,658** predicted). An isolated static assertion replay passed **26/26**, but **the actual corrected Node runner and disposable PostgreSQL test still require operator verification**. No changes to the reviewed disposable role SQL blob, persistent gateway/reader, PostgreSQL authentication database, account rows or GIS were needed.
 
 **Fast diagnostic route:** after pulling, run revised focused Node tests and then the single disposable PostgreSQL role smoke. If the role smoke passes, run the complete 1,658 land regression and Vite build. If it fails, stop and send only the sanitized failure stage. Do not rerun any persistent C11 migration or manually grant SQL privileges.
+
+## Final operator results — November 19, 2026
+
+The supplied PowerShell screenshots verify **26/26 focused C14B2C1 Node tests PASS**, **the exact `--disposable-only` PostgreSQL 17 smoke PASS** reporting distinct synthetic SCRAM logins, two NOLOGIN principals, zero memberships, denied direct auth-table/function rights and denied `SET ROLE`, and **1,658/1,658 land regressions PASS** with zero failures/skips/cancellations. Vite v6.4.5 built 250 modules successfully in ~4.17 seconds under the 2048-MB Node setting; the large-chunk warning remains advisory. C14B2C1 is now complete as an **isolated synthetic deny-first role proof**, not a usable administrator approval system. Future issuance must be independently authenticated, audited, and restricted; no persistent `ldos_auth_dev` modifications occurred in this test.
