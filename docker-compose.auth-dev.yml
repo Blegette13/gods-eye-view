@@ -1,0 +1,30 @@
+# Step 40C-62D-A — OPT-IN, LOCAL DEV-ONLY, PERSISTENT ACCOUNT DB.
+# Source-controlled DESIGN ONLY. No DB runs merely by pulling GitHub.
+# DO NOT connect this Compose project to docker-compose.bdp.yml or Supabase.
+# No automatic migrations, account provisioning, public API or GIS access.
+name: ldos-auth-dev
+
+services:
+  auth-postgres:
+    image: postgres:17
+    restart: "no"
+    environment:
+      POSTGRES_DB: ldos_auth_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${LDOS_AUTH_DEV_POSTGRES_PASSWORD:?Set a unique local dev PostgreSQL owner password in the current shell}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    # Literal loopback; never expand host binding from environment variables.
+    ports:
+      - "127.0.0.1:54338:5432"
+    volumes:
+      - ldos_auth_dev_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ldos_auth_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    stop_grace_period: 30s
+
+volumes:
+  ldos_auth_dev_pgdata:

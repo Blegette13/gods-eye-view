@@ -1,5 +1,6 @@
 import { initFirstRunExperience } from '../firstRunExperience.js';
 import { initKeySetup } from '../keySetup.js';
+import { useLegacyFirstRunLauncher } from '../bdp/config/workspacePolicy.js';
 
 /** Reveal welcome controls only after restoration and the loading transition. */
 export function startStandaloneChrome({
@@ -18,9 +19,12 @@ export function startStandaloneChrome({
   const delayTimer = setTimeout(resolveDelay, 1000);
   const revealFirstRun = () => {
     if (disposed || signal.aborted || firstRun) return;
-    firstRun = initFirstRunExperience({ styleManager, dataManager });
     clearTimeout(revealTimer);
     loadingScreen.removeEventListener('transitionend', revealFirstRun);
+    // The land workspace has no aircraft/military first-run missions. Do not
+    // initialize the old dialog or its keyboard traps; key setup still works.
+    if (!useLegacyFirstRunLauncher(document.body.dataset.bdpProduct)) return;
+    firstRun = initFirstRunExperience({ styleManager, dataManager });
   };
   void Promise.all([styleManager.initialRestorePromise, minimumDelay])
     .catch(() => {

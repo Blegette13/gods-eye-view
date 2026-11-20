@@ -1,6 +1,8 @@
 node_modules
 dist
 .env
+.env.*
+!.env.example
 *.log
 screenshots/
 qa-shots/
@@ -12,3 +14,5 @@ output/
 3d-models/
 pinokio/ENVIRONMENT
 pinokio/.installed
+# Local-only BDP research notes and evidence files; never commit them.
+.bdp-private/

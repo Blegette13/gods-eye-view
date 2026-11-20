@@ -13,6 +13,45 @@ import militaryInstallationsLayer from '../data/militaryInstallations.js';
 import militaryAwarenessLayer from '../data/militaryAwareness.js';
 import localDataLayers from '../data/localLayers.js';
 import { LAYER_STATE_REGISTRY } from '../data/layerState.js';
+import bexarParcelLayer from '../bdp/parcels/bexarParcelLayer.js';
+import travisParcelLayer from '../bdp/parcels/travisParcelLayer.js';
+import williamsonParcelLayer from '../bdp/parcels/williamsonParcelLayer.js';
+import haysParcelLayer from '../bdp/parcels/haysParcelLayer.js';
+import dallasParcelLayer from '../bdp/parcels/dallasParcelLayer.js';
+import harrisParcelLayer from '../bdp/parcels/harrisParcelLayer.js';
+import femaFloodLayer from '../bdp/overlays/femaFloodLayer.js';
+import rrcEnergyLayer from '../bdp/overlays/rrcEnergyLayer.js';
+import nwiWetlandsLayer from '../bdp/overlays/nwiWetlandsLayer.js';
+import ssurgoSoilLayer from '../bdp/overlays/ssurgoSoilLayer.js';
+import epaCleanupLayer from '../bdp/overlays/epaCleanupLayer.js';
+import txdotTrafficLayer from '../bdp/overlays/txdotTrafficLayer.js';
+import utilityInfrastructureLayer from '../bdp/overlays/utilityInfrastructureLayer.js';
+import tceqWaterRightsLayer from '../bdp/overlays/tceqWaterRightsLayer.js';
+import tceqMswLayer from '../bdp/overlays/tceqMswLayer.js';
+import thcCemeteryLayer from '../bdp/overlays/thcCemeteryLayer.js';
+import sanAntonioEntitlementLayer from '../bdp/overlays/sanAntonioEntitlementLayer.js';
+import { extendLayerStateRegistry } from '../bdp/config/layerRegistry.js';
+import { landWorkspaceVisibilityGuard } from '../bdp/config/workspacePolicy.js';
+
+const BDP_SCREEN_LAYER_IDS = Object.freeze([
+  'bdp-bexar-parcels',
+  'bdp-travis-parcels',
+  'bdp-williamson-parcels',
+  'bdp-hays-parcels',
+  'bdp-dallas-parcels',
+  'bdp-harris-parcels',
+  'bdp-fema-flood',
+  'bdp-rrc-energy',
+  'bdp-nwi-wetlands',
+  'bdp-ssurgo-soils',
+  'bdp-epa-cleanups',
+  'bdp-txdot-traffic',
+  'bdp-utilities-infrastructure',
+  'bdp-tceq-water-rights',
+  'bdp-tceq-msw',
+  'bdp-thc-cemeteries',
+  'bdp-san-antonio-entitlement',
+]);
 
 /** Register the standalone layer catalog before allowing state restoration. */
 export function createStandaloneData({
@@ -21,7 +60,6 @@ export function createStandaloneData({
   allowQaRegistration,
   defer,
 }) {
-  // Initialize data layer manager
   const dataManager = new DataLayerManager(viewer, {
     allowQaRegistration,
   });
@@ -49,8 +87,271 @@ export function createStandaloneData({
   for (const layer of localDataLayers) {
     dataManager.register(layer);
   }
-  // Restoration starts only after the complete production registry is sealed.
-  dataManager.finalizeRegistrations(LAYER_STATE_REGISTRY);
+
+  dataManager.register(bexarParcelLayer);
+  dataManager.register(travisParcelLayer);
+  dataManager.register(williamsonParcelLayer);
+  dataManager.register(haysParcelLayer);
+  dataManager.register(dallasParcelLayer);
+  dataManager.register(harrisParcelLayer);
+  dataManager.register(femaFloodLayer);
+  dataManager.register(rrcEnergyLayer);
+  dataManager.register(nwiWetlandsLayer);
+  dataManager.register(ssurgoSoilLayer);
+  dataManager.register(epaCleanupLayer);
+  dataManager.register(txdotTrafficLayer);
+  dataManager.register(utilityInfrastructureLayer);
+  dataManager.register(tceqWaterRightsLayer);
+  dataManager.register(tceqMswLayer);
+  dataManager.register(thcCemeteryLayer);
+  dataManager.register(sanAntonioEntitlementLayer);
+
+  dataManager.finalizeRegistrations(
+    extendLayerStateRegistry(LAYER_STATE_REGISTRY),
+  );
+
+  // Retain exact legacy registrations and URL/state tokens, but refuse legacy
+  // feed activation even when requested by saved state, share links or tools.
+  // Installation precedes StyleManager's restoration/attachDataManager.
+  const removeLandWorkspaceGuard = dataManager.addVisibilityGuard(
+    landWorkspaceVisibilityGuard,
+  );
+  defer(removeLandWorkspaceGuard);
+
+  // Explicit guided-discovery activation uses the same DataLayerManager
+  // visibility guards and county adapters as the native Map Layers panel.
+  // This does not auto-enable unrelated data feeds or bypass failed providers.
+  const guidedCountyIds = Object.freeze({
+    Bexar: 'bdp-bexar-parcels',
+    Travis: 'bdp-travis-parcels',
+    Williamson: 'bdp-williamson-parcels',
+    Hays: 'bdp-hays-parcels',
+    Dallas: 'bdp-dallas-parcels',
+    Harris: 'bdp-harris-parcels',
+  });
+  let guidedActivation = null;
+  const enableGuidedCounty = async (event) => {
+    const county = event?.detail?.county;
+    if (!Object.hasOwn(guidedCountyIds, county)) return;
+    guidedActivation?.abort();
+    guidedActivation = new AbortController();
+    const { signal } = guidedActivation;
+    try {
+      const id = guidedCountyIds[county];
+      // Repeat Free Explorer camera moves must refresh the already-enabled
+      // county source immediately; waiting for a timed layer poll would leave
+      // outdated neighborhood borders and counts on screen.
+      const alreadyOn = dataManager.isEnabled(id);
+      const enabled = alreadyOn
+        ? await dataManager.refreshLayer(id, { signal })
+        : await dataManager.setEnabled(id, true, { origin: 'user', signal });
+      if (signal.aborted) return;
+      const layer = dataManager.layers.get(id);
+      const stats = layer?.getStats?.() || {};
+      window.dispatchEvent(new CustomEvent('land:discovery-layer-result', {
+        detail: {
+          county,
+          ok: enabled !== false && dataManager.isEnabled(id),
+          status: stats.status || 'unknown',
+          message: stats.lastError || stats.loadingLabel || 'Enable request was not successful',
+        },
+      }));
+    } catch (error) {
+      if (signal.aborted || error?.name === 'AbortError') return;
+      window.dispatchEvent(new CustomEvent('land:discovery-layer-result', {
+        detail: {
+          county, ok: false,
+          message: error instanceof Error ? error.message : 'County parcel source unavailable',
+        },
+      }));
+    }
+  };
+  // A map moving ABOVE the 1.3 km Free Explorer threshold must immediately
+  // conceal any previously cached parcel outlines. Never re-enable a layer
+  // that the operator manually switched off.
+  const clearElevatedFreeParcels = (event) => {
+    const county = event?.detail?.county;
+    const id = guidedCountyIds[county];
+    if (!id || !dataManager.isEnabled(id)) return;
+    void dataManager.refreshLayer(id).catch((error) => {
+      console.warn('Free-browse elevated parcel refresh unavailable:', error);
+    });
+  };
+  window.addEventListener('land:discovery-free-zoomed-out', clearElevatedFreeParcels);
+  defer(() => window.removeEventListener('land:discovery-free-zoomed-out', clearElevatedFreeParcels));
+  window.addEventListener('land:discovery-enable-county', enableGuidedCounty);
+  defer(() => {
+    guidedActivation?.abort();
+    window.removeEventListener('land:discovery-enable-county', enableGuidedCounty);
+  });
+
+  let parcelSearchController = null;
+  const handleBdpLandSearch = async (event) => {
+    const command = event?.detail;
+    if (!['parcel', 'owner'].includes(command?.kind) || !command.value) return;
+
+    parcelSearchController?.abort();
+    parcelSearchController = new AbortController();
+    const { signal } = parcelSearchController;
+    const countyLayers = {
+      Bexar: bexarParcelLayer,
+      Travis: travisParcelLayer,
+      Williamson: williamsonParcelLayer,
+      Hays: haysParcelLayer,
+      Dallas: dallasParcelLayer,
+      Harris: harrisParcelLayer,
+    };
+    const county = command.county || 'Bexar';
+    const layer = countyLayers[county];
+    if (!layer) return;
+    const layerId = layer.id;
+    for (const [name, other] of Object.entries(countyLayers)) {
+      if (name !== county) other.hideCard();
+    }
+
+    // The manager performs a viewport fetch during its enable lifecycle.
+    // Reserve this exact-ID search first: a dense/truncated viewport must not
+    // prevent a bounded parcel or owner request from reaching the CAD source.
+    const releaseFocusedLookup = layer.beginFocusedLookup();
+    try {
+      const enabled = await dataManager.setEnabled(layerId, true, {
+        origin: 'user',
+        signal,
+      });
+      if (signal.aborted) return;
+      if (enabled === false || !dataManager.isEnabled(layerId)) {
+        throw new Error(`${county} parcel layer could not be enabled for lookup`);
+      }
+
+      if (command.kind === 'owner') {
+        const parcels = await layer.focusOwner(command.value, {
+          signal,
+          limit: 100,
+        });
+        if (signal.aborted) return;
+        window.dispatchEvent(
+          new CustomEvent('bdp:land-search-result', {
+            detail: parcels.length
+              ? {
+                  ok: true,
+                  kind: 'owner',
+                  query: command.value,
+                  count: parcels.length,
+                  county,
+                }
+              : {
+                  ok: false,
+                  kind: 'owner',
+                  query: command.value,
+                  message: `No ${county} parcels found for owner ${command.value}`,
+                },
+          }),
+        );
+        return;
+      }
+
+      const parcel = await layer.focusParcel(command.value, {
+        signal,
+        cameraRangeMultiplier: command.cameraRangeMultiplier,
+      });
+      if (signal.aborted) return;
+
+      window.dispatchEvent(
+        new CustomEvent('bdp:land-search-result', {
+          detail: parcel
+            ? {
+                ok: true,
+                kind: 'parcel',
+                query: command.value,
+                parcelId: parcel.parcelId,
+                owner: parcel.owner?.name || '',
+                county,
+              }
+            : {
+                ok: false,
+                kind: 'parcel',
+                query: command.value,
+                message: `No ${county} parcel found for ${command.value}`,
+              },
+        }),
+      );
+    } catch (error) {
+      if (signal.aborted || error?.name === 'AbortError') return;
+      console.warn('[BDP:LandSearch] lookup failed:', error);
+      window.dispatchEvent(
+        new CustomEvent('bdp:land-search-result', {
+          detail: {
+            ok: false,
+            kind: command.kind,
+            query: command.value,
+            message:
+              error instanceof Error
+                ? error.message
+                : 'Land lookup unavailable',
+          },
+        }),
+      );
+    } finally {
+      releaseFocusedLookup();
+    }
+  };
+  window.addEventListener('bdp:land-search', handleBdpLandSearch);
+  defer(() => {
+    parcelSearchController?.abort();
+    parcelSearchController = null;
+    window.removeEventListener('bdp:land-search', handleBdpLandSearch);
+  });
+
+  let presetController = null;
+  const handleBdpLayerPreset = async (event) => {
+    const mode = event?.detail?.mode;
+    if (!['screen', 'clear'].includes(mode)) return;
+
+    presetController?.abort();
+    presetController = new AbortController();
+    const { signal } = presetController;
+    const shouldEnable = mode === 'screen';
+    const failures = [];
+    let changedCount = 0;
+
+    for (const layerId of BDP_SCREEN_LAYER_IDS) {
+      if (signal.aborted) return;
+      try {
+        const settled = await dataManager.setEnabled(layerId, shouldEnable, {
+          origin: 'user',
+          signal,
+        });
+        if (settled !== false) changedCount += 1;
+        else failures.push(layerId);
+      } catch (error) {
+        if (signal.aborted || error?.name === 'AbortError') return;
+        failures.push(layerId);
+        console.warn(`[BDP:LayerPreset] ${mode} failed for ${layerId}:`, error);
+      }
+    }
+
+    window.dispatchEvent(
+      new CustomEvent('bdp:layer-preset-result', {
+        detail: {
+          ok: failures.length === 0,
+          mode,
+          enabledCount: mode === 'screen' ? changedCount : 0,
+          clearedCount: mode === 'clear' ? changedCount : 0,
+          failures,
+          message: failures.length
+            ? `BDP ${mode} completed with ${failures.length} layer issue${failures.length === 1 ? '' : 's'}`
+            : '',
+        },
+      }),
+    );
+  };
+  window.addEventListener('bdp:layer-preset', handleBdpLayerPreset);
+  defer(() => {
+    presetController?.abort();
+    presetController = null;
+    window.removeEventListener('bdp:layer-preset', handleBdpLayerPreset);
+  });
+
   if (allowQaRegistration) {
     window.__gevQaRegisterLayer = (targetManager, layerModule) => {
       if (targetManager !== dataManager)

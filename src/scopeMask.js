@@ -102,6 +102,9 @@ let _canvas = null;
 let _container = null;
 let _viewer = null;
 let _enabled = true;
+/** Product availability gate: unrelated workspaces can turn the scope off
+ * without changing its upstream defaults or share-link parser. */
+let _available = true;
 let _featherRatio = SCOPE_FEATHER_RATIO_DEFAULT;
 let _resizeObserver = null;
 let _dprQuery = null;
@@ -455,11 +458,22 @@ function teardownCameraHeightWatch() {
 }
 
 /**
+ * Allow an embedding product to disable the tactical circular view without
+ * disabling Cesium, masking the globe with CSS alone, or rewriting share links.
+ * An unavailable scope cannot be re-enabled through a restored upstream URL
+ * or scene recipe. It stays disabled until explicitly allowed again.
+ */
+export function setScopeMaskAvailable(available) {
+  _available = Boolean(available);
+  if (!_available) setScopeMaskEnabled(false);
+}
+
+/**
  * @param {boolean} enabled
  * @returns {void}
  */
 export function setScopeMaskEnabled(enabled) {
-  const next = Boolean(enabled);
+  const next = _available && Boolean(enabled);
   const reEnabled = next && !_enabled;
   _enabled = next;
   if (reEnabled) {
@@ -519,6 +533,7 @@ export function _resetScopeMaskForTest() {
   _container = null;
   _viewer = null;
   _enabled = true;
+  _available = true;
   _featherRatio = SCOPE_FEATHER_RATIO_DEFAULT;
   _terminusAlpha = SCOPE_OUTSIDE_ALPHA;
   _terminusOverride = null;
